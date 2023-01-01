@@ -1,0 +1,33 @@
+.suggestion-item {
+    position: relative;
+}
+.suggestion-item .fz-suggestion-content {
+    display: inline-block;
+    flex-direction: column;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: auto;
+}
+.suggestion-item .fz-suggestion-title {
+    overflow-wrap: break-word;
+}
+.suggestion-item .fz-suggestion-flair {
+    display: inline-block;
+    align-items: center;
+    align-self: center;
+    flex-shrink: 0;
+    position: absolute;
+    right: 2%;
+    top: 17px;
+    color: var(--text-muted);
+    opacity: var(--icon-opacity);
+    margin: 0 4px 0 12px;
+}
+
+.suggestion-item .fz-suggestion-note {
+    font-size: 0.8em;
+    color: var(--text-muted);
+    width: 100%;
+    flex-basis: 100%;
+    overflow-wrap: break-word;
+}

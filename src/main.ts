@@ -1,6 +1,6 @@
 import {
     App,
-    FuzzySuggestModal,
+    SuggestModal,
     Plugin,
     PluginSettingTab,
     Setting,
@@ -39,7 +39,7 @@ export default class Fuzyy_chinese extends Plugin {
             // 	console.log('Simple Callback');
             // },
             checkCallback: (checking: boolean) => {
-                let leaf = this.app.workspace.activeLeaf;
+                let leaf = this.app.workspace.getMostRecentLeaf();
                 if (leaf) {
                     if (!checking) {
                         new SampleModal(this.app, this).open();
@@ -64,14 +64,13 @@ export default class Fuzyy_chinese extends Plugin {
     }
 }
 
-class SampleModal extends FuzzySuggestModal<TFile> {
+class SampleModal extends SuggestModal<TFile> {
     Files: TFile[];
-    pinyinEngine: any;
     data: any;
     plugin: Fuzyy_chinese;
     chooser: any;
     constructor(app: App, plugin: Fuzyy_chinese) {
-        super(app, plugin);
+        super(app);
         this.plugin = plugin;
         this.setInstructions([
             {
@@ -117,17 +116,18 @@ class SampleModal extends FuzzySuggestModal<TFile> {
             app.workspace.getMostRecentLeaf().openFile(nf);
             return false;
         });
-        this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
-            this.close();
-            let item = this.chooser.values[this.chooser.selectedItem];
-            const newLeaf = app.plugins.plugins[
-                "obsidian-hover-editor"
-            ].spawnPopover(undefined, () =>
-                this.app.workspace.setActiveLeaf(newLeaf, false, true)
-            );
-            newLeaf.openFile(item.file);
-            return false;
-        });
+        if (app.plugins.plugins["obsidian-hover-editor"])
+            this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
+                this.close();
+                let item = this.chooser.values[this.chooser.selectedItem];
+                const newLeaf = app.plugins.plugins[
+                    "obsidian-hover-editor"
+                ].spawnPopover(undefined, () =>
+                    this.app.workspace.setActiveLeaf(newLeaf, false, true)
+                );
+                newLeaf.openFile(item.file);
+                return false;
+            });
     }
     onOpen() {
         if (this.plugin.settings.showAllFileTypes)
@@ -142,7 +142,6 @@ class SampleModal extends FuzzySuggestModal<TFile> {
                 .concat(
                     app.vault.getFiles().filter((p) => p.extension == "canvas")
                 );
-
         if (
             this.plugin.settings.showAttachments ||
             this.plugin.settings.showAllFileTypes
@@ -189,42 +188,40 @@ class SampleModal extends FuzzySuggestModal<TFile> {
                 );
             }
         }
+        this.onInput();
     }
-    getSuggestions(query: string): TFile[] {
-        if (query == "") return;
-        // let wb = workBreak(query);
-        // console.log("w", wb);
-        // wb = wb.map((p) => (Array.isArray(p) ? p[0].split(",") : p.split(",")));
-        // console.log(wb);
-        // wb = permutation_and_combination(wb);
-        // console.log("wb", wb);
 
-        // let query2 = wb;
-        // // let query2 = [];
-        // let temp1 = input_processing(query);
-        // let temp2 = [];
-        // // for (let i of temp1) {
-        // //     if (i.length == 1 && i.charCodeAt(0) > 256) temp2.push(i);
-        // //     else temp2 = temp2.concat(PinyinMatch.wordBreak(i, true));
-        // // }
-        // query2.push(query.split("").filter((p) => p != " "));
-        // console.log(query2);
-        // temp2 = temp2.reduce((a, p) => {
-        //     if (Array.isArray(p)) a = a.concat(p);
-        //     else a.push(p);
-        //     return a;
-        // }, []);
-        // if (temp2.length != 0) query2.push(temp2);
+    getSuggestions(query: string): any[] {
+        if (query == "") {
+            let lastOpenFiles = app.workspace.getLastOpenFiles();
+            lastOpenFiles = lastOpenFiles
+                .map((p) =>
+                    this.data.find((q) => q.type == "file" && q.path == p)
+                )
+                .filter((p) => p);
+            return lastOpenFiles;
+        }
+        // console.time();
+
+        // this.Files.filter((p) => PinyinMatch.match(p?.name, query[0])).forEach(
+        //     (p) =>
+        //         console.log(
+        //             pinyin(p?.name, {
+        //                 pattern: "pinyin",
+        //                 toneType: "none",
+        //             })
+        //         )
+        // );
+        // console.timeEnd();
         let query2 = query.split("").filter((p) => p != " ");
         let match_data = this.data.map((p) => {
+            p = Object.assign({}, p);
             let match = [];
             let m = [-1, -1];
             let text = p.type == "file" ? p.name : p.alias;
             for (let i of query2) {
                 text = text.slice(m[1] + 1);
                 m = PinyinMatch.match(text, i);
-                // if (p.path.includes("手把手"))
-                //     console.log(query2, text, m, match);
                 if (!m) return false;
                 else match.push(m);
             }
@@ -261,6 +258,7 @@ class SampleModal extends FuzzySuggestModal<TFile> {
                             )
                     )
                     .map((p) => {
+                        p = Object.assign({}, p);
                         if (p.type == "alias") return false;
                         let match = [];
                         let m = [-1, -1];
@@ -298,24 +296,30 @@ class SampleModal extends FuzzySuggestModal<TFile> {
         return match_data;
     }
     renderSuggestion(item: any, el: HTMLElement) {
-        let m = item.match,
-            text;
-        if (item.type == "file")
-            if (item.usePath) text = item.path;
-            else text = item.name;
-        else text = item.alias;
-        let t = "";
-        t += text.slice(0, m[0][0]);
-        for (let i in m) {
-            if (i > 0) {
-                t += text.slice(m[i - 1][1] + 1, m[i][0]);
+        let m = item?.match,
+            text,
+            t = "";
+        if (m) {
+            if (item.type == "file")
+                if (item.usePath) text = item.path;
+                else text = item.name;
+            else text = item.alias;
+
+            t += text.slice(0, m[0][0]);
+            for (let i in m) {
+                if (i > 0) {
+                    t += text.slice(m[i - 1][1] + 1, m[i][0]);
+                }
+                t += `<span class="suggestion-highlight">${text.slice(
+                    m[i][0],
+                    m[i][1] + 1
+                )}</span>`;
             }
-            t += `<span class="suggestion-highlight">${text.slice(
-                m[i][0],
-                m[i][1] + 1
-            )}</span>`;
+            t += text.slice(m.slice(-1)[0][1] + 1);
+        } else {
+            t = item.path;
+            item.usePath = true;
         }
-        t += text.slice(m.slice(-1)[0][1] + 1);
         let e1 = el.createEl("div", { cls: "fz-suggestion-content" });
         let e2 = e1.createEl("div", { cls: "fz-suggestion-title" });
         e2.innerHTML = t;
@@ -344,7 +348,7 @@ class SampleSettingTab extends PluginSettingTab {
     display(): void {
         let { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl("h2", { text: "Settings for my awesome plugin." });
+        containerEl.createEl("h2", { text: "设置" });
         new Setting(containerEl)
             .setName("显示附件")
             .setDesc("显示如图片、视频、PDF等附件文件。")
@@ -376,69 +380,4 @@ class SampleSettingTab extends PluginSettingTab {
                     })
             );
     }
-}
-
-function input_processing(input: string) {
-    let i = 0,
-        j = 0,
-        o = [];
-    for (i = 0; i < input.length; i++) {
-        if (input.charCodeAt(i) > 256 && i != input.length - 1) {
-            input.slice(j, i) == ""
-                ? o.push(input.charAt(i))
-                : o.push(input.slice(j, i), input.charAt(i));
-            j = i + 1;
-        } else if (input.charCodeAt(i) > 256 && i == input.length - 1) {
-            input.slice(j, i) == ""
-                ? o.push(input.charAt(i))
-                : o.push(input.slice(j, i), input.charAt(i));
-            break;
-        }
-        if (i == input.length - 1) o.push(input.slice(j));
-    }
-    return o;
-}
-
-function workBreak(s: string) {
-    let sm = "bpmfdtnlgkhjqxrzcsyw",
-        sp = "hng",
-        t1 = [];
-    for (let i of s) {
-        if (sm.includes(i)) t1.push(i);
-        else if (t1.length == 0) t1.push(i);
-        else t1[t1.length - 1] += i;
-    }
-    for (let i = 0; i < t1.length; i++) {
-        if (sp.includes(t1[i][0]) && i != 0) {
-            t1.splice(i - 1, 2, t1[i - 1] + t1[i]);
-            i -= 1;
-        }
-    }
-    for (let i in t1) {
-        if (t1[i].length > 1)
-            if (PinyinMatch.wordBreak(t1[i], false).length == 0) continue;
-            else t1 = PinyinMatch.wordBreak(t1[i], false);
-    }
-    return t1;
-}
-
-function permutation_and_combination(arr) {
-    let t1 = [],
-        t2 = [],
-        n = 0;
-    for (let i = 0; i < arr.length; i++) {
-        if (Array.isArray(arr[i])) {
-            n += 1;
-            for (let j of arr[i]) {
-                t2 = arr.slice();
-                t2.splice(i, 1, j);
-                t1 = t1.concat(permutation_and_combination(t2));
-            }
-        }
-    }
-    if (n == 0) t1 = [arr];
-    let obj = {};
-    t1.forEach((item) => (obj[item] = item));
-    t1 = Object.values(obj);
-    return t1;
 }

@@ -133,8 +133,16 @@ var t = {match: function(i2) {
 var main_default = t;
 
 // src/main.ts
+var Re = ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp"];
+var He = ["mp3", "wav", "m4a", "3gp", "flac", "ogg", "oga", "opus"];
+var Ve = ["mp4", "webm", "ogv", "mov", "mkv"];
+var ze = ["pdf"];
+var qe = ["md"];
+var _e = [].concat(Re, He, Ve, ze, qe, ["canvas"]);
 var DEFAULT_SETTINGS = {
-  mySetting: "default"
+  showAttachments: false,
+  showAllFileTypes: false,
+  usePathToSeatch: false
 };
 var Fuzyy_chinese = class extends import_obsidian.Plugin {
   async onload() {
@@ -143,10 +151,10 @@ var Fuzyy_chinese = class extends import_obsidian.Plugin {
       id: "open-search",
       name: "Open Search",
       checkCallback: (checking) => {
-        let leaf = this.app.workspace.activeLeaf;
+        let leaf = this.app.workspace.getMostRecentLeaf();
         if (leaf) {
           if (!checking) {
-            new SampleModal(this.app).open();
+            new SampleModal(this.app, this).open();
           }
           return true;
         }
@@ -165,9 +173,10 @@ var Fuzyy_chinese = class extends import_obsidian.Plugin {
   }
 };
 var main_default2 = Fuzyy_chinese;
-var SampleModal = class extends import_obsidian.FuzzySuggestModal {
-  constructor(app2) {
+var SampleModal = class extends import_obsidian.SuggestModal {
+  constructor(app2, plugin) {
     super(app2);
+    this.plugin = plugin;
     this.setInstructions([
       {
         command: "ctrl \u21B5",
@@ -206,25 +215,51 @@ var SampleModal = class extends import_obsidian.FuzzySuggestModal {
       app2.workspace.getMostRecentLeaf().openFile(nf);
       return false;
     });
-    this.scope.register(["Mod"], "p", (event) => {
-      this.close();
-      let item = this.chooser.values[this.chooser.selectedItem];
-      const newLeaf = app2.plugins.plugins["obsidian-hover-editor"].spawnPopover(void 0, () => this.app.workspace.setActiveLeaf(newLeaf, false, true));
-      newLeaf.openFile(item.file);
-      return false;
-    });
+    if (app2.plugins.plugins["obsidian-hover-editor"])
+      this.scope.register(["Mod"], "p", (event) => {
+        this.close();
+        let item = this.chooser.values[this.chooser.selectedItem];
+        const newLeaf = app2.plugins.plugins["obsidian-hover-editor"].spawnPopover(void 0, () => this.app.workspace.setActiveLeaf(newLeaf, false, true));
+        newLeaf.openFile(item.file);
+        return false;
+      });
   }
   onOpen() {
-    this.Files = app.vault.getMarkdownFiles();
-    this.data = this.Files.map((file) => {
-      return {
-        type: "file",
-        name: file.basename,
-        path: file.path,
-        file
-      };
-    });
+    if (this.plugin.settings.showAllFileTypes)
+      this.Files = app.vault.getFiles();
+    else if (this.plugin.settings.showAttachments)
+      this.Files = app.vault.getFiles().filter((f) => _e.includes(f.extension));
+    else
+      this.Files = app.vault.getMarkdownFiles().concat(app.vault.getFiles().filter((p) => p.extension == "canvas"));
+    if (this.plugin.settings.showAttachments || this.plugin.settings.showAllFileTypes)
+      this.data = this.Files.map((file) => {
+        if (file.extension != "md")
+          return {
+            type: "file",
+            name: file.name,
+            path: file.path,
+            file
+          };
+        else
+          return {
+            type: "file",
+            name: file.basename,
+            path: file.path,
+            file
+          };
+      });
+    else
+      this.data = this.Files.map((file) => {
+        return {
+          type: "file",
+          name: file.basename,
+          path: file.path,
+          file
+        };
+      });
     for (let file of this.Files) {
+      if (file.extension != "md")
+        continue;
       let alias = app.metadataCache.getFileCache(file)?.frontmatter?.alias || app.metadataCache.getFileCache(file)?.frontmatter?.aliases;
       if (alias) {
         alias = alias.split(", ");
@@ -236,10 +271,17 @@ var SampleModal = class extends import_obsidian.FuzzySuggestModal {
         }));
       }
     }
+    this.onInput();
   }
   getSuggestions(query) {
-    let query2 = query.toLowerCase().split("").filter((p) => p != " ");
-    let a2 = this.data.map((p) => {
+    if (query == "") {
+      let lastOpenFiles = app.workspace.getLastOpenFiles();
+      lastOpenFiles = lastOpenFiles.map((p) => this.data.find((q) => q.type == "file" && q.path == p)).filter((p) => p);
+      return lastOpenFiles;
+    }
+    let query2 = query.split("").filter((p) => p != " ");
+    let match_data = this.data.map((p) => {
+      p = Object.assign({}, p);
       let match = [];
       let m = [-1, -1];
       let text = p.type == "file" ? p.name : p.alias;
@@ -264,30 +306,80 @@ var SampleModal = class extends import_obsidian.FuzzySuggestModal {
       let score = 0;
       score += 40 / (text.length - match.length);
       if (m[0][0] == 0)
-        score += 10;
+        score += 8;
+      score += 20 / m.length;
       p.match = m;
       p.score = score;
+      p.usePath = false;
       return p;
     });
-    a2 = a2.filter((p) => p).sort((a3, b) => b.score - a3.score);
-    return a2;
+    if (match_data.filter((p) => p).length < 10 && this.plugin.settings.usePathToSeatch) {
+      match_data = match_data.concat(this.data.filter((p) => !(p.type == "file" && match_data.map((p2) => p2.path).includes(p.path))).map((p) => {
+        p = Object.assign({}, p);
+        if (p.type == "alias")
+          return false;
+        let match = [];
+        let m = [-1, -1];
+        let text = p.path;
+        for (let i2 of query2) {
+          text = text.slice(m[1] + 1);
+          m = main_default.match(text, i2);
+          if (!m)
+            return false;
+          else
+            match.push(m);
+        }
+        m = [match[0]];
+        for (let i2 of match.slice(1)) {
+          if (i2[0] == 0) {
+            m[m.length - 1][1] += 1;
+          } else {
+            let n2 = m[m.length - 1][1] + i2[0] + 1;
+            m.push([n2, n2]);
+          }
+        }
+        text = p.path;
+        let score = 0;
+        score += 40 / (text.length - match.length);
+        if (m[0][0] == 0)
+          score += 8;
+        score += 20 / m.length;
+        p.match = m;
+        p.score = score;
+        p.usePath = true;
+        return p;
+      }));
+    }
+    match_data = match_data.filter((p) => p).sort((a2, b) => b.score - a2.score);
+    return match_data;
   }
   renderSuggestion(item, el) {
-    let m = item.match;
-    let text = item.type == "file" ? item.name : item.alias;
-    let t2 = "";
-    t2 += text.slice(0, m[0][0]);
-    for (let i2 in m) {
-      if (i2 > 0) {
-        t2 += text.slice(m[i2 - 1][1] + 1, m[i2][0]);
+    let m = item?.match, text, t2 = "";
+    if (m) {
+      if (item.type == "file")
+        if (item.usePath)
+          text = item.path;
+        else
+          text = item.name;
+      else
+        text = item.alias;
+      t2 += text.slice(0, m[0][0]);
+      for (let i2 in m) {
+        if (i2 > 0) {
+          t2 += text.slice(m[i2 - 1][1] + 1, m[i2][0]);
+        }
+        t2 += `<span class="suggestion-highlight">${text.slice(m[i2][0], m[i2][1] + 1)}</span>`;
       }
-      t2 += `<span class="suggestion-highlight">${text.slice(m[i2][0], m[i2][1] + 1)}</span>`;
+      t2 += text.slice(m.slice(-1)[0][1] + 1);
+    } else {
+      t2 = item.path;
+      item.usePath = true;
     }
-    t2 += text.slice(m.slice(-1)[0][1] + 1);
     let e1 = el.createEl("div", {cls: "fz-suggestion-content"});
     let e2 = e1.createEl("div", {cls: "fz-suggestion-title"});
     e2.innerHTML = t2;
-    e1.createEl("div", {cls: "fz-suggestion-note", text: item.path});
+    if (!item.usePath)
+      e1.createEl("div", {cls: "fz-suggestion-note", text: item.path});
     if (item.type == "alias")
       el.innerHTML += '<span class="fz-suggestion-flair" aria-label="\u522B\u540D"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg></span>';
   }
@@ -307,10 +399,17 @@ var SampleSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     let {containerEl} = this;
     containerEl.empty();
-    containerEl.createEl("h2", {text: "Settings for my awesome plugin."});
-    new import_obsidian.Setting(containerEl).setName("Setting #1").setDesc("It's a secret").addText((text) => text.setPlaceholder("Enter your secret").setValue("").onChange(async (value) => {
-      console.log("Secret: " + value);
-      this.plugin.settings.mySetting = value;
+    containerEl.createEl("h2", {text: "\u8BBE\u7F6E"});
+    new import_obsidian.Setting(containerEl).setName("\u663E\u793A\u9644\u4EF6").setDesc("\u663E\u793A\u5982\u56FE\u7247\u3001\u89C6\u9891\u3001PDF\u7B49\u9644\u4EF6\u6587\u4EF6\u3002").addToggle((text) => text.setValue(this.plugin.settings.showAttachments).onChange(async (value) => {
+      this.plugin.settings.showAttachments = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("\u663E\u793A\u6240\u6709\u7C7B\u578B\u6587\u4EF6").addToggle((text) => text.setValue(this.plugin.settings.showAllFileTypes).onChange(async (value) => {
+      this.plugin.settings.showAllFileTypes = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian.Setting(containerEl).setName("\u4F7F\u7528\u8DEF\u5F84\u641C\u7D22").setDesc("\u5F53\u641C\u7D22\u7ED3\u679C\u5C11\u4E8E10\u4E2A\u65F6\u641C\u7D22\u8DEF\u5F84").addToggle((text) => text.setValue(this.plugin.settings.usePathToSeatch).onChange(async (value) => {
+      this.plugin.settings.usePathToSeatch = value;
       await this.plugin.saveSettings();
     }));
   }

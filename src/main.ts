@@ -5,6 +5,7 @@ import {
     PluginSettingTab,
     Setting,
     TFile,
+    WorkspaceLeaf,
 } from "obsidian";
 import PinyinMatch from "pinyin-match";
 
@@ -30,14 +31,12 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
 
 export default class Fuzyy_chinese extends Plugin {
     settings: Fuzyy_chineseSettings;
+    api = new SampleModal(this.app, this);
     async onload() {
         await this.loadSettings();
         this.addCommand({
             id: "open-search",
             name: "Open Search",
-            // callback: () => {
-            // 	console.log('Simple Callback');
-            // },
             checkCallback: (checking: boolean) => {
                 let leaf = this.app.workspace.getMostRecentLeaf();
                 if (leaf) {
@@ -72,7 +71,7 @@ class SampleModal extends SuggestModal<TFile> {
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app);
         this.plugin = plugin;
-        this.setInstructions([
+        let prompt = [
             {
                 command: "ctrl ↵",
                 purpose: "打开到新标签页",
@@ -83,13 +82,20 @@ class SampleModal extends SuggestModal<TFile> {
             },
             {
                 command: "shift ↵",
-                purpose: "打开到新面板",
+                purpose: "创建新文件",
             },
             {
+                command: "alt ↵",
+                purpose: "打开到其他面板",
+            },
+        ];
+        if (app.plugins.plugins["obsidian-hover-editor"])
+            prompt.push({
                 command: "ctrl p",
                 purpose: "打开到新浮窗",
-            },
-        ]);
+            });
+
+        this.setInstructions(prompt);
         this.scope.register(["Mod"], "Enter", (e) => {
             this.close();
             let item = this.chooser.values[this.chooser.selectedItem];
@@ -105,6 +111,7 @@ class SampleModal extends SuggestModal<TFile> {
             return false;
         });
         this.scope.register(["Shift"], "Enter", async (e) => {
+            if (this.inputEl.value == "") return;
             this.close();
             let nf = await app.vault.create(
                 app.vault.config.newFileFolderPath +
@@ -116,6 +123,13 @@ class SampleModal extends SuggestModal<TFile> {
             app.workspace.getMostRecentLeaf().openFile(nf);
             return false;
         });
+        this.scope.register(["Alt"], "Enter", async (e) => {
+            this.close();
+            let item = this.chooser.values[this.chooser.selectedItem];
+            let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
+            nl.openFile(item.file);
+            return false;
+        });
         if (app.plugins.plugins["obsidian-hover-editor"])
             this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
                 this.close();
@@ -123,7 +137,7 @@ class SampleModal extends SuggestModal<TFile> {
                 const newLeaf = app.plugins.plugins[
                     "obsidian-hover-editor"
                 ].spawnPopover(undefined, () =>
-                    this.app.workspace.setActiveLeaf(newLeaf, false, true)
+                    this.app.workspace.setActiveLeaf(newLeaf)
                 );
                 newLeaf.openFile(item.file);
                 return false;
@@ -201,23 +215,12 @@ class SampleModal extends SuggestModal<TFile> {
                 .filter((p) => p);
             return lastOpenFiles;
         }
-        // console.time();
 
-        // this.Files.filter((p) => PinyinMatch.match(p?.name, query[0])).forEach(
-        //     (p) =>
-        //         console.log(
-        //             pinyin(p?.name, {
-        //                 pattern: "pinyin",
-        //                 toneType: "none",
-        //             })
-        //         )
-        // );
-        // console.timeEnd();
         let query2 = query.split("").filter((p) => p != " ");
         let match_data = this.data.map((p) => {
             p = Object.assign({}, p);
             let match = [];
-            let m = [-1, -1];
+            let m: any = [-1, -1];
             let text = p.type == "file" ? p.name : p.alias;
             for (let i of query2) {
                 text = text.slice(m[1] + 1);
@@ -261,7 +264,7 @@ class SampleModal extends SuggestModal<TFile> {
                         p = Object.assign({}, p);
                         if (p.type == "alias") return false;
                         let match = [];
-                        let m = [-1, -1];
+                        let m: any = [-1, -1];
                         let text = p.path;
                         for (let i of query2) {
                             text = text.slice(m[1] + 1);
@@ -306,7 +309,8 @@ class SampleModal extends SuggestModal<TFile> {
             else text = item.alias;
 
             t += text.slice(0, m[0][0]);
-            for (let i in m) {
+
+            for (let i = 0; i < m.length; i++) {
                 if (i > 0) {
                     t += text.slice(m[i - 1][1] + 1, m[i][0]);
                 }
@@ -381,3 +385,49 @@ class SampleSettingTab extends PluginSettingTab {
             );
     }
 }
+
+const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
+    const layout = app.workspace.getLayout();
+    const getLeaves = (l: any) =>
+        l.children
+            .filter((c: any) => c.type !== "leaf")
+            .map((c: any) => getLeaves(c))
+            .flat()
+            .concat(
+                l.children
+                    .filter((c: any) => c.type === "leaf")
+                    .map((c: any) => c.id)
+            );
+
+    const mainLeavesIds = getLeaves(layout.main);
+
+    const getMainLeaf = (): WorkspaceLeaf => {
+        let mainLeaf = app.workspace.getMostRecentLeaf();
+        if (
+            mainLeaf &&
+            mainLeaf !== leaf &&
+            mainLeaf.view?.containerEl.ownerDocument === document
+        ) {
+            return mainLeaf;
+        }
+
+        mainLeavesIds.forEach((id: any) => {
+            const l = app.workspace.getLeafById(id);
+            if (
+                (leaf.parent.id == l.parent.id && mainLeaf) ||
+                !l.view?.navigation ||
+                leaf === l
+            )
+                return;
+            mainLeaf = l;
+        });
+        let newLeaf: WorkspaceLeaf;
+        if (mainLeaf.parent.id == leaf.parent.id)
+            newLeaf = app.workspace.getLeaf("split");
+        else newLeaf = app.workspace.createLeafInTabGroup(mainLeaf.parent);
+        return newLeaf;
+    };
+
+    const ml = getMainLeaf();
+    return ml ?? app.workspace.getLeaf(true);
+};

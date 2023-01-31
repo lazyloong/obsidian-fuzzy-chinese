@@ -177,7 +177,7 @@ var SampleModal = class extends import_obsidian.SuggestModal {
   constructor(app2, plugin) {
     super(app2);
     this.plugin = plugin;
-    this.setInstructions([
+    let prompt = [
       {
         command: "ctrl \u21B5",
         purpose: "\u6253\u5F00\u5230\u65B0\u6807\u7B7E\u9875"
@@ -188,13 +188,19 @@ var SampleModal = class extends import_obsidian.SuggestModal {
       },
       {
         command: "shift \u21B5",
-        purpose: "\u6253\u5F00\u5230\u65B0\u9762\u677F"
+        purpose: "\u521B\u5EFA\u65B0\u6587\u4EF6"
       },
       {
+        command: "alt \u21B5",
+        purpose: "\u6253\u5F00\u5230\u5176\u4ED6\u9762\u677F"
+      }
+    ];
+    if (app2.plugins.plugins["obsidian-hover-editor"])
+      prompt.push({
         command: "ctrl p",
         purpose: "\u6253\u5F00\u5230\u65B0\u6D6E\u7A97"
-      }
-    ]);
+      });
+    this.setInstructions(prompt);
     this.scope.register(["Mod"], "Enter", (e2) => {
       this.close();
       let item = this.chooser.values[this.chooser.selectedItem];
@@ -210,16 +216,25 @@ var SampleModal = class extends import_obsidian.SuggestModal {
       return false;
     });
     this.scope.register(["Shift"], "Enter", async (e2) => {
+      if (this.inputEl.value == "")
+        return;
       this.close();
       let nf = await app2.vault.create(app2.vault.config.newFileFolderPath + "/" + this.inputEl.value + ".md", "");
       app2.workspace.getMostRecentLeaf().openFile(nf);
+      return false;
+    });
+    this.scope.register(["Alt"], "Enter", async (e2) => {
+      this.close();
+      let item = this.chooser.values[this.chooser.selectedItem];
+      let nl = getNewOrAdjacentLeaf(app2.workspace.getMostRecentLeaf());
+      nl.openFile(item.file);
       return false;
     });
     if (app2.plugins.plugins["obsidian-hover-editor"])
       this.scope.register(["Mod"], "p", (event) => {
         this.close();
         let item = this.chooser.values[this.chooser.selectedItem];
-        const newLeaf = app2.plugins.plugins["obsidian-hover-editor"].spawnPopover(void 0, () => this.app.workspace.setActiveLeaf(newLeaf, false, true));
+        const newLeaf = app2.plugins.plugins["obsidian-hover-editor"].spawnPopover(void 0, () => this.app.workspace.setActiveLeaf(newLeaf));
         newLeaf.openFile(item.file);
         return false;
       });
@@ -364,7 +379,7 @@ var SampleModal = class extends import_obsidian.SuggestModal {
       else
         text = item.alias;
       t2 += text.slice(0, m[0][0]);
-      for (let i2 in m) {
+      for (let i2 = 0; i2 < m.length; i2++) {
         if (i2 > 0) {
           t2 += text.slice(m[i2 - 1][1] + 1, m[i2][0]);
         }
@@ -413,4 +428,29 @@ var SampleSettingTab = class extends import_obsidian.PluginSettingTab {
       await this.plugin.saveSettings();
     }));
   }
+};
+var getNewOrAdjacentLeaf = (leaf) => {
+  const layout = app.workspace.getLayout();
+  const getLeaves = (l) => l.children.filter((c) => c.type !== "leaf").map((c) => getLeaves(c)).flat().concat(l.children.filter((c) => c.type === "leaf").map((c) => c.id));
+  const mainLeavesIds = getLeaves(layout.main);
+  const getMainLeaf = () => {
+    let mainLeaf = app.workspace.getMostRecentLeaf();
+    if (mainLeaf && mainLeaf !== leaf && mainLeaf.view?.containerEl.ownerDocument === document) {
+      return mainLeaf;
+    }
+    mainLeavesIds.forEach((id) => {
+      const l = app.workspace.getLeafById(id);
+      if (leaf.parent.id == l.parent.id && mainLeaf || !l.view?.navigation || leaf === l)
+        return;
+      mainLeaf = l;
+    });
+    let newLeaf;
+    if (mainLeaf.parent.id == leaf.parent.id)
+      newLeaf = app.workspace.getLeaf("split");
+    else
+      newLeaf = app.workspace.createLeafInTabGroup(mainLeaf.parent);
+    return newLeaf;
+  };
+  const ml = getMainLeaf();
+  return ml ?? app.workspace.getLeaf(true);
 };

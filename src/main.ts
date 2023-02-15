@@ -9,7 +9,7 @@ import {
 } from "obsidian";
 import PinyinMatch from "pinyin-match";
 
-var Re = ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp"],
+let Re = ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp"],
     He = ["mp3", "wav", "m4a", "3gp", "flac", "ogg", "oga", "opus"],
     Ve = ["mp4", "webm", "ogv", "mov", "mkv"],
     ze = ["pdf"],
@@ -20,13 +20,13 @@ var Re = ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp"],
 interface Fuzyy_chineseSettings {
     showAllFileTypes: boolean;
     showAttachments: boolean;
-    usePathToSeatch: boolean;
+    usePathToSearch: boolean;
 }
 
 const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
     showAttachments: false,
     showAllFileTypes: false,
-    usePathToSeatch: false,
+    usePathToSearch: false,
 };
 
 export default class Fuzyy_chinese extends Plugin {
@@ -219,37 +219,48 @@ class SampleModal extends SuggestModal<TFile> {
         let query2 = query.split("").filter((p) => p != " ");
         let match_data = this.data.map((p) => {
             p = Object.assign({}, p);
-            let match = [];
-            let m: any = [-1, -1];
-            let text = p.type == "file" ? p.name : p.alias;
-            for (let i of query2) {
-                text = text.slice(m[1] + 1);
-                m = PinyinMatch.match(text, i);
-                if (!m) return false;
-                else match.push(m);
-            }
-            m = [match[0]];
-            for (let i of match.slice(1)) {
-                if (i[0] == 0) {
-                    m[m.length - 1][1] += 1;
-                } else {
-                    let n = m[m.length - 1][1] + i[0] + 1;
-                    m.push([n, n]);
+            let match = [],
+                m: any = [-1, -1],
+                text = p.type == "file" ? p.name : p.alias;
+            m = PinyinMatch.match(text, query);
+            if (!m) {
+                match = [];
+                let t = text;
+                for (let i of query2) {
+                    t = t.slice(m[1] + 1);
+                    m = PinyinMatch.match(t, i);
+                    if (!m) return false;
+                    else match.push(m);
                 }
+                m = [match[0]];
+                for (let i of match.slice(1)) {
+                    if (i[0] == 0) {
+                        m[m.length - 1][1] += 1;
+                    } else {
+                        let n = m[m.length - 1][1] + i[0] + 1;
+                        m.push([n, n]);
+                    }
+                }
+                p.match = m;
+            } else {
+                p.match = [m];
+                // match.push(m);
             }
-            text = p.type == "file" ? p.name : p.alias;
+            // if (!m) return false;
+            // match.push(m);
+
             let score = 0;
             score += 40 / (text.length - match.length);
             if (m[0][0] == 0) score += 8;
             score += 20 / m.length;
-            p.match = m;
+            // p.match = m;
             p.score = score;
             p.usePath = false;
             return p;
         });
         if (
             match_data.filter((p) => p).length < 10 &&
-            this.plugin.settings.usePathToSeatch
+            this.plugin.settings.usePathToSearch
         ) {
             match_data = match_data.concat(
                 this.data
@@ -385,9 +396,9 @@ class SampleSettingTab extends PluginSettingTab {
             .setDesc("当搜索结果少于10个时搜索路径")
             .addToggle((text) =>
                 text
-                    .setValue(this.plugin.settings.usePathToSeatch)
+                    .setValue(this.plugin.settings.usePathToSearch)
                     .onChange(async (value) => {
-                        this.plugin.settings.usePathToSeatch = value;
+                        this.plugin.settings.usePathToSearch = value;
                         await this.plugin.saveSettings();
                     })
             );

@@ -334,8 +334,16 @@ class SampleModal extends SuggestModal<TFile> {
                 '<span class="fz-suggestion-flair" aria-label="别名"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg></span>';
     }
     // Perform action on the selected suggestion.
-    onChooseSuggestion(file: any, evt: MouseEvent | KeyboardEvent) {
-        app.workspace.getMostRecentLeaf().openFile(file.file);
+    onChooseSuggestion(item: any, evt: MouseEvent | KeyboardEvent) {
+        if (evt.ctrlKey) {
+            let nl = app.workspace.getLeaf("tab");
+            nl.openFile(item.file);
+        } else if (evt.altKey) {
+            let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
+            nl.openFile(item.file);
+        } else {
+            app.workspace.getMostRecentLeaf().openFile(item.file);
+        }
     }
     onClose() {
         let { contentEl } = this;

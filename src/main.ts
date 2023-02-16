@@ -86,6 +86,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
     Files: TFile[];
     items: Item[];
     lastMatchData: Item[];
+    lastQuery: string;
     plugin: Fuzyy_chinese;
     chooser: any;
     constructor(app: App, plugin: Fuzyy_chinese) {
@@ -206,6 +207,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
 
     getSuggestions(query: string): MatchData[] {
         if (query == "") {
+            this.lastQuery = "";
             this.lastMatchData = [];
             let lastOpenFiles: MatchData[] = app.workspace
                 .getLastOpenFiles()
@@ -223,15 +225,17 @@ class FuzzyModal extends SuggestModal<MatchData> {
             return lastOpenFiles;
         }
 
-        let query2 = query.split("").filter((p) => p != " ");
+        let query1 = query.split(" ").filter((p) => p.length != 0),
+            query2 = query.split("").filter((p) => p != " ");
         let matchData: MatchData[] = [];
         let toMatchData =
             this.lastMatchData.length == 0 ? this.items : this.lastMatchData;
         for (let p of toMatchData) {
-            let d = getMatchData(p, query, query2);
+            let d = getMatchData(p, query1, query2);
             if (d) matchData.push(d);
         }
         if (matchData.length < 10 && this.plugin.settings.usePathToSearch) {
+            toMatchData = this.items;
             for (let p of toMatchData.filter(
                 (p) =>
                     !(
@@ -240,12 +244,15 @@ class FuzzyModal extends SuggestModal<MatchData> {
                     )
             )) {
                 if (p.type == "alias") continue;
-                let d = getMatchData(p, query, query2, true);
+                let d = getMatchData(p, query1, query2, true);
                 if (d) matchData.push(d);
             }
         }
         matchData = matchData.sort((a, b) => b.score - a.score);
-        this.lastMatchData = matchData.map((p) => p.item);
+        if (query.startsWith(this.lastQuery))
+            this.lastMatchData = matchData.map((p) => p.item);
+        else this.lastMatchData = [];
+        this.lastQuery = query;
         return matchData;
     }
     renderSuggestion(item: MatchData, el: HTMLElement) {
@@ -392,36 +399,42 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
 
 function getMatchData(
     item: Item,
-    query: string,
+    query1: string[],
     query2: string[],
     usePath = false
 ) {
     let match = [],
         m: any = [-1, -1],
         text = usePath ? item.path : item.name;
-    m = PinyinMatch.match(text, query);
+    match = [];
+    let t = text;
+    for (let i of query1) {
+        t = match.length == 0 ? text : text.slice(match.last()[1] + 1);
+        m = PinyinMatch.match(t, i);
+        if (!m) break;
+        else {
+            m = match.length == 0 ? m : m.map((p) => p + match.last()[1] + 1);
+            match.push(m);
+        }
+    }
     if (!m) {
         match = [];
         let t = text;
         for (let i of query2) {
             t = t.slice(m[1] + 1);
             m = PinyinMatch.match(t, i);
-            if (!m) {
-                return;
-            } else match.push(m);
-        }
-        m = [match[0]];
-        for (let i of match.slice(1)) {
-            if (i[0] == 0) {
-                m[m.length - 1][1] += 1;
-            } else {
-                let n = m[m.length - 1][1] + i[0] + 1;
-                m.push([n, n]);
+            if (!m) return;
+            else {
+                if (match.length == 0) match.push(m);
+                else {
+                    if (m[0] == 0) match.last()[1] += 1;
+                    else {
+                        let n = match.last()[1] + i[0] + 1;
+                        match.push([n, n]);
+                    }
+                }
             }
         }
-        match = m;
-    } else {
-        match = [m];
     }
 
     let score = 0;

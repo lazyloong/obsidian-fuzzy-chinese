@@ -17,6 +17,11 @@ let Re = ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp"],
     Ue = ["json", "css", "js"],
     _e = [].concat(Re, He, Ve, ze, qe, ["canvas"]);
 
+let extension = {
+    attachment: _e,
+    normal: ["md", "canvas"],
+};
+
 interface Fuzyy_chineseSettings {
     showAllFileTypes: boolean;
     showAttachments: boolean;
@@ -31,7 +36,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
 
 export default class Fuzyy_chinese extends Plugin {
     settings: Fuzyy_chineseSettings;
-    api = new SampleModal(this.app, this);
+    api = new FuzzyModal(this.app, this);
     async onload() {
         await this.loadSettings();
         this.addCommand({
@@ -41,14 +46,14 @@ export default class Fuzyy_chinese extends Plugin {
                 let leaf = this.app.workspace.getMostRecentLeaf();
                 if (leaf) {
                     if (!checking) {
-                        new SampleModal(this.app, this).open();
+                        new FuzzyModal(this.app, this).open();
                     }
                     return true;
                 }
                 return false;
             },
         });
-        this.addSettingTab(new SampleSettingTab(this.app, this));
+        this.addSettingTab(new FuzzySettingTab(this.app, this));
     }
     onunload() {}
     async loadSettings() {
@@ -63,9 +68,23 @@ export default class Fuzyy_chinese extends Plugin {
     }
 }
 
-class SampleModal extends SuggestModal<TFile> {
+type Item = {
+    file: TFile;
+    type: "file" | "alias";
+    name: string;
+    path: string;
+};
+
+type MatchData = {
+    item: Item;
+    score: number;
+    match: Array<[number, number]>;
+    usePath?: boolean;
+};
+
+class FuzzyModal extends SuggestModal<MatchData> {
     Files: TFile[];
-    data: any;
+    items: Item[];
     plugin: Fuzyy_chinese;
     chooser: any;
     constructor(app: App, plugin: Fuzyy_chinese) {
@@ -100,14 +119,14 @@ class SampleModal extends SuggestModal<TFile> {
             this.close();
             let item = this.chooser.values[this.chooser.selectedItem];
             let nl = app.workspace.getLeaf("tab");
-            nl.openFile(item.file);
+            nl.openFile(item.item.file);
             return false;
         });
         this.scope.register(["Mod", "Alt"], "Enter", (e) => {
             this.close();
             let item = this.chooser.values[this.chooser.selectedItem];
             let nl = app.workspace.getLeaf("split");
-            nl.openFile(item.file);
+            nl.openFile(item.item.file);
             return false;
         });
         this.scope.register(["Shift"], "Enter", async (e) => {
@@ -127,7 +146,7 @@ class SampleModal extends SuggestModal<TFile> {
             this.close();
             let item = this.chooser.values[this.chooser.selectedItem];
             let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
-            nl.openFile(item.file);
+            nl.openFile(item.item.file);
             return false;
         });
         if (app.plugins.plugins["obsidian-hover-editor"])
@@ -139,7 +158,7 @@ class SampleModal extends SuggestModal<TFile> {
                 ].spawnPopover(undefined, () =>
                     this.app.workspace.setActiveLeaf(newLeaf)
                 );
-                newLeaf.openFile(item.file);
+                newLeaf.openFile(item.item.file);
                 return false;
             });
     }
@@ -149,42 +168,21 @@ class SampleModal extends SuggestModal<TFile> {
         else if (this.plugin.settings.showAttachments)
             this.Files = app.vault
                 .getFiles()
-                .filter((f) => _e.includes(f.extension));
+                .filter((f) => extension.attachment.includes(f.extension));
         else
             this.Files = app.vault
-                .getMarkdownFiles()
-                .concat(
-                    app.vault.getFiles().filter((p) => p.extension == "canvas")
-                );
-        if (
-            this.plugin.settings.showAttachments ||
-            this.plugin.settings.showAllFileTypes
-        )
-            this.data = this.Files.map((file) => {
-                if (file.extension != "md")
-                    return {
-                        type: "file",
-                        name: file.name,
-                        path: file.path,
-                        file: file,
-                    };
-                else
-                    return {
-                        type: "file",
-                        name: file.basename,
-                        path: file.path,
-                        file: file,
-                    };
-            });
-        else
-            this.data = this.Files.map((file) => {
-                return {
-                    type: "file",
-                    name: file.basename,
-                    path: file.path,
-                    file: file,
-                };
-            });
+                .getFiles()
+                .filter((f) => extension.normal.includes(f.extension));
+
+        this.items = this.Files.map((file) => {
+            return {
+                type: "file",
+                name: file.extension != "md" ? file.name : file.basename,
+                path: file.path,
+                file: file,
+            };
+        });
+
         for (let file of this.Files) {
             if (file.extension != "md") continue;
             let alias =
@@ -192,10 +190,10 @@ class SampleModal extends SuggestModal<TFile> {
                 app.metadataCache.getFileCache(file)?.frontmatter?.aliases;
             if (alias) {
                 alias = alias.split(", ");
-                alias.map((p) =>
-                    this.data.push({
+                alias.map((p: string) =>
+                    this.items.push({
                         type: "alias",
-                        alias: p,
+                        name: p,
                         path: file.path,
                         file: file,
                     })
@@ -205,119 +203,53 @@ class SampleModal extends SuggestModal<TFile> {
         this.onInput();
     }
 
-    getSuggestions(query: string): any[] {
+    getSuggestions(query: string): MatchData[] {
         if (query == "") {
-            let lastOpenFiles = app.workspace.getLastOpenFiles();
-            lastOpenFiles = lastOpenFiles
+            let lastOpenFiles: MatchData[] = app.workspace
+                .getLastOpenFiles()
                 .map((p) =>
-                    this.data.find((q) => q.type == "file" && q.path == p)
+                    this.items.find((q) => q.type == "file" && q.path == p)
                 )
-                .filter((p) => p);
+                .filter((p) => p)
+                .map((p) => {
+                    return {
+                        item: p,
+                        score: 0,
+                        match: [[-1, -1]],
+                    };
+                });
             return lastOpenFiles;
         }
 
         let query2 = query.split("").filter((p) => p != " ");
-        let match_data = this.data.map((p) => {
-            p = Object.assign({}, p);
-            let match = [],
-                m: any = [-1, -1],
-                text = p.type == "file" ? p.name : p.alias;
-            m = PinyinMatch.match(text, query);
-            if (!m) {
-                match = [];
-                let t = text;
-                for (let i of query2) {
-                    t = t.slice(m[1] + 1);
-                    m = PinyinMatch.match(t, i);
-                    if (!m) return false;
-                    else match.push(m);
-                }
-                m = [match[0]];
-                for (let i of match.slice(1)) {
-                    if (i[0] == 0) {
-                        m[m.length - 1][1] += 1;
-                    } else {
-                        let n = m[m.length - 1][1] + i[0] + 1;
-                        m.push([n, n]);
-                    }
-                }
-                p.match = m;
-            } else {
-                p.match = [m];
-                // match.push(m);
-            }
-            // if (!m) return false;
-            // match.push(m);
-
-            let score = 0;
-            score += 40 / (text.length - match.length);
-            if (m[0][0] == 0) score += 8;
-            score += 20 / m.length;
-            // p.match = m;
-            p.score = score;
-            p.usePath = false;
-            return p;
-        });
-        if (
-            match_data.filter((p) => p).length < 10 &&
-            this.plugin.settings.usePathToSearch
-        ) {
-            match_data = match_data.concat(
-                this.data
-                    .filter(
-                        (p) =>
-                            !(
-                                p.type == "file" &&
-                                match_data.map((p) => p.path).includes(p.path)
-                            )
-                    )
-                    .map((p) => {
-                        p = Object.assign({}, p);
-                        if (p.type == "alias") return false;
-                        let match = [];
-                        let m: any = [-1, -1];
-                        let text = p.path;
-                        for (let i of query2) {
-                            text = text.slice(m[1] + 1);
-                            m = PinyinMatch.match(text, i);
-                            if (!m) return false;
-                            else match.push(m);
-                        }
-                        m = [match[0]];
-                        for (let i of match.slice(1)) {
-                            if (i[0] == 0) {
-                                m[m.length - 1][1] += 1;
-                            } else {
-                                let n = m[m.length - 1][1] + i[0] + 1;
-                                m.push([n, n]);
-                            }
-                        }
-                        text = p.path;
-                        let score = 0;
-                        score += 40 / (text.length - match.length);
-                        if (m[0][0] == 0) score += 8;
-                        score += 20 / m.length;
-                        p.match = m;
-                        p.score = score;
-                        p.usePath = true;
-                        return p;
-                    })
-            );
+        let match_data: MatchData[] = [];
+        for (let p of this.data) {
+            let d = getMatchData(p, query, query2);
+            if (d) match_data.push(d);
         }
-        match_data = match_data
-            .filter((p) => p)
-            .sort((a, b) => b.score - a.score);
+        if (match_data.length < 10 && this.plugin.settings.usePathToSearch) {
+            for (let p of this.data.filter(
+                (p) =>
+                    !(
+                        p.type == "file" &&
+                        match_data.map((p) => p.item.path).includes(p.path)
+                    )
+            )) {
+                if (p.type == "alias") continue;
+                let d = getMatchData(p, query, query2, true);
+                if (d) match_data.push(d);
+            }
+        }
+        match_data = match_data.sort((a, b) => b.score - a.score);
         return match_data;
     }
-    renderSuggestion(item: any, el: HTMLElement) {
-        let m = item?.match,
-            text,
+    renderSuggestion(item: MatchData, el: HTMLElement) {
+        let m = item.match,
+            text: string,
             t = "";
-        if (m) {
-            if (item.type == "file")
-                if (item.usePath) text = item.path;
-                else text = item.name;
-            else text = item.alias;
+        if (m[0][0] != -1) {
+            if (item.usePath) text = item.item.path;
+            else text = item.item.name;
 
             t += text.slice(0, m[0][0]);
 
@@ -332,28 +264,31 @@ class SampleModal extends SuggestModal<TFile> {
             }
             t += text.slice(m.slice(-1)[0][1] + 1);
         } else {
-            t = item.path;
+            t = item.item.path;
             item.usePath = true;
         }
         let e1 = el.createEl("div", { cls: "fz-suggestion-content" });
         let e2 = e1.createEl("div", { cls: "fz-suggestion-title" });
         e2.innerHTML = t;
         if (!item.usePath)
-            e1.createEl("div", { cls: "fz-suggestion-note", text: item.path });
-        if (item.type == "alias")
+            e1.createEl("div", {
+                cls: "fz-suggestion-note",
+                text: item.item.path,
+            });
+        if (item.item.type == "alias")
             el.innerHTML +=
                 '<span class="fz-suggestion-flair" aria-label="别名"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg></span>';
     }
     // Perform action on the selected suggestion.
-    onChooseSuggestion(item: any, evt: MouseEvent | KeyboardEvent) {
+    onChooseSuggestion(item: MatchData, evt: MouseEvent | KeyboardEvent) {
         if (evt.ctrlKey) {
             let nl = app.workspace.getLeaf("tab");
-            nl.openFile(item.file);
+            nl.openFile(item.item.file);
         } else if (evt.altKey) {
             let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
-            nl.openFile(item.file);
+            nl.openFile(item.item.file);
         } else {
-            app.workspace.getMostRecentLeaf().openFile(item.file);
+            app.workspace.getMostRecentLeaf().openFile(item.item.file);
         }
     }
     onClose() {
@@ -362,7 +297,7 @@ class SampleModal extends SuggestModal<TFile> {
     }
 }
 
-class SampleSettingTab extends PluginSettingTab {
+class FuzzySettingTab extends PluginSettingTab {
     plugin: Fuzyy_chinese;
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
@@ -450,3 +385,50 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
     const ml = getMainLeaf();
     return ml ?? app.workspace.getLeaf(true);
 };
+
+function getMatchData(
+    item: Item,
+    query: string,
+    query2: string[],
+    usePath = false
+) {
+    let match = [],
+        m: any = [-1, -1],
+        text = usePath ? item.path : item.name;
+    m = PinyinMatch.match(text, query);
+    if (!m) {
+        match = [];
+        let t = text;
+        for (let i of query2) {
+            t = t.slice(m[1] + 1);
+            m = PinyinMatch.match(t, i);
+            if (!m) {
+                return;
+            } else match.push(m);
+        }
+        m = [match[0]];
+        for (let i of match.slice(1)) {
+            if (i[0] == 0) {
+                m[m.length - 1][1] += 1;
+            } else {
+                let n = m[m.length - 1][1] + i[0] + 1;
+                m.push([n, n]);
+            }
+        }
+        match = m;
+    } else {
+        match = [m];
+    }
+
+    let score = 0;
+    score += 40 / (text.length - match.length);
+    if (match[0][0] == 0) score += 8;
+    score += 20 / match.length;
+    let data: MatchData = {
+        item: item,
+        score: score,
+        match: match,
+        usePath: usePath,
+    };
+    return data;
+}

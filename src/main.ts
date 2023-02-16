@@ -85,6 +85,7 @@ type MatchData = {
 class FuzzyModal extends SuggestModal<MatchData> {
     Files: TFile[];
     items: Item[];
+    lastMatchData: Item[];
     plugin: Fuzyy_chinese;
     chooser: any;
     constructor(app: App, plugin: Fuzyy_chinese) {
@@ -205,6 +206,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
 
     getSuggestions(query: string): MatchData[] {
         if (query == "") {
+            this.lastMatchData = [];
             let lastOpenFiles: MatchData[] = app.workspace
                 .getLastOpenFiles()
                 .map((p) =>
@@ -222,26 +224,29 @@ class FuzzyModal extends SuggestModal<MatchData> {
         }
 
         let query2 = query.split("").filter((p) => p != " ");
-        let match_data: MatchData[] = [];
-        for (let p of this.data) {
+        let matchData: MatchData[] = [];
+        let toMatchData =
+            this.lastMatchData.length == 0 ? this.items : this.lastMatchData;
+        for (let p of toMatchData) {
             let d = getMatchData(p, query, query2);
-            if (d) match_data.push(d);
+            if (d) matchData.push(d);
         }
-        if (match_data.length < 10 && this.plugin.settings.usePathToSearch) {
-            for (let p of this.data.filter(
+        if (matchData.length < 10 && this.plugin.settings.usePathToSearch) {
+            for (let p of toMatchData.filter(
                 (p) =>
                     !(
                         p.type == "file" &&
-                        match_data.map((p) => p.item.path).includes(p.path)
+                        matchData.map((p) => p.item.path).includes(p.path)
                     )
             )) {
                 if (p.type == "alias") continue;
                 let d = getMatchData(p, query, query2, true);
-                if (d) match_data.push(d);
+                if (d) matchData.push(d);
             }
         }
-        match_data = match_data.sort((a, b) => b.score - a.score);
-        return match_data;
+        matchData = matchData.sort((a, b) => b.score - a.score);
+        this.lastMatchData = matchData.map((p) => p.item);
+        return matchData;
     }
     renderSuggestion(item: MatchData, el: HTMLElement) {
         let m = item.match,
@@ -292,8 +297,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
         }
     }
     onClose() {
-        let { contentEl } = this;
-        contentEl.empty();
+        this.contentEl.empty();
     }
 }
 

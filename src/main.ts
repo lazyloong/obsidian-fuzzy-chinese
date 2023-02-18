@@ -69,6 +69,7 @@ export default class Fuzyy_chinese extends Plugin {
 }
 
 type Item = {
+    index: number;
     file: TFile;
     type: "file" | "alias";
     name: string;
@@ -85,8 +86,7 @@ type MatchData = {
 class FuzzyModal extends SuggestModal<MatchData> {
     Files: TFile[];
     items: Item[];
-    lastMatchData: Item[];
-    lastQuery: string;
+    lastMatchData: lastMatchDataNode;
     plugin: Fuzyy_chinese;
     chooser: any;
     constructor(app: App, plugin: Fuzyy_chinese) {
@@ -176,8 +176,10 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 .getFiles()
                 .filter((f) => extension.normal.includes(f.extension));
 
+        let index = 0;
         this.items = this.Files.map((file) => {
             return {
+                index: index++,
                 type: "file",
                 name: file.extension != "md" ? file.name : file.basename,
                 path: file.path,
@@ -194,6 +196,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 alias = alias.split(", ");
                 alias.map((p: string) =>
                     this.items.push({
+                        index: index++,
                         type: "alias",
                         name: p,
                         path: file.path,
@@ -207,8 +210,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
 
     getSuggestions(query: string): MatchData[] {
         if (query == "") {
-            this.lastQuery = "";
-            this.lastMatchData = [];
+            this.lastMatchData = new lastMatchDataNode("\0");
             let lastOpenFiles: MatchData[] = app.workspace
                 .getLastOpenFiles()
                 .map((p) =>
@@ -228,33 +230,114 @@ class FuzzyModal extends SuggestModal<MatchData> {
         let query1 = query.split(" ").filter((p) => p.length != 0),
             query2 = query.split("").filter((p) => p != " ");
         let matchData: MatchData[] = [];
-        let toMatchData =
-            this.lastMatchData.length == 0 ? this.items : this.lastMatchData;
+
+        let node: lastMatchDataNode = this.lastMatchData,
+            lastNode: lastMatchDataNode,
+            index = 0,
+            _f = true;
+        for (let i of query) {
+            if (!node || i != node.query) {
+                if (node != this.lastMatchData) {
+                    node = lastNode.push(
+                        i,
+                        matchData.map((p) => p.item.index)
+                    );
+                } else node.query = i;
+                _f = false;
+            }
+            lastNode = node;
+            node = node.next;
+            if (_f) index++;
+        }
+
+        let indexNode = this.lastMatchData.index(index - 1),
+            toMatchData = indexNode.itemIndex
+                ? indexNode.itemIndex.map((p) => this.items[p])
+                : this.items;
         for (let p of toMatchData) {
-            let d = getMatchData(p, query1, query2);
+            let d = this.getMatchData(p, query1, query2);
             if (d) matchData.push(d);
         }
-        if (matchData.length < 10 && this.plugin.settings.usePathToSearch) {
-            toMatchData = this.items;
+
+        let matchData_: MatchData[] = [];
+        if (this.plugin.settings.usePathToSearch) {
+            toMatchData = indexNode.itemIndexByPath
+                ? indexNode.itemIndexByPath.map((p) => this.items[p])
+                : this.items;
             for (let p of toMatchData.filter(
                 (p) =>
-                    !(
-                        p.type == "file" &&
-                        matchData.map((p) => p.item.path).includes(p.path)
-                    )
+                    p.type == "file" &&
+                    !matchData.map((p) => p.item.path).includes(p.path)
             )) {
-                if (p.type == "alias") continue;
-                let d = getMatchData(p, query1, query2, true);
-                if (d) matchData.push(d);
+                let d = this.getMatchData(p, query1, query2, true);
+                if (d) matchData_.push(d);
             }
+            if (matchData.length <= 10)
+                matchData = matchData.concat(matchData_);
         }
         matchData = matchData.sort((a, b) => b.score - a.score);
-        if (query.startsWith(this.lastQuery))
-            this.lastMatchData = matchData.map((p) => p.item);
-        else this.lastMatchData = [];
-        this.lastQuery = query;
+        if (!lastNode) lastNode = this.lastMatchData;
+        lastNode.itemIndex = matchData.map((p) => p.item.index);
+        lastNode.itemIndexByPath = matchData_.map((p) => p.item.index);
         return matchData;
     }
+
+    getMatchData(
+        item: Item,
+        query1: string[],
+        query2: string[],
+        usePath = false
+    ) {
+        let match = [],
+            m: any = [-1, -1],
+            text = usePath ? item.path : item.name;
+        match = [];
+        let t = text;
+        for (let i of query1) {
+            t = match.length == 0 ? text : text.slice(match.last()[1] + 1);
+            m = PinyinMatch.match(t, i);
+            if (!m) break;
+            else {
+                m =
+                    match.length == 0
+                        ? m
+                        : m.map((p) => p + match.last()[1] + 1);
+                match.push(m);
+            }
+        }
+        if (!m) {
+            match = [];
+            let t = text;
+            for (let i of query2) {
+                t = t.slice(m[1] + 1);
+                m = PinyinMatch.match(t, i);
+                if (!m) return;
+                else {
+                    if (match.length == 0) match.push(m);
+                    else {
+                        if (m[0] == 0) match.last()[1] += 1;
+                        else {
+                            let n = match.last()[1] + m[0] + 1;
+                            match.push([n, n]);
+                        }
+                    }
+                }
+            }
+        }
+
+        let score = 0;
+        score += 40 / (text.length - match.length);
+        if (match[0][0] == 0) score += 8;
+        score += 20 / match.length;
+        let data: MatchData = {
+            item: item,
+            score: score,
+            match: match,
+            usePath: usePath,
+        };
+        return data;
+    }
+
     renderSuggestion(item: MatchData, el: HTMLElement) {
         let m = item.match,
             text: string,
@@ -397,55 +480,27 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
     return ml ?? app.workspace.getLeaf(true);
 };
 
-function getMatchData(
-    item: Item,
-    query1: string[],
-    query2: string[],
-    usePath = false
-) {
-    let match = [],
-        m: any = [-1, -1],
-        text = usePath ? item.path : item.name;
-    match = [];
-    let t = text;
-    for (let i of query1) {
-        t = match.length == 0 ? text : text.slice(match.last()[1] + 1);
-        m = PinyinMatch.match(t, i);
-        if (!m) break;
-        else {
-            m = match.length == 0 ? m : m.map((p) => p + match.last()[1] + 1);
-            match.push(m);
-        }
+class lastMatchDataNode {
+    query: string[1];
+    next: lastMatchDataNode;
+    itemIndex: number[];
+    itemIndexByPath: number[];
+    constructor(query: string[1]) {
+        this.query = query;
+        this.next = null;
     }
-    if (!m) {
-        match = [];
-        let t = text;
-        for (let i of query2) {
-            t = t.slice(m[1] + 1);
-            m = PinyinMatch.match(t, i);
-            if (!m) return;
-            else {
-                if (match.length == 0) match.push(m);
-                else {
-                    if (m[0] == 0) match.last()[1] += 1;
-                    else {
-                        let n = match.last()[1] + i[0] + 1;
-                        match.push([n, n]);
-                    }
-                }
-            }
-        }
+    push(query: string[1], index: number[]) {
+        let node = new lastMatchDataNode(query);
+        node.itemIndex = index;
+        this.next = node;
+        return node;
     }
-
-    let score = 0;
-    score += 40 / (text.length - match.length);
-    if (match[0][0] == 0) score += 8;
-    score += 20 / match.length;
-    let data: MatchData = {
-        item: item,
-        score: score,
-        match: match,
-        usePath: usePath,
-    };
-    return data;
+    index(index: number) {
+        let node: lastMatchDataNode = this;
+        for (let i = 0; i < index; i++) {
+            if (node.next) node = node.next;
+            else return undefined;
+        }
+        return node;
+    }
 }

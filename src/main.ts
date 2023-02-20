@@ -36,7 +36,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
 
 export default class Fuzyy_chinese extends Plugin {
     settings: Fuzyy_chineseSettings;
-    api = new FuzzyModal(this.app, this);
+    api = { modal: new FuzzyModal(this.app, this), match: PinyinMatch.match };
     async onload() {
         await this.loadSettings();
         this.addCommand({
@@ -52,6 +52,14 @@ export default class Fuzyy_chinese extends Plugin {
                 }
                 return false;
             },
+        });
+        this.addRibbonIcon("search", "FuzzySearch", (e) => {
+            let leaf = this.app.workspace.getMostRecentLeaf();
+            if (leaf) {
+                new FuzzyModal(this.app, this).open();
+                return true;
+            }
+            return false;
         });
         this.addSettingTab(new FuzzySettingTab(this.app, this));
     }
@@ -288,7 +296,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
         query2: string[],
         usePath = false
     ) {
-        let match = [],
+        let match: Array<[number, number]> = [],
             m: any = [-1, -1],
             text = usePath ? item.path : item.name;
         match = [];
@@ -326,9 +334,16 @@ class FuzzyModal extends SuggestModal<MatchData> {
         }
 
         let score = 0;
-        score += 40 / (text.length - match.length);
-        if (match[0][0] == 0) score += 8;
-        score += 20 / match.length;
+        score +=
+            40 /
+            (text.length -
+                match
+                    .map((p) => p[1] - p[0])
+                    .reduce((p, v) => {
+                        return p + v;
+                    }, 0)); //覆盖越广分越高
+        if (match[0][0] == 0) score += 8; //顶头加分
+        score += 20 / match.length; //分割越少分越高
         let data: MatchData = {
             item: item,
             score: score,

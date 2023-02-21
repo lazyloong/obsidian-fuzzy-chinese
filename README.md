@@ -7,3 +7,9 @@
 插件增加命令 `Fuzzy_chinese: Open Search`，为其设置快捷键即可更方便地使用。
 可使用全拼或首字母，只需要注意全拼要用空格分开，不能混用。
 ![](README.jpg)
+
+## 安装
+
+方法一：手动下载 release 中的 `styles.css`, `main.js`, `manifest.json`，复制到 **库目录/.obsidian/plugins/obsidian-fuzzy-chinese** 文件夹即可
+
+方法二：通过 BRAT 插件安装

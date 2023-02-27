@@ -114,6 +114,10 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 purpose: "创建新文件",
             },
             {
+                command: "ctrl shift ↵",
+                purpose: "创建新文件到新标签页",
+            },
+            {
                 command: "alt ↵",
                 purpose: "打开到其他面板",
             },
@@ -150,6 +154,19 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 ""
             );
             app.workspace.getMostRecentLeaf().openFile(nf);
+            return false;
+        });
+        this.scope.register(["Mod","Shift"], "Enter", async (e) => {
+            if (this.inputEl.value == "") return;
+            this.close();
+            let nf = await app.vault.create(
+                app.vault.config.newFileFolderPath +
+                    "/" +
+                    this.inputEl.value +
+                    ".md",
+                ""
+            );
+            app.workspace.getLeaf("tab").openFile(nf);
             return false;
         });
         this.scope.register(["Alt"], "Enter", async (e) => {

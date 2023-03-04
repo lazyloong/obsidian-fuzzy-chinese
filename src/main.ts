@@ -1,12 +1,4 @@
-import {
-    App,
-    SuggestModal,
-    Plugin,
-    PluginSettingTab,
-    Setting,
-    TFile,
-    WorkspaceLeaf,
-} from "obsidian";
+import { App, SuggestModal, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf } from "obsidian";
 import PinyinMatch from "pinyin-match";
 
 let Re = ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp"],
@@ -65,11 +57,7 @@ export default class Fuzyy_chinese extends Plugin {
     }
     onunload() {}
     async loadSettings() {
-        this.settings = Object.assign(
-            {},
-            DEFAULT_SETTINGS,
-            await this.loadData()
-        );
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
     async saveSettings() {
         await this.saveData(this.settings);
@@ -110,6 +98,10 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 purpose: "打开到新面板",
             },
             {
+                command: "alt ↵",
+                purpose: "打开到其他面板",
+            },
+            {
                 command: "shift ↵",
                 purpose: "创建新文件",
             },
@@ -118,8 +110,8 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 purpose: "创建新文件到新标签页",
             },
             {
-                command: "alt ↵",
-                purpose: "打开到其他面板",
+                command: "shift alt ↵",
+                purpose: "创建新文件到其他面板",
             },
         ];
         if (app.plugins.plugins["obsidian-hover-editor"])
@@ -146,27 +138,22 @@ class FuzzyModal extends SuggestModal<MatchData> {
         this.scope.register(["Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(
-                app.vault.config.newFileFolderPath +
-                    "/" +
-                    this.inputEl.value +
-                    ".md",
-                ""
-            );
+            let nf = await app.vault.create(app.vault.config.newFileFolderPath + "/" + this.inputEl.value + ".md", "");
             app.workspace.getMostRecentLeaf().openFile(nf);
             return false;
         });
-        this.scope.register(["Mod","Shift"], "Enter", async (e) => {
+        this.scope.register(["Mod", "Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(
-                app.vault.config.newFileFolderPath +
-                    "/" +
-                    this.inputEl.value +
-                    ".md",
-                ""
-            );
+            let nf = await app.vault.create(app.vault.config.newFileFolderPath + "/" + this.inputEl.value + ".md", "");
             app.workspace.getLeaf("tab").openFile(nf);
+            return false;
+        });
+        this.scope.register(["Shift", "Alt"], "Enter", async (e) => {
+            if (this.inputEl.value == "") return;
+            this.close();
+            let nf = await app.vault.create(app.vault.config.newFileFolderPath + "/" + this.inputEl.value + ".md", "");
+            getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()).openFile(nf);
             return false;
         });
         this.scope.register(["Alt"], "Enter", async (e) => {
@@ -180,26 +167,16 @@ class FuzzyModal extends SuggestModal<MatchData> {
             this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
                 this.close();
                 let item = this.chooser.values[this.chooser.selectedItem];
-                const newLeaf = app.plugins.plugins[
-                    "obsidian-hover-editor"
-                ].spawnPopover(undefined, () =>
-                    this.app.workspace.setActiveLeaf(newLeaf)
-                );
+                const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(undefined, () => this.app.workspace.setActiveLeaf(newLeaf));
                 newLeaf.openFile(item.item.file);
                 return false;
             });
     }
     onOpen() {
-        if (this.plugin.settings.showAllFileTypes)
-            this.Files = app.vault.getFiles();
-        else if (this.plugin.settings.showAttachments)
-            this.Files = app.vault
-                .getFiles()
-                .filter((f) => extension.attachment.includes(f.extension));
-        else
-            this.Files = app.vault
-                .getFiles()
-                .filter((f) => extension.normal.includes(f.extension));
+        this.emptyStateText = "未发现该笔记";
+        if (this.plugin.settings.showAllFileTypes) this.Files = app.vault.getFiles();
+        else if (this.plugin.settings.showAttachments) this.Files = app.vault.getFiles().filter((f) => extension.attachment.includes(f.extension));
+        else this.Files = app.vault.getFiles().filter((f) => extension.normal.includes(f.extension));
 
         let index = 0;
         this.items = this.Files.map((file) => {
@@ -214,9 +191,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
 
         for (let file of this.Files) {
             if (file.extension != "md") continue;
-            let alias =
-                app.metadataCache.getFileCache(file)?.frontmatter?.alias ||
-                app.metadataCache.getFileCache(file)?.frontmatter?.aliases;
+            let alias = app.metadataCache.getFileCache(file)?.frontmatter?.alias || app.metadataCache.getFileCache(file)?.frontmatter?.aliases;
             if (alias) {
                 alias = alias.split(", ");
                 alias.map((p: string) =>
@@ -238,9 +213,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
             this.lastMatchData = new lastMatchDataNode("\0");
             let lastOpenFiles: MatchData[] = app.workspace
                 .getLastOpenFiles()
-                .map((p) =>
-                    this.items.find((q) => q.type == "file" && q.path == p)
-                )
+                .map((p) => this.items.find((q) => q.type == "file" && q.path == p))
                 .filter((p) => p)
                 .map((p) => {
                     return {
@@ -276,9 +249,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
         }
 
         let indexNode = this.lastMatchData.index(index - 1),
-            toMatchData = indexNode.itemIndex
-                ? indexNode.itemIndex.map((p) => this.items[p])
-                : this.items;
+            toMatchData = indexNode.itemIndex ? indexNode.itemIndex.map((p) => this.items[p]) : this.items;
         for (let p of toMatchData) {
             let d = this.getMatchData(p, query1, query2);
             if (d) matchData.push(d);
@@ -286,19 +257,12 @@ class FuzzyModal extends SuggestModal<MatchData> {
 
         let matchData_: MatchData[] = [];
         if (this.plugin.settings.usePathToSearch) {
-            toMatchData = indexNode.itemIndexByPath
-                ? indexNode.itemIndexByPath.map((p) => this.items[p])
-                : this.items;
-            for (let p of toMatchData.filter(
-                (p) =>
-                    p.type == "file" &&
-                    !matchData.map((p) => p.item.path).includes(p.path)
-            )) {
+            toMatchData = indexNode.itemIndexByPath ? indexNode.itemIndexByPath.map((p) => this.items[p]) : this.items;
+            for (let p of toMatchData.filter((p) => p.type == "file" && !matchData.map((p) => p.item.path).includes(p.path))) {
                 let d = this.getMatchData(p, query1, query2, true);
                 if (d) matchData_.push(d);
             }
-            if (matchData.length <= 10)
-                matchData = matchData.concat(matchData_);
+            if (matchData.length <= 10) matchData = matchData.concat(matchData_);
         }
         matchData = matchData.sort((a, b) => b.score - a.score);
         if (!lastNode) lastNode = this.lastMatchData;
@@ -307,12 +271,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
         return matchData;
     }
 
-    getMatchData(
-        item: Item,
-        query1: string[],
-        query2: string[],
-        usePath = false
-    ) {
+    getMatchData(item: Item, query1: string[], query2: string[], usePath = false) {
         let match: Array<[number, number]> = [],
             m: any = [-1, -1],
             text = usePath ? item.path : item.name;
@@ -323,10 +282,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
             m = PinyinMatch.match(t, i);
             if (!m) break;
             else {
-                m =
-                    match.length == 0
-                        ? m
-                        : m.map((p) => p + match.last()[1] + 1);
+                m = match.length == 0 ? m : m.map((p) => p + match.last()[1] + 1);
                 match.push(m);
             }
         }
@@ -384,10 +340,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 if (i > 0) {
                     t += text.slice(m[i - 1][1] + 1, m[i][0]);
                 }
-                t += `<span class="suggestion-highlight">${text.slice(
-                    m[i][0],
-                    m[i][1] + 1
-                )}</span>`;
+                t += `<span class="suggestion-highlight">${text.slice(m[i][0], m[i][1] + 1)}</span>`;
             }
             t += text.slice(m.slice(-1)[0][1] + 1);
         } else {
@@ -437,31 +390,25 @@ class FuzzySettingTab extends PluginSettingTab {
             .setName("显示附件")
             .setDesc("显示如图片、视频、PDF等附件文件。")
             .addToggle((text) =>
-                text
-                    .setValue(this.plugin.settings.showAttachments)
-                    .onChange(async (value) => {
-                        this.plugin.settings.showAttachments = value;
-                        await this.plugin.saveSettings();
-                    })
-            );
-        new Setting(containerEl).setName("显示所有类型文件").addToggle((text) =>
-            text
-                .setValue(this.plugin.settings.showAllFileTypes)
-                .onChange(async (value) => {
-                    this.plugin.settings.showAllFileTypes = value;
+                text.setValue(this.plugin.settings.showAttachments).onChange(async (value) => {
+                    this.plugin.settings.showAttachments = value;
                     await this.plugin.saveSettings();
                 })
+            );
+        new Setting(containerEl).setName("显示所有类型文件").addToggle((text) =>
+            text.setValue(this.plugin.settings.showAllFileTypes).onChange(async (value) => {
+                this.plugin.settings.showAllFileTypes = value;
+                await this.plugin.saveSettings();
+            })
         );
         new Setting(containerEl)
             .setName("使用路径搜索")
             .setDesc("当搜索结果少于10个时搜索路径")
             .addToggle((text) =>
-                text
-                    .setValue(this.plugin.settings.usePathToSearch)
-                    .onChange(async (value) => {
-                        this.plugin.settings.usePathToSearch = value;
-                        await this.plugin.saveSettings();
-                    })
+                text.setValue(this.plugin.settings.usePathToSearch).onChange(async (value) => {
+                    this.plugin.settings.usePathToSearch = value;
+                    await this.plugin.saveSettings();
+                })
             );
     }
 }
@@ -473,37 +420,23 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
             .filter((c: any) => c.type !== "leaf")
             .map((c: any) => getLeaves(c))
             .flat()
-            .concat(
-                l.children
-                    .filter((c: any) => c.type === "leaf")
-                    .map((c: any) => c.id)
-            );
+            .concat(l.children.filter((c: any) => c.type === "leaf").map((c: any) => c.id));
 
     const mainLeavesIds = getLeaves(layout.main);
 
     const getMainLeaf = (): WorkspaceLeaf => {
         let mainLeaf = app.workspace.getMostRecentLeaf();
-        if (
-            mainLeaf &&
-            mainLeaf !== leaf &&
-            mainLeaf.view?.containerEl.ownerDocument === document
-        ) {
+        if (mainLeaf && mainLeaf !== leaf && mainLeaf.view?.containerEl.ownerDocument === document) {
             return mainLeaf;
         }
 
         mainLeavesIds.forEach((id: any) => {
             const l = app.workspace.getLeafById(id);
-            if (
-                (leaf.parent.id == l.parent.id && mainLeaf) ||
-                !l.view?.navigation ||
-                leaf === l
-            )
-                return;
+            if ((leaf.parent.id == l.parent.id && mainLeaf) || !l.view?.navigation || leaf === l) return;
             mainLeaf = l;
         });
         let newLeaf: WorkspaceLeaf;
-        if (mainLeaf.parent.id == leaf.parent.id)
-            newLeaf = app.workspace.getLeaf("split");
+        if (mainLeaf.parent.id == leaf.parent.id) newLeaf = app.workspace.getLeaf("split");
         else newLeaf = app.workspace.createLeafInTabGroup(mainLeaf.parent);
         return newLeaf;
     };

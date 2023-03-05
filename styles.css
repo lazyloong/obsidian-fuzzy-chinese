@@ -11,6 +11,15 @@
 .suggestion-item .fz-suggestion-title {
     overflow-wrap: break-word;
 }
+.suggestion-item .fz-suggestion-tags {
+    display: inline;
+    margin-left: 10px;
+}
+.suggestion-item .fz-suggestion-tags .tag {
+    font-size: 10px;
+    margin-left: 6px;
+    pointer-events: none;
+}
 .suggestion-item .fz-suggestion-flair {
     display: inline-block;
     align-items: center;

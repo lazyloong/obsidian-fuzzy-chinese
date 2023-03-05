@@ -18,12 +18,14 @@ interface Fuzyy_chineseSettings {
     showAllFileTypes: boolean;
     showAttachments: boolean;
     usePathToSearch: boolean;
+    showTags: boolean;
 }
 
 const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
     showAttachments: false,
     showAllFileTypes: false,
     usePathToSearch: false,
+    showTags: false,
 };
 
 export default class Fuzyy_chinese extends Plugin {
@@ -121,6 +123,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
             });
 
         this.setInstructions(prompt);
+        this.emptyStateText = "未发现该笔记";
         this.scope.register(["Mod"], "Enter", (e) => {
             this.close();
             let item = this.chooser.values[this.chooser.selectedItem];
@@ -173,7 +176,6 @@ class FuzzyModal extends SuggestModal<MatchData> {
             });
     }
     onOpen() {
-        this.emptyStateText = "未发现该笔记";
         if (this.plugin.settings.showAllFileTypes) this.Files = app.vault.getFiles();
         else if (this.plugin.settings.showAttachments) this.Files = app.vault.getFiles().filter((f) => extension.attachment.includes(f.extension));
         else this.Files = app.vault.getFiles().filter((f) => extension.normal.includes(f.extension));
@@ -347,6 +349,18 @@ class FuzzyModal extends SuggestModal<MatchData> {
             t = item.item.path;
             item.usePath = true;
         }
+        if (this.plugin.settings.showTags) {
+            let tags: string = app.metadataCache.getFileCache(item.item.file).frontmatter?.["tags"],
+                tagArray: string[];
+            if (tags && tags != "") {
+                tagArray = tags
+                    .split(/(,| )/)
+                    .filter((p) => p.replace(",", "").trim().length != 0)
+                    .map((p) => p.trim());
+                tagArray = tagArray.map((p) => `<a class="tag">#${p}</a>`);
+                t += `<div class="fz-suggestion-tags">${tagArray.join("")}</div>`;
+            }
+        }
         let e1 = el.createEl("div", { cls: "fz-suggestion-content" });
         let e2 = e1.createEl("div", { cls: "fz-suggestion-title" });
         e2.innerHTML = t;
@@ -410,6 +424,12 @@ class FuzzySettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+        new Setting(containerEl).setName("显示 Tag").addToggle((text) =>
+            text.setValue(this.plugin.settings.showTags).onChange(async (value) => {
+                this.plugin.settings.showTags = value;
+                await this.plugin.saveSettings();
+            })
+        );
     }
 }
 

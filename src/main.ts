@@ -254,7 +254,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
             toMatchData = indexNode.itemIndex ? indexNode.itemIndex.map((p) => this.items[p]) : this.items;
         for (let p of toMatchData) {
             let d = this.getMatchData(p, query1, query2);
-            if (d) matchData.push(d);
+            if (d && !matchData.find(p=>p.item.path==d.item.path)) matchData.push(d);
         }
 
         let matchData_: MatchData[] = [];
@@ -350,13 +350,16 @@ class FuzzyModal extends SuggestModal<MatchData> {
             item.usePath = true;
         }
         if (this.plugin.settings.showTags) {
-            let tags: string = app.metadataCache.getFileCache(item.item.file).frontmatter?.["tags"],
+            let tags: any = app.metadataCache.getFileCache(item.item.file).frontmatter?.["tags"],
                 tagArray: string[];
-            if (tags && tags != "") {
-                tagArray = tags
-                    .split(/(,| )/)
-                    .filter((p) => p.replace(",", "").trim().length != 0)
-                    .map((p) => p.trim());
+            if (tags) {
+                if (typeof tags == "string" && tags != "")
+                    tagArray = tags
+                        .split(/(,| )/)
+                        .filter((p) => p.replace(",", "").trim().length != 0)
+                        .map((p) => p.trim());
+                else if (tags instanceof Array) tagArray = tags;
+
                 tagArray = tagArray.map((p) => `<a class="tag">#${p}</a>`);
                 t += `<div class="fz-suggestion-tags">${tagArray.join("")}</div>`;
             }

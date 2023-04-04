@@ -1,16 +1,32 @@
-import { App, SuggestModal, Plugin, PluginSettingTab, Setting, TFile, WorkspaceLeaf } from "obsidian";
+import { App, Plugin, PluginSettingTab, Setting, SuggestModal, TFile, WorkspaceLeaf } from "obsidian";
 import PinyinMatch from "pinyin-match";
 
-let Re = ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp"],
-    He = ["mp3", "wav", "m4a", "3gp", "flac", "ogg", "oga", "opus"],
-    Ve = ["mp4", "webm", "ogv", "mov", "mkv"],
-    ze = ["pdf"],
-    qe = ["md"],
-    Ue = ["json", "css", "js"],
-    _e = [].concat(Re, He, Ve, ze, qe, ["canvas"]);
-
 let extension = {
-    attachment: _e,
+    attachment: [
+        "bmp",
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "svg",
+        "webp",
+        "mp3",
+        "wav",
+        "m4a",
+        "3gp",
+        "flac",
+        "ogg",
+        "oga",
+        "opus",
+        "mp4",
+        "webm",
+        "ogv",
+        "mov",
+        "mkv",
+        "pdf",
+        "md",
+        "canvas",
+    ],
     normal: ["md", "canvas"],
 };
 
@@ -47,7 +63,7 @@ export default class Fuzyy_chinese extends Plugin {
                 return false;
             },
         });
-        this.addRibbonIcon("search", "FuzzySearch", (e) => {
+        this.addRibbonIcon("search", "FuzzySearch", () => {
             let leaf = this.app.workspace.getMostRecentLeaf();
             if (leaf) {
                 new FuzzyModal(this.app, this).open();
@@ -254,11 +270,15 @@ class FuzzyModal extends SuggestModal<MatchData> {
             toMatchData = indexNode.itemIndex ? indexNode.itemIndex.map((p) => this.items[p]) : this.items;
         for (let p of toMatchData) {
             let d = this.getMatchData(p, query1, query2);
-            if (d && !matchData.find(p=>p.item.path==d.item.path)) matchData.push(d);
+            if (d) {
+                let existData = matchData.findIndex((p) => p.item.path == d.item.path);
+                if (!matchData[existData]) matchData.push(d);
+                else if (matchData[existData].score < d.score) matchData[existData] = d;
+            }
         }
 
         let matchData_: MatchData[] = [];
-        if (this.plugin.settings.usePathToSearch) {
+        if (this.plugin.settings.usePathToSearch && matchData.length <= 10) {
             toMatchData = indexNode.itemIndexByPath ? indexNode.itemIndexByPath.map((p) => this.items[p]) : this.items;
             for (let p of toMatchData.filter((p) => p.type == "file" && !matchData.map((p) => p.item.path).includes(p.path))) {
                 let d = this.getMatchData(p, query1, query2, true);
@@ -331,22 +351,24 @@ class FuzzyModal extends SuggestModal<MatchData> {
     renderSuggestion(item: MatchData, el: HTMLElement) {
         let m = item.match,
             text: string,
-            t = "";
+            e1 = el.createEl("div", { cls: "fz-suggestion-content" }),
+            e2 = e1.createEl("div", { cls: "fz-suggestion-title" });
+
         if (m[0][0] != -1) {
             if (item.usePath) text = item.item.path;
             else text = item.item.name;
 
-            t += text.slice(0, m[0][0]);
+            e2.appendText(text.slice(0, m[0][0]));
 
             for (let i = 0; i < m.length; i++) {
                 if (i > 0) {
-                    t += text.slice(m[i - 1][1] + 1, m[i][0]);
+                    e2.appendText(text.slice(m[i - 1][1] + 1, m[i][0]));
                 }
-                t += `<span class="suggestion-highlight">${text.slice(m[i][0], m[i][1] + 1)}</span>`;
+                e2.createSpan({ cls: "suggestion-highlight", text: text.slice(m[i][0], m[i][1] + 1) });
             }
-            t += text.slice(m.slice(-1)[0][1] + 1);
+            e2.appendText(text.slice(m.slice(-1)[0][1] + 1));
         } else {
-            t = item.item.path;
+            e2.appendText(item.item.path);
             item.usePath = true;
         }
         if (this.plugin.settings.showTags) {
@@ -359,14 +381,10 @@ class FuzzyModal extends SuggestModal<MatchData> {
                         .filter((p) => p.replace(",", "").trim().length != 0)
                         .map((p) => p.trim());
                 else if (tags instanceof Array) tagArray = tags;
-
-                tagArray = tagArray.map((p) => `<a class="tag">#${p}</a>`);
-                t += `<div class="fz-suggestion-tags">${tagArray.join("")}</div>`;
+                let tagEl = e2.createDiv({ cls: "fz-suggestion-tags"});
+                tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
         }
-        let e1 = el.createEl("div", { cls: "fz-suggestion-content" });
-        let e2 = e1.createEl("div", { cls: "fz-suggestion-title" });
-        e2.innerHTML = t;
         if (!item.usePath)
             e1.createEl("div", {
                 cls: "fz-suggestion-note",

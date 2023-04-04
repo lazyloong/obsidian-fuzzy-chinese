@@ -16,6 +16,8 @@
     margin-left: 10px;
 }
 .suggestion-item .fz-suggestion-tags .tag {
+    position: relative;
+    bottom: 2px;
     font-size: 10px;
     margin-left: 6px;
     pointer-events: none;

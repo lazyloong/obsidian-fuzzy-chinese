@@ -145,42 +145,36 @@ class FuzzyModal extends SuggestModal<MatchData> {
             let item = this.chooser.values[this.chooser.selectedItem];
             let nl = app.workspace.getLeaf("tab");
             nl.openFile(item.item.file);
-            return false;
         });
         this.scope.register(["Mod", "Alt"], "Enter", (e) => {
             this.close();
             let item = this.chooser.values[this.chooser.selectedItem];
             let nl = app.workspace.getLeaf("split");
             nl.openFile(item.item.file);
-            return false;
         });
         this.scope.register(["Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(app.vault.config.newFileFolderPath + "/" + this.inputEl.value + ".md", "");
+            let nf = await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md", "");
             app.workspace.getMostRecentLeaf().openFile(nf);
-            return false;
         });
         this.scope.register(["Mod", "Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(app.vault.config.newFileFolderPath + "/" + this.inputEl.value + ".md", "");
+            let nf = await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md", "");
             app.workspace.getLeaf("tab").openFile(nf);
-            return false;
         });
         this.scope.register(["Shift", "Alt"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(app.vault.config.newFileFolderPath + "/" + this.inputEl.value + ".md", "");
+            let nf = await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md", "");
             getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()).openFile(nf);
-            return false;
         });
         this.scope.register(["Alt"], "Enter", async (e) => {
             this.close();
             let item = this.chooser.values[this.chooser.selectedItem];
             let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
             nl.openFile(item.item.file);
-            return false;
         });
         if (app.plugins.plugins["obsidian-hover-editor"])
             this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
@@ -188,7 +182,6 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 let item = this.chooser.values[this.chooser.selectedItem];
                 const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(undefined, () => this.app.workspace.setActiveLeaf(newLeaf));
                 newLeaf.openFile(item.item.file);
-                return false;
             });
     }
     onOpen() {
@@ -349,6 +342,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
     }
 
     renderSuggestion(item: MatchData, el: HTMLElement) {
+        el.addClass("fz-item");
         let m = item.match,
             text: string,
             e1 = el.createEl("div", { cls: "fz-suggestion-content" }),
@@ -381,7 +375,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
                         .filter((p) => p.replace(",", "").trim().length != 0)
                         .map((p) => p.trim());
                 else if (tags instanceof Array) tagArray = tags;
-                let tagEl = e2.createDiv({ cls: "fz-suggestion-tags"});
+                let tagEl = e2.createDiv({ cls: "fz-suggestion-tags" });
                 tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
         }
@@ -454,6 +448,9 @@ class FuzzySettingTab extends PluginSettingTab {
     }
 }
 
+// If there is only one leaf, create a new split and return another leaf.
+// If there are two or more, return a leaf that is not the currently displayed leaf.
+// It means returning another leaf but don't create a new split.
 const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
     const layout = app.workspace.getLayout();
     const getLeaves = (l: any) =>

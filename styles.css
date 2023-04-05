@@ -1,4 +1,4 @@
-.suggestion-item {
+.suggestion-item.fz-item {
     position: relative;
 }
 .suggestion-item .fz-suggestion-content {

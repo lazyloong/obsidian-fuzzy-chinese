@@ -1,5 +1,6 @@
 import { App, Plugin, PluginSettingTab, Setting, SuggestModal, TFile, WorkspaceLeaf } from "obsidian";
 import PinyinMatch from "pinyin-match";
+import Chinese from "chinese-s2t";
 
 let extension = {
     attachment: [
@@ -31,6 +32,7 @@ let extension = {
 };
 
 interface Fuzyy_chineseSettings {
+    traditionalChineseSupport: boolean;
     showAllFileTypes: boolean;
     showAttachments: boolean;
     usePathToSearch: boolean;
@@ -38,6 +40,7 @@ interface Fuzyy_chineseSettings {
 }
 
 const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
+    traditionalChineseSupport: false,
     showAttachments: false,
     showAllFileTypes: false,
     usePathToSearch: false,
@@ -46,7 +49,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
 
 export default class Fuzyy_chinese extends Plugin {
     settings: Fuzyy_chineseSettings;
-    api = { modal: new FuzzyModal(this.app, this), match: PinyinMatch.match };
+    api = { modal: new FuzzyModal(this.app, this), match: PinyinMatch.match, Chinese: Chinese };
     async onload() {
         await this.loadSettings();
         this.addCommand({
@@ -290,6 +293,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
         let match: Array<[number, number]> = [],
             m: any = [-1, -1],
             text = usePath ? item.path : item.name;
+        text = this.plugin.settings.traditionalChineseSupport ? Chinese.t2s(text) : text;
         match = [];
         let t = text;
         for (let i of query1) {
@@ -445,6 +449,12 @@ class FuzzySettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
             })
         );
+        new Setting(containerEl).setName("繁体支持").addToggle((text) => {
+            text.setValue(this.plugin.settings.showTags).onChange(async (value) => {
+                this.plugin.settings.traditionalChineseSupport = value;
+                await this.plugin.saveSettings();
+            });
+        });
     }
 }
 

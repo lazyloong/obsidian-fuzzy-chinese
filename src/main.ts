@@ -266,11 +266,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
             toMatchData = indexNode.itemIndex ? indexNode.itemIndex.map((p) => this.items[p]) : this.items;
         for (let p of toMatchData) {
             let d = this.getMatchData(p, query1, query2);
-            if (d) {
-                let existData = matchData.findIndex((p) => p.item.path == d.item.path);
-                if (!matchData[existData]) matchData.push(d);
-                else if (matchData[existData].score < d.score) matchData[existData] = d;
-            }
+            if (d) matchData.push(d);
         }
 
         let matchData_: MatchData[] = [];
@@ -280,13 +276,24 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 let d = this.getMatchData(p, query1, query2, true);
                 if (d) matchData_.push(d);
             }
-            if (matchData.length <= 10) matchData = matchData.concat(matchData_);
+            matchData = matchData.concat(matchData_);
         }
         matchData = matchData.sort((a, b) => b.score - a.score);
         if (!lastNode) lastNode = this.lastMatchData;
         lastNode.itemIndex = matchData.map((p) => p.item.index);
         lastNode.itemIndexByPath = matchData_.map((p) => p.item.index);
-        return matchData;
+        let result = matchData.reduce((acc, cur) => {
+            let index = acc.findIndex((item) => item.item.path === cur.item.path);
+            if (index !== -1) {
+                if (cur.score > acc[index].score) {
+                    acc[index] = cur;
+                }
+            } else {
+                acc.push(cur);
+            }
+            return acc;
+        }, []);
+        return result;
     }
 
     getMatchData(item: Item, query1: string[], query2: string[], usePath = false) {

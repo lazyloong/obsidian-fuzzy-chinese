@@ -207,7 +207,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
             if (file.extension != "md") continue;
             let alias = app.metadataCache.getFileCache(file)?.frontmatter?.alias || app.metadataCache.getFileCache(file)?.frontmatter?.aliases;
             if (alias) {
-                alias = alias.split(", ");
+                alias = typeof alias == "string" ? alias.split(", ") : String(alias).split(", ");
                 alias.map((p: string) =>
                     this.items.push({
                         index: index++,

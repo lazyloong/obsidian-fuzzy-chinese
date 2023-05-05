@@ -465,9 +465,11 @@ class FuzzySettingTab extends PluginSettingTab {
     }
 }
 
-// If there is only one leaf, create a new split and return another leaf.
+// If there is only one leaf, create a new split and return it.
 // If there are two or more, return a leaf that is not the currently displayed leaf.
 // It means returning another leaf but don't create a new split.
+// This code is based on the work of zsviczian (https://github.com/zsviczian).
+// Original code: https://github.com/zsviczian/obsidian-excalidraw-plugin.
 const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
     const layout = app.workspace.getLayout();
     const getLeaves = (l: any) =>
@@ -519,7 +521,7 @@ class lastMatchDataNode {
         let node: lastMatchDataNode = this;
         for (let i = 0; i < index; i++) {
             if (node.next) node = node.next;
-            else return undefined;
+            else return null;
         }
         return node;
     }

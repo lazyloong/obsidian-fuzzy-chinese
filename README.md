@@ -12,6 +12,4 @@
 
 ## 安装
 
-方法一：手动下载 release 中的 `styles.css`, `main.js`, `manifest.json`，复制到 **库目录/.obsidian/plugins/obsidian-fuzzy-chinese** 文件夹即可
-
-方法二：通过 BRAT 插件安装
+直接在插件市场里安装即可。

@@ -240,22 +240,23 @@ class FuzzyModal extends SuggestModal<MatchData> {
         }
 
         let query1 = query.split(" ").filter((p) => p.length != 0),
-            query2 = query.split("").filter((p) => p != " ");
-        let matchData: MatchData[] = [];
+            query2 = query.split("").filter((p) => p != " "),
+            matchData: MatchData[] = [],
+            matchData1: MatchData[] = [],
+            matchData2: MatchData[] = [];
 
         let node: lastMatchDataNode = this.lastMatchData,
             lastNode: lastMatchDataNode,
             index = 0,
             _f = true;
         for (let i of query) {
-            if (!node || i != node.query) {
-                if (node != this.lastMatchData) {
-                    node = lastNode.push(
-                        i,
-                        matchData.map((p) => p.item.index)
-                    );
-                } else node.query = i;
-                _f = false;
+            if (node) {
+                if (i != node.query) {
+                    node.init(i);
+                    _f = false;
+                }
+            } else {
+                node = lastNode.push(i);
             }
             lastNode = node;
             node = node.next;
@@ -263,25 +264,26 @@ class FuzzyModal extends SuggestModal<MatchData> {
         }
 
         let indexNode = this.lastMatchData.index(index - 1),
-            toMatchData = indexNode.itemIndex ? indexNode.itemIndex.map((p) => this.items[p]) : this.items;
+            toMatchData = indexNode.itemIndex.length == 0 ? this.items : indexNode.itemIndex.map((p) => this.items[p]);
         for (let p of toMatchData) {
             let d = this.getMatchData(p, query1, query2);
-            if (d) matchData.push(d);
+            if (d) matchData1.push(d);
         }
 
-        let matchData_: MatchData[] = [];
-        if (this.plugin.settings.usePathToSearch && matchData.length <= 10) {
-            toMatchData = indexNode.itemIndexByPath ? indexNode.itemIndexByPath.map((p) => this.items[p]) : this.items;
-            for (let p of toMatchData.filter((p) => p.type == "file" && !matchData.map((p) => p.item.path).includes(p.path))) {
+        if (this.plugin.settings.usePathToSearch && matchData1.length <= 10) {
+            toMatchData = indexNode.itemIndexByPath.length == 0 ? indexNode.itemIndexByPath.map((p) => this.items[p]) : this.items;
+            for (let p of toMatchData.filter((p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path))) {
                 let d = this.getMatchData(p, query1, query2, true);
-                if (d) matchData_.push(d);
+                if (d) matchData2.push(d);
             }
-            matchData = matchData.concat(matchData_);
         }
+        matchData = matchData1.concat(matchData2);
         matchData = matchData.sort((a, b) => b.score - a.score);
+        // 记录数据以便下次匹配可以使用
         if (!lastNode) lastNode = this.lastMatchData;
-        lastNode.itemIndex = matchData.map((p) => p.item.index);
-        lastNode.itemIndexByPath = matchData_.map((p) => p.item.index);
+        lastNode.itemIndex = matchData1.map((p) => p.item.index);
+        lastNode.itemIndexByPath = matchData2.map((p) => p.item.index);
+        // 去除重复的笔记
         let result = matchData.reduce((acc, cur) => {
             let index = acc.findIndex((item) => item.item.path === cur.item.path);
             if (index !== -1) {
@@ -508,12 +510,10 @@ class lastMatchDataNode {
     itemIndex: number[];
     itemIndexByPath: number[];
     constructor(query: string[1]) {
-        this.query = query;
-        this.next = null;
+        this.init(query);
     }
-    push(query: string[1], index: number[]) {
+    push(query: string[1]) {
         let node = new lastMatchDataNode(query);
-        node.itemIndex = index;
         this.next = node;
         return node;
     }
@@ -524,5 +524,11 @@ class lastMatchDataNode {
             else return null;
         }
         return node;
+    }
+    init(query: string[1]) {
+        this.query = query;
+        this.next = null;
+        this.itemIndex = [];
+        this.itemIndexByPath = [];
     }
 }

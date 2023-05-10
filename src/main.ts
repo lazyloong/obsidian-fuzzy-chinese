@@ -36,6 +36,7 @@ interface Fuzyy_chineseSettings {
     showAllFileTypes: boolean;
     showAttachments: boolean;
     usePathToSearch: boolean;
+    showPath: boolean;
     showTags: boolean;
 }
 
@@ -44,6 +45,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
     showAttachments: false,
     showAllFileTypes: false,
     usePathToSearch: false,
+    showPath: true,
     showTags: false,
 };
 
@@ -225,6 +227,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
     getSuggestions(query: string): MatchData[] {
         if (query == "") {
             this.lastMatchData = new lastMatchDataNode("\0");
+            // this.lastMatchData.itemIndex = this.items.map((p, i) => i);
             let lastOpenFiles: MatchData[] = app.workspace
                 .getLastOpenFiles()
                 .map((p) => this.items.find((q) => q.type == "file" && q.path == p))
@@ -358,24 +361,24 @@ class FuzzyModal extends SuggestModal<MatchData> {
         el.addClass("fz-item");
         let m = item.match,
             text: string,
-            e1 = el.createEl("div", { cls: "fz-suggestion-content" }),
-            e2 = e1.createEl("div", { cls: "fz-suggestion-title" });
+            e_content = el.createEl("div", { cls: "fz-suggestion-content" }),
+            e_title = e_content.createEl("div", { cls: "fz-suggestion-title" });
 
         if (m[0][0] != -1) {
             if (item.usePath) text = item.item.path;
             else text = item.item.name;
 
-            e2.appendText(text.slice(0, m[0][0]));
+            e_title.appendText(text.slice(0, m[0][0]));
 
             for (let i = 0; i < m.length; i++) {
                 if (i > 0) {
-                    e2.appendText(text.slice(m[i - 1][1] + 1, m[i][0]));
+                    e_title.appendText(text.slice(m[i - 1][1] + 1, m[i][0]));
                 }
-                e2.createSpan({ cls: "suggestion-highlight", text: text.slice(m[i][0], m[i][1] + 1) });
+                e_title.createSpan({ cls: "suggestion-highlight", text: text.slice(m[i][0], m[i][1] + 1) });
             }
-            e2.appendText(text.slice(m.slice(-1)[0][1] + 1));
+            e_title.appendText(text.slice(m.slice(-1)[0][1] + 1));
         } else {
-            e2.appendText(item.item.path);
+            e_title.appendText(item.item.path);
             item.usePath = true;
         }
         if (this.plugin.settings.showTags) {
@@ -388,18 +391,25 @@ class FuzzyModal extends SuggestModal<MatchData> {
                         .filter((p) => p.replace(",", "").trim().length != 0)
                         .map((p) => p.trim());
                 else if (tags instanceof Array) tagArray = tags;
-                let tagEl = e2.createDiv({ cls: "fz-suggestion-tags" });
+                let tagEl = e_title.createDiv({ cls: "fz-suggestion-tags" });
                 tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
         }
-        if (!item.usePath)
-            e1.createEl("div", {
+        let e_note: HTMLDivElement;
+        if (this.plugin.settings.showPath && !item.usePath)
+            e_note = e_content.createEl("div", {
                 cls: "fz-suggestion-note",
                 text: item.item.path,
             });
-        if (item.item.type == "alias")
-            el.innerHTML +=
-                '<span class="fz-suggestion-flair" aria-label="别名"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg></span>';
+        if (item.item.type == "alias") {
+            let e_flair = el.createEl("span", {
+                cls: "fz-suggestion-flair",
+            });
+            e_flair.innerHTML +=
+                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>';
+            if (!this.plugin.settings.showPath) e_flair.style.top = "9px";
+            if (e_note) e_note.style.width = "calc(100% - 30px)";
+        }
     }
     // Perform action on the selected suggestion.
     onChooseSuggestion(item: MatchData, evt: MouseEvent | KeyboardEvent) {
@@ -452,6 +462,12 @@ class FuzzySettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+        new Setting(containerEl).setName("显示路径").addToggle((text) =>
+            text.setValue(this.plugin.settings.showPath).onChange(async (value) => {
+                this.plugin.settings.showPath = value;
+                await this.plugin.saveSettings();
+            })
+        );
         new Setting(containerEl).setName("显示 Tag").addToggle((text) =>
             text.setValue(this.plugin.settings.showTags).onChange(async (value) => {
                 this.plugin.settings.showTags = value;

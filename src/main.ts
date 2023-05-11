@@ -274,7 +274,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
         }
 
         if (this.plugin.settings.usePathToSearch && matchData1.length <= 10) {
-            toMatchData = indexNode.itemIndexByPath.length == 0 ? indexNode.itemIndexByPath.map((p) => this.items[p]) : this.items;
+            toMatchData = indexNode.itemIndexByPath.length == 0 ? this.items : indexNode.itemIndexByPath.map((p) => this.items[p]);
             for (let p of toMatchData.filter((p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path))) {
                 let d = this.getMatchData(p, query1, query2, true);
                 if (d) matchData2.push(d);

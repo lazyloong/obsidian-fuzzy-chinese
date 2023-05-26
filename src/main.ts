@@ -1,6 +1,20 @@
-import { App, Plugin, PluginSettingTab, Setting, SuggestModal, TFile, WorkspaceLeaf } from "obsidian";
-import PinyinMatch from "pinyin-match";
-import Chinese from "chinese-s2t";
+import {
+    App,
+    CachedMetadata,
+    Component,
+    MetadataCache,
+    Plugin,
+    PluginSettingTab,
+    Setting,
+    SuggestModal,
+    TAbstractFile,
+    TFile,
+    Vault,
+    WorkspaceLeaf,
+} from "obsidian";
+// 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
+import { SimplifiedDict } from "./simplified_dict";
+import { TraditionalDict } from "./traditional_dict";
 
 let extension = {
     attachment: [
@@ -30,6 +44,8 @@ let extension = {
     ],
     normal: ["md", "canvas"],
 };
+let PinyinKeys: Array<string>;
+let PinyinValues: Array<string>;
 
 interface Fuzyy_chineseSettings {
     traditionalChineseSupport: boolean;
@@ -51,9 +67,15 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
 
 export default class Fuzyy_chinese extends Plugin {
     settings: Fuzyy_chineseSettings;
-    api = { modal: new FuzzyModal(this.app, this), match: PinyinMatch.match, Chinese: Chinese };
+    api = { pinyin: Pinyin, p: PinyinKeys, q: Query };
+    index: PinyinIndex;
     async onload() {
         await this.loadSettings();
+
+        PinyinKeys = this.settings.traditionalChineseSupport ? Object.keys(TraditionalDict) : Object.keys(SimplifiedDict);
+        PinyinValues = this.settings.traditionalChineseSupport ? Object.values(TraditionalDict) : Object.values(SimplifiedDict);
+
+        this.index = this.addChild(new PinyinIndex(this.app, this));
         this.addCommand({
             id: "open-search",
             name: "Open Search",
@@ -88,29 +110,30 @@ export default class Fuzyy_chinese extends Plugin {
 }
 
 type Item = {
-    index: number;
     file: TFile;
     type: "file" | "alias";
     name: string;
+    pinyin: Pinyin;
     path: string;
+    pinyinOfPath: Pinyin;
 };
 
 type MatchData = {
     item: Item;
     score: number;
-    match: Array<[number, number]>;
+    range: Array<[number, number]>;
     usePath?: boolean;
 };
 
 class FuzzyModal extends SuggestModal<MatchData> {
-    Files: TFile[];
-    items: Item[];
-    lastMatchData: lastMatchDataNode;
+    historyMatchData: HistoryMatchDataNode;
     plugin: Fuzyy_chinese;
     chooser: any;
+    items: Item[];
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app);
         this.plugin = plugin;
+        this.items = this.plugin.index.items;
         let prompt = [
             {
                 command: "ctrl ↵",
@@ -190,66 +213,33 @@ class FuzzyModal extends SuggestModal<MatchData> {
             });
     }
     onOpen() {
-        if (this.plugin.settings.showAllFileTypes) this.Files = app.vault.getFiles();
-        else if (this.plugin.settings.showAttachments) this.Files = app.vault.getFiles().filter((f) => extension.attachment.includes(f.extension));
-        else this.Files = app.vault.getFiles().filter((f) => extension.normal.includes(f.extension));
-
-        let index = 0;
-        this.items = this.Files.map((file) => {
-            return {
-                index: index++,
-                type: "file",
-                name: file.extension != "md" ? file.name : file.basename,
-                path: file.path,
-                file: file,
-            };
-        });
-
-        for (let file of this.Files) {
-            if (file.extension != "md") continue;
-            let alias = app.metadataCache.getFileCache(file)?.frontmatter?.alias || app.metadataCache.getFileCache(file)?.frontmatter?.aliases;
-            if (alias) {
-                alias = typeof alias == "string" ? alias.split(", ") : String(alias).split(", ");
-                alias.map((p: string) =>
-                    this.items.push({
-                        index: index++,
-                        type: "alias",
-                        name: p,
-                        path: file.path,
-                        file: file,
-                    })
-                );
-            }
-        }
-        this.onInput();
+        this.onInput(); // 无输入时触发历史记录
     }
 
     getSuggestions(query: string): MatchData[] {
         if (query == "") {
-            this.lastMatchData = new lastMatchDataNode("\0");
-            // this.lastMatchData.itemIndex = this.items.map((p, i) => i);
+            this.historyMatchData = new HistoryMatchDataNode("\0");
+            let items = this.items;
             let lastOpenFiles: MatchData[] = app.workspace
                 .getLastOpenFiles()
-                .map((p) => this.items.find((q) => q.type == "file" && q.path == p))
+                .map((p) => items.find((q) => q.type == "file" && q.path == p))
                 .filter((p) => p)
                 .map((p) => {
                     return {
                         item: p,
                         score: 0,
-                        match: [[-1, -1]],
+                        range: [[-1, -1]],
                     };
                 });
             return lastOpenFiles;
         }
 
-        let query1 = query.split(" ").filter((p) => p.length != 0),
-            query2 = query.split("").filter((p) => p != " "),
-            matchData: MatchData[] = [],
-            matchData1: MatchData[] = [],
-            matchData2: MatchData[] = [];
+        let matchData: MatchData[] = [],
+            matchData1: MatchData[] = [] /*使用标题、别名搜索的数据*/,
+            matchData2: MatchData[] = []; /*使用路径搜索的数据*/
 
-        let node: lastMatchDataNode = this.lastMatchData,
-            lastNode: lastMatchDataNode,
+        let node: HistoryMatchDataNode = this.historyMatchData,
+            lastNode: HistoryMatchDataNode,
             index = 0,
             _f = true;
         for (let i of query) {
@@ -265,27 +255,27 @@ class FuzzyModal extends SuggestModal<MatchData> {
             node = node.next;
             if (_f) index++;
         }
-
-        let indexNode = this.lastMatchData.index(index - 1),
-            toMatchData = indexNode.itemIndex.length == 0 ? this.items : indexNode.itemIndex.map((p) => this.items[p]);
+        let query_ = new Query(query);
+        let indexNode = this.historyMatchData.index(index - 1),
+            toMatchData = indexNode.itemIndex.length == 0 ? this.items : indexNode.itemIndex;
         for (let p of toMatchData) {
-            let d = this.getMatchData(p, query1, query2);
+            let d = p.pinyin.match(query_, p);
             if (d) matchData1.push(d);
         }
 
         if (this.plugin.settings.usePathToSearch && matchData1.length <= 10) {
-            toMatchData = indexNode.itemIndexByPath.length == 0 ? this.items : indexNode.itemIndexByPath.map((p) => this.items[p]);
+            toMatchData = indexNode.itemIndexByPath.length == 0 ? this.items : indexNode.itemIndexByPath;
             for (let p of toMatchData.filter((p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path))) {
-                let d = this.getMatchData(p, query1, query2, true);
+                let d = p.pinyinOfPath.match(query_, p);
                 if (d) matchData2.push(d);
             }
         }
         matchData = matchData1.concat(matchData2);
         matchData = matchData.sort((a, b) => b.score - a.score);
         // 记录数据以便下次匹配可以使用
-        if (!lastNode) lastNode = this.lastMatchData;
-        lastNode.itemIndex = matchData1.map((p) => p.item.index);
-        lastNode.itemIndexByPath = matchData2.map((p) => p.item.index);
+        if (!lastNode) lastNode = this.historyMatchData;
+        lastNode.itemIndex = matchData1.map((p) => p.item);
+        lastNode.itemIndexByPath = matchData2.map((p) => p.item);
         // 去除重复的笔记
         let result = matchData.reduce((acc, cur) => {
             let index = acc.findIndex((item) => item.item.path === cur.item.path);
@@ -301,107 +291,48 @@ class FuzzyModal extends SuggestModal<MatchData> {
         return result;
     }
 
-    getMatchData(item: Item, query1: string[], query2: string[], usePath = false) {
-        let match: Array<[number, number]> = [],
-            m: any = [-1, -1],
-            text = usePath ? item.path : item.name;
-        text = this.plugin.settings.traditionalChineseSupport ? Chinese.t2s(text) : text;
-        match = [];
-        let t = text;
-        for (let i of query1) {
-            t = match.length == 0 ? text : text.slice(match.last()[1] + 1);
-            m = PinyinMatch.match(t, i);
-            if (!m) break;
-            else {
-                m = match.length == 0 ? m : m.map((p) => p + match.last()[1] + 1);
-                match.push(m);
-            }
-        }
-        if (!m) {
-            match = [];
-            let t = text;
-            for (let i of query2) {
-                t = t.slice(m[1] + 1);
-                m = PinyinMatch.match(t, i);
-                if (!m) return;
-                else {
-                    if (match.length == 0) match.push(m);
-                    else {
-                        if (m[0] == 0) match.last()[1] += 1;
-                        else {
-                            let n = match.last()[1] + m[0] + 1;
-                            match.push([n, n]);
-                        }
-                    }
-                }
-            }
-        }
-
-        let score = 0;
-        score +=
-            40 /
-            (text.length -
-                match
-                    .map((p) => p[1] - p[0])
-                    .reduce((p, v) => {
-                        return p + v;
-                    }, 0)); //覆盖越广分越高
-        if (match[0][0] == 0) score += 8; //顶头加分
-        score += 20 / match.length; //分割越少分越高
-        let data: MatchData = {
-            item: item,
-            score: score,
-            match: match,
-            usePath: usePath,
-        };
-        return data;
-    }
-
-    renderSuggestion(item: MatchData, el: HTMLElement) {
+    renderSuggestion(matchData: MatchData, el: HTMLElement) {
         el.addClass("fz-item");
-        let m = item.match,
+        let range = matchData.range,
             text: string,
             e_content = el.createEl("div", { cls: "fz-suggestion-content" }),
             e_title = e_content.createEl("div", { cls: "fz-suggestion-title" });
 
-        if (m[0][0] != -1) {
-            if (item.usePath) text = item.item.path;
-            else text = item.item.name;
+        if (range[0][0] != -1) {
+            text = matchData.usePath ? matchData.item.path : matchData.item.name;
 
-            e_title.appendText(text.slice(0, m[0][0]));
-
-            for (let i = 0; i < m.length; i++) {
-                if (i > 0) {
-                    e_title.appendText(text.slice(m[i - 1][1] + 1, m[i][0]));
-                }
-                e_title.createSpan({ cls: "suggestion-highlight", text: text.slice(m[i][0], m[i][1] + 1) });
+            let index = 0;
+            for (const r of range) {
+                e_title.appendText(text.slice(index, r[0]));
+                e_title.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
+                index = r[1] + 1;
             }
-            e_title.appendText(text.slice(m.slice(-1)[0][1] + 1));
+            e_title.appendText(text.slice(index));
         } else {
-            e_title.appendText(item.item.path);
-            item.usePath = true;
+            e_title.appendText(matchData.item.path);
+            matchData.usePath = true;
         }
+
         if (this.plugin.settings.showTags) {
-            let tags: any = app.metadataCache.getFileCache(item.item.file).frontmatter?.["tags"],
+            let tags: string | Array<string> =
+                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
+                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
                 tagArray: string[];
             if (tags) {
-                if (typeof tags == "string" && tags != "")
-                    tagArray = tags
-                        .split(/(,| )/)
-                        .filter((p) => p.replace(",", "").trim().length != 0)
-                        .map((p) => p.trim());
-                else if (tags instanceof Array) tagArray = tags;
+                tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
                 let tagEl = e_title.createDiv({ cls: "fz-suggestion-tags" });
                 tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
         }
-        let e_note: HTMLDivElement;
-        if (this.plugin.settings.showPath && !item.usePath)
+
+        let e_note: HTMLDivElement = null;
+        if (this.plugin.settings.showPath && !matchData.usePath)
             e_note = e_content.createEl("div", {
                 cls: "fz-suggestion-note",
-                text: item.item.path,
+                text: matchData.item.path,
             });
-        if (item.item.type == "alias") {
+
+        if (matchData.item.type == "alias") {
             let e_flair = el.createEl("span", {
                 cls: "fz-suggestion-flair",
             });
@@ -411,16 +342,15 @@ class FuzzyModal extends SuggestModal<MatchData> {
             if (e_note) e_note.style.width = "calc(100% - 30px)";
         }
     }
-    // Perform action on the selected suggestion.
-    onChooseSuggestion(item: MatchData, evt: MouseEvent | KeyboardEvent) {
+    onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent) {
         if (evt.ctrlKey) {
             let nl = app.workspace.getLeaf("tab");
-            nl.openFile(item.item.file);
+            nl.openFile(matchData.item.file);
         } else if (evt.altKey) {
             let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
-            nl.openFile(item.item.file);
+            nl.openFile(matchData.item.file);
         } else {
-            app.workspace.getMostRecentLeaf().openFile(item.item.file);
+            app.workspace.getMostRecentLeaf().openFile(matchData.item.file);
         }
     }
     onClose() {
@@ -520,24 +450,24 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
     return ml ?? app.workspace.getLeaf(true);
 };
 
-class lastMatchDataNode {
+class HistoryMatchDataNode {
     query: string[1];
-    next: lastMatchDataNode;
-    itemIndex: number[];
-    itemIndexByPath: number[];
+    next: HistoryMatchDataNode;
+    itemIndex: Array<Item>;
+    itemIndexByPath: Array<Item>;
     constructor(query: string[1]) {
         this.init(query);
     }
     push(query: string[1]) {
-        let node = new lastMatchDataNode(query);
+        let node = new HistoryMatchDataNode(query);
         this.next = node;
         return node;
     }
     index(index: number) {
-        let node: lastMatchDataNode = this;
+        let node: HistoryMatchDataNode = this;
         for (let i = 0; i < index; i++) {
             if (node.next) node = node.next;
-            else return null;
+            else return;
         }
         return node;
     }
@@ -547,4 +477,288 @@ class lastMatchDataNode {
         this.itemIndex = [];
         this.itemIndexByPath = [];
     }
+}
+
+class Pinyin extends Array<PinyinChild> {
+    query: string;
+    usePath: boolean;
+    constructor(query: string, usePath = false) {
+        super();
+        this.usePath = usePath;
+        this.query = query.toLowerCase();
+        this.query.split("").forEach((p) => {
+            let index = PinyinValues.map((q, i) => (q.includes(p) ? i : null)).filter((p) => p);
+            this.push({
+                type: index.length == 0 ? "other" : "pinyin",
+                character: p,
+                pinyin: index.length == 0 ? p : PinyinKeys.filter((_, i) => index.includes(i)),
+            });
+        });
+    }
+    getScore(range: Array<[number, number]>) {
+        let score = 0;
+        score += 40 / (this.query.length - range.reduce((p, i) => p + i[1] - i[0] + 1, 0)); //覆盖越广分越高
+        if (range[0][0] == 0) score += 8; //顶头加分
+        score += 20 / range.length; //分割越少分越高
+        return score;
+    }
+    getRange(query: Query): Array<[number, number]> | false {
+        let index = 0,
+            list: Array<number> = [],
+            currentStr: string = query[index].query;
+        for (let i = 0; i < this.length; i++) {
+            let el = this[i],
+                type = query[index].type;
+            switch (type) {
+                case "pinyin": {
+                    if (el.type == "pinyin") {
+                        let f = (<Array<string>>el.pinyin).map((pinyin) => currentStr.startsWith(pinyin) || pinyin.startsWith(currentStr));
+                        if (f.some((p) => p)) {
+                            list.push(i);
+                            currentStr = currentStr.substring(el.pinyin[f.findIndex((p) => p)].length);
+                        } else if ((<Array<string>>el.pinyin).some((pinyin) => pinyin.startsWith(currentStr[0]))) {
+                            list.push(i);
+                            currentStr = currentStr.substring(1);
+                        }
+                    } else if (el.character == currentStr[0]) {
+                        list.push(i);
+                        currentStr = currentStr.substring(1);
+                    }
+                    break;
+                }
+                case "chinese":
+                case "punctuation": {
+                    if (el.character == currentStr[0]) {
+                        list.push(i);
+                        currentStr = currentStr.substring(1);
+                    }
+                    break;
+                }
+            }
+            if (currentStr.length == 0) {
+                if (index == query.length - 1) break;
+                index++;
+                currentStr = query[index].query;
+            }
+        }
+        return list.length == 0 || index != query.length - 1 || currentStr.length != 0 ? false : toRanges(list);
+    }
+    match(query: Query, item: Item): MatchData | false {
+        let range = this.getRange(query);
+        if (!range) return false;
+        let data: MatchData = {
+            item: item,
+            score: this.getScore(range),
+            range: range,
+            usePath: this.usePath,
+        };
+        // console.log(data, range);
+        return data;
+    }
+}
+
+type PinyinChild = {
+    type: "pinyin" | "other";
+    character: string[1];
+    pinyin: string | string[]; // pinyin: pinyin of Chinese characters, only for cc type nodes. For ot, it is itself.
+};
+
+// 将一个有序的数字数组转换为一个由连续数字区间组成的数组
+// console.log(toRanges([2, 3, 5, 7, 8])); // 输出: [[2,3],[5,5],[7,8]]
+function toRanges(arr: Array<number>): Array<[number, number]> {
+    const result = [];
+    let start = arr[0];
+    let end = arr[0];
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] === end + 1) {
+            end = arr[i];
+        } else {
+            result.push([start, end]);
+            start = arr[i];
+            end = arr[i];
+        }
+    }
+    result.push([start, end]);
+    return result;
+}
+
+class Query extends Array<QueryChild> {
+    length: number;
+    constructor(query: string) {
+        super();
+        this.splitQuery(query);
+        this.length = this.length;
+    }
+    splitQuery(s: string) {
+        let result = [];
+        let types = [];
+        let currentStr = "";
+        for (let i = 0; i < s.length; i++) {
+            let char = s[i];
+            if (char === " ") {
+                if (currentStr) {
+                    this.push({ type: this.getType(currentStr), query: currentStr });
+                    currentStr = "";
+                }
+            } else if (this.isPunctuation(char)) {
+                if (currentStr) {
+                    this.push({ type: this.getType(currentStr), query: currentStr });
+                    currentStr = "";
+                }
+                result.push(char);
+                types.push("punctuation");
+            } else if (i > 0 && this.isChinese(char) !== this.isChinese(s[i - 1])) {
+                if (currentStr) {
+                    this.push({ type: this.getType(currentStr), query: currentStr });
+                    currentStr = "";
+                }
+                currentStr += char;
+            } else {
+                currentStr += char;
+            }
+        }
+        if (currentStr) {
+            this.push({ type: this.getType(currentStr), query: currentStr });
+        }
+    }
+
+    getType(s: string) {
+        if (this.isChinese(s[0])) return "chinese";
+        else return "pinyin";
+        // } else if (this.isFullPinyin(s)) {
+        //     return "full";
+        // } else {
+        //     return "first";
+        // }
+    }
+
+    isChinese(char: string) {
+        return /[\u4e00-\u9fa5]/.test(char);
+    }
+
+    isPunctuation(char: string) {
+        return /[，。？！：；‘’“”【】（）《》,.?!:;"'(){}\[\]<>]/.test(char);
+    }
+
+    // isFullPinyin(s: string): boolean {
+    //     if (s.length === 0) {
+    //         return true;
+    //     }
+    //     for (let pinyin of PinyinKeys) {
+    //         if (s.startsWith(pinyin)) {
+    //             if (this.isFullPinyin(s.slice(pinyin.length))) {
+    //                 return true;
+    //             }
+    //         }
+    //     }
+    //     if (PinyinKeys.some((p) => p.startsWith(s))) {
+    //         return true;
+    //     } else {
+    //         return false;
+    //     }
+    // }
+}
+
+type QueryChild = {
+    type: "chinese" | "pinyin" | "punctuation";
+    query: string;
+};
+
+class PinyinIndex extends Component {
+    vault: Vault;
+    metadataCache: MetadataCache;
+    plugin: Fuzyy_chinese;
+    items: Array<Item>;
+    constructor(app: App, plugin: Fuzyy_chinese) {
+        super();
+        this.plugin = plugin;
+        this.vault = app.vault;
+        this.metadataCache = app.metadataCache;
+        this.initEvent();
+        this.initIndex();
+    }
+    initIndex() {
+        let files: Array<TFile>,
+            startTime = Date.now();
+        if (this.plugin.settings.showAllFileTypes) files = app.vault.getFiles();
+        else if (this.plugin.settings.showAttachments) files = app.vault.getFiles().filter((f) => extension.attachment.includes(f.extension));
+        else files = app.vault.getFiles().filter((f) => extension.normal.includes(f.extension));
+
+        this.items = files.map((file) => TFile2Item(file));
+
+        for (let file of files) {
+            if (file.extension != "md") continue;
+            this.items = this.items.concat(CachedMetadata2Item(file));
+        }
+        console.log(`Fuzzy Chinese Pinyin: Indexing completed, totaling ${files.length} files, taking ${(Date.now() - startTime) / 1000.0}s`);
+    }
+    initEvent() {
+        this.registerEvent(
+            this.metadataCache.on("changed", (file, data, cache) => {
+                this.update("changed", file, { data, cache });
+            })
+        );
+        this.registerEvent(this.vault.on("rename", (file, oldPath) => this.update("rename", file, { oldPath })));
+        this.registerEvent(this.vault.on("create", (file) => this.update("create", file)));
+        this.registerEvent(
+            this.vault.on("delete", (file) => {
+                this.update("delete", file);
+            })
+        );
+    }
+    update(type: string, f: TAbstractFile, keys?: { oldPath?: string; data?: string; cache?: CachedMetadata }) {
+        if (!this.isEffectiveFile(f)) return;
+        let file = f as TFile;
+        switch (type) {
+            case "changed": {
+                this.items = this.items.filter((item) => !(item.path == file.path && item.type == "alias")).concat(CachedMetadata2Item(file, keys.cache));
+                break;
+            }
+            case "create": {
+                this.items.push(TFile2Item(file));
+                break;
+            }
+            case "rename": {
+                this.items = this.items.filter((item) => item.path != keys.oldPath).concat(CachedMetadata2Item(file));
+                this.items.push(TFile2Item(file));
+                break;
+            }
+            case "delete": {
+                this.items = this.items.filter((item) => item.path != file.path);
+                break;
+            }
+        }
+    }
+
+    isEffectiveFile(file: TAbstractFile) {
+        if (!(file instanceof TFile)) return false;
+
+        if (this.plugin.settings.showAllFileTypes) return true;
+        else if (this.plugin.settings.showAttachments && extension.attachment.includes(file.extension)) return true;
+        else if (extension.normal.includes(file.extension)) return true;
+        else return false;
+    }
+}
+
+function TFile2Item(file: TFile): Item {
+    let name = file.extension != "md" ? file.name : file.basename;
+    return { type: "file", file: file, name: name, pinyin: new Pinyin(name), path: file.path, pinyinOfPath: new Pinyin(file.path, true) };
+}
+
+function CachedMetadata2Item(file: TFile, cache?: CachedMetadata): Item[] {
+    cache = cache ?? app.metadataCache.getFileCache(file);
+    let alias = cache?.frontmatter?.alias || cache?.frontmatter?.aliases;
+    if (alias) {
+        alias = Array.isArray(alias) ? alias : String(alias).split(/, ?/);
+        return alias.map((p: string) => {
+            return {
+                type: "alias",
+                name: p,
+                pinyin: new Pinyin(p),
+                path: file.path,
+                pinyinOfPath: new Pinyin(file.path, true),
+                file: file,
+            };
+        });
+    } else return [];
 }

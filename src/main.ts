@@ -167,18 +167,16 @@ class FuzzyModal extends SuggestModal<MatchData> {
             });
 
         this.setInstructions(prompt);
-        this.emptyStateText = "未发现该笔记";
-        this.scope.register(["Mod"], "Enter", (e) => {
+        this.emptyStateText = "未发现该笔记，按下回车创建。";
+        this.scope.register(["Mod"], "Enter", async (e) => {
             this.close();
-            let item = this.chooser.values[this.chooser.selectedItem];
-            let nl = app.workspace.getLeaf("tab");
-            nl.openFile(item.item.file);
+            let file = await this.getChooseItemFile();
+            app.workspace.getLeaf("tab").openFile(file);
         });
-        this.scope.register(["Mod", "Alt"], "Enter", (e) => {
+        this.scope.register(["Mod", "Alt"], "Enter", async (e) => {
             this.close();
-            let item = this.chooser.values[this.chooser.selectedItem];
-            let nl = app.workspace.getLeaf("split");
-            nl.openFile(item.item.file);
+            let file = await this.getChooseItemFile();
+            app.workspace.getLeaf("split").openFile(file);
         });
         this.scope.register(["Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
@@ -200,9 +198,8 @@ class FuzzyModal extends SuggestModal<MatchData> {
         });
         this.scope.register(["Alt"], "Enter", async (e) => {
             this.close();
-            let item = this.chooser.values[this.chooser.selectedItem];
-            let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
-            nl.openFile(item.item.file);
+            let file = await this.getChooseItemFile();
+            getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()).openFile(file);
         });
         if (app.plugins.plugins["obsidian-hover-editor"])
             this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
@@ -227,8 +224,8 @@ class FuzzyModal extends SuggestModal<MatchData> {
                 .map((p) => {
                     return {
                         item: p,
-                        score: 0,
-                        range: [[-1, -1]],
+                        score: -1,
+                        range: null,
                     };
                 });
             return lastOpenFiles;
@@ -294,23 +291,33 @@ class FuzzyModal extends SuggestModal<MatchData> {
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
         el.addClass("fz-item");
         let range = matchData.range,
+            score = matchData.score,
             text: string,
             e_content = el.createEl("div", { cls: "fz-suggestion-content" }),
             e_title = e_content.createEl("div", { cls: "fz-suggestion-title" });
 
-        if (range[0][0] != -1) {
-            text = matchData.usePath ? matchData.item.path : matchData.item.name;
-
-            let index = 0;
-            for (const r of range) {
-                e_title.appendText(text.slice(index, r[0]));
-                e_title.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
-                index = r[1] + 1;
+        switch (score) {
+            case -1: {
+                e_title.appendText(matchData.item.path);
+                matchData.usePath = true;
+                break;
             }
-            e_title.appendText(text.slice(index));
-        } else {
-            e_title.appendText(matchData.item.path);
-            matchData.usePath = true;
+            case -2: {
+                e_title.appendText(this.inputEl.value);
+                return;
+            }
+            default: {
+                text = matchData.usePath ? matchData.item.path : matchData.item.name;
+
+                let index = 0;
+                for (const r of range) {
+                    e_title.appendText(text.slice(index, r[0]));
+                    e_title.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
+                    index = r[1] + 1;
+                }
+                e_title.appendText(text.slice(index));
+                break;
+            }
         }
 
         if (this.plugin.settings.showTags) {
@@ -342,16 +349,32 @@ class FuzzyModal extends SuggestModal<MatchData> {
             if (e_note) e_note.style.width = "calc(100% - 30px)";
         }
     }
-    onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent) {
+    async onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent) {
+        let file =
+            matchData.score == -2
+                ? await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md", "")
+                : matchData.item.file;
         if (evt.ctrlKey) {
             let nl = app.workspace.getLeaf("tab");
-            nl.openFile(matchData.item.file);
+            nl.openFile(file);
         } else if (evt.altKey) {
             let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
-            nl.openFile(matchData.item.file);
+            nl.openFile(file);
         } else {
-            app.workspace.getMostRecentLeaf().openFile(matchData.item.file);
+            app.workspace.getMostRecentLeaf().openFile(file);
         }
+    }
+    onNoSuggestion(): void {
+        this.chooser.setSuggestions([<MatchData>{ item: { type: "file" }, score: -2 }]);
+        this.chooser.addMessage(this.emptyStateText);
+    }
+    async getChooseItemFile(): Promise<TFile> {
+        let matchData = this.chooser.values[this.chooser.selectedItem];
+        let file =
+            matchData.score == -2
+                ? await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md", "")
+                : matchData.item.file;
+        return file;
     }
     onClose() {
         this.contentEl.empty();
@@ -552,7 +575,6 @@ class Pinyin extends Array<PinyinChild> {
             range: range,
             usePath: this.usePath,
         };
-        // console.log(data, range);
         return data;
     }
 }

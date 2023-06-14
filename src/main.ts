@@ -252,7 +252,7 @@ class FuzzyModal extends SuggestModal<MatchData> {
             node = node.next;
             if (_f) index++;
         }
-        let query_ = new Query(query);
+        let query_ = new Query(query.toLocaleLowerCase());
         let indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.items : indexNode.itemIndex;
         for (let p of toMatchData) {

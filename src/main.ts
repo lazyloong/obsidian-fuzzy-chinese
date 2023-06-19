@@ -76,6 +76,7 @@ export default class Fuzyy_chinese extends Plugin {
         PinyinValues = this.settings.traditionalChineseSupport ? Object.values(TraditionalDict) : Object.values(SimplifiedDict);
 
         this.index = this.addChild(new PinyinIndex(this.app, this));
+
         this.addCommand({
             id: "open-search",
             name: "Open Search",
@@ -99,6 +100,11 @@ export default class Fuzyy_chinese extends Plugin {
             return false;
         });
         this.addSettingTab(new FuzzySettingTab(this.app, this));
+        if (!this.app.workspace.layoutReady) {
+            this.app.workspace.onLayoutReady(async () => this.index.initIndex());
+        } else {
+            this.index.initIndex();
+        }
     }
     onunload() {}
     async loadSettings() {

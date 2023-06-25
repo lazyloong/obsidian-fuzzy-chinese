@@ -5,13 +5,14 @@
   "main": "lib/main.js",
   "license": "MIT",
   "scripts": {
-    "build": "obsidian-plugin build --with-stylesheet ./src/main.ts",
+    "build": "obsidian-plugin build ./src/main.ts && cp styles.css dist",
     "dev": "obsidian-plugin dev src/main.ts",
     "help": "obsidian-plugin --help"
   },
   "devDependencies": {
-    "obsidian": "obsidianmd/obsidian-api",
-    "obsidian-plugin-cli": "^0.4.5",
-    "typescript": "^4.1.5"
+    "builtin-modules": "^3.3.0",
+    "obsidian": "github:obsidianmd/obsidian-api",
+    "obsidian-plugin-cli": "^0.9.0",
+    "typescript": "^4.9.5"
   }
 }

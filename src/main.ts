@@ -434,7 +434,7 @@ class FuzzySettingTab extends PluginSettingTab {
             })
         );
         new Setting(containerEl).setName("繁体支持").addToggle((text) => {
-            text.setValue(this.plugin.settings.showTags).onChange(async (value) => {
+            text.setValue(this.plugin.settings.traditionalChineseSupport).onChange(async (value) => {
                 this.plugin.settings.traditionalChineseSupport = value;
                 await this.plugin.saveSettings();
             });

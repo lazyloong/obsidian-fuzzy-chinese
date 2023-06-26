@@ -16,34 +16,8 @@ import {
 import { SimplifiedDict } from "./simplified_dict";
 import { TraditionalDict } from "./traditional_dict";
 
-let extension = {
-    attachment: [
-        "bmp",
-        "png",
-        "jpg",
-        "jpeg",
-        "gif",
-        "svg",
-        "webp",
-        "mp3",
-        "wav",
-        "m4a",
-        "3gp",
-        "flac",
-        "ogg",
-        "oga",
-        "opus",
-        "mp4",
-        "webm",
-        "ogv",
-        "mov",
-        "mkv",
-        "pdf",
-        "md",
-        "canvas",
-    ],
-    normal: ["md", "canvas"],
-};
+const DOCUMENT_EXTENSIONS = ["md", "canvas"]
+
 let PinyinKeys: Array<string>;
 let PinyinValues: Array<string>;
 
@@ -51,6 +25,7 @@ interface Fuzyy_chineseSettings {
     traditionalChineseSupport: boolean;
     showAllFileTypes: boolean;
     showAttachments: boolean;
+    attachmentExtensions: Array<string>;
     usePathToSearch: boolean;
     showPath: boolean;
     showTags: boolean;
@@ -60,6 +35,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
     traditionalChineseSupport: false,
     showAttachments: false,
     showAllFileTypes: false,
+    attachmentExtensions: ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp", "mp3", "wav", "m4a", "3gp", "flac", "ogg", "oga", "opus", "mp4", "webm", "ogv", "mov", "mkv", "pdf"],
     usePathToSearch: false,
     showPath: true,
     showTags: false,
@@ -106,7 +82,7 @@ export default class Fuzyy_chinese extends Plugin {
             this.index.initIndex();
         }
     }
-    onunload() {}
+    onunload() { }
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
@@ -328,8 +304,8 @@ class FuzzyModal extends SuggestModal<MatchData> {
 
         if (this.plugin.settings.showTags) {
             let tags: string | Array<string> =
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
+                app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
+                app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
                 tagArray: string[];
             if (tags) {
                 tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
@@ -406,6 +382,14 @@ class FuzzySettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+        new Setting(containerEl)
+            .setName("附件后缀").setDesc("只显示这些后缀的附件").addTextArea((text) => {
+                text.inputEl.addClass('fuzzy-chinese-attachment-extensions')
+                text.setValue(this.plugin.settings.attachmentExtensions.join('\n')).onChange(async (value) => {
+                    this.plugin.settings.attachmentExtensions = value.trim().split('\n').map(x => x.trim())
+                    await this.plugin.saveSettings()
+                })
+            })
         new Setting(containerEl).setName("显示所有类型文件").addToggle((text) =>
             text.setValue(this.plugin.settings.showAllFileTypes).onChange(async (value) => {
                 this.plugin.settings.showAllFileTypes = value;
@@ -708,9 +692,7 @@ class PinyinIndex extends Component {
     initIndex() {
         let files: Array<TFile>,
             startTime = Date.now();
-        if (this.plugin.settings.showAllFileTypes) files = app.vault.getFiles();
-        else if (this.plugin.settings.showAttachments) files = app.vault.getFiles().filter((f) => extension.attachment.includes(f.extension));
-        else files = app.vault.getFiles().filter((f) => extension.normal.includes(f.extension));
+        files = app.vault.getFiles().filter(f => this.isEffectiveFile(f))
 
         this.items = files.map((file) => TFile2Item(file));
 
@@ -762,8 +744,8 @@ class PinyinIndex extends Component {
         if (!(file instanceof TFile)) return false;
 
         if (this.plugin.settings.showAllFileTypes) return true;
-        else if (this.plugin.settings.showAttachments && extension.attachment.includes(file.extension)) return true;
-        else if (extension.normal.includes(file.extension)) return true;
+        else if (DOCUMENT_EXTENSIONS.includes(file.extension)) return true;
+        else if (this.plugin.settings.showAttachments && this.plugin.settings.attachmentExtensions.includes(file.extension)) return true;
         else return false;
     }
 }

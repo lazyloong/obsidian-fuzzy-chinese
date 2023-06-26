@@ -43,3 +43,9 @@
     flex-basis: 100%;
     overflow-wrap: break-word;
 }
+
+.fuzzy-chinese-attachment-extensions {
+        width: 7rem;
+        height: 20rem;
+        resize: vertical;
+}

@@ -3,6 +3,7 @@ import {
     CachedMetadata,
     Component,
     MetadataCache,
+    Notice,
     Plugin,
     PluginSettingTab,
     Setting,
@@ -15,11 +16,14 @@ import {
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
 import { SimplifiedDict } from "./simplified_dict";
 import { TraditionalDict } from "./traditional_dict";
+import { DoublePinyinDict } from "./double_pinyin";
 
-const DOCUMENT_EXTENSIONS = ["md", "canvas"]
+const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
+let PinyinKeys_: Array<string>;
 let PinyinKeys: Array<string>;
 let PinyinValues: Array<string>;
+let Index: PinyinIndex;
 
 interface Fuzyy_chineseSettings {
     traditionalChineseSupport: boolean;
@@ -29,29 +33,58 @@ interface Fuzyy_chineseSettings {
     usePathToSearch: boolean;
     showPath: boolean;
     showTags: boolean;
+    doublePinyin: string;
 }
 
 const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
     traditionalChineseSupport: false,
     showAttachments: false,
     showAllFileTypes: false,
-    attachmentExtensions: ["bmp", "png", "jpg", "jpeg", "gif", "svg", "webp", "mp3", "wav", "m4a", "3gp", "flac", "ogg", "oga", "opus", "mp4", "webm", "ogv", "mov", "mkv", "pdf"],
+    attachmentExtensions: [
+        "bmp",
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "svg",
+        "webp",
+        "mp3",
+        "wav",
+        "m4a",
+        "3gp",
+        "flac",
+        "ogg",
+        "oga",
+        "opus",
+        "mp4",
+        "webm",
+        "ogv",
+        "mov",
+        "mkv",
+        "pdf",
+    ],
     usePathToSearch: false,
     showPath: true,
     showTags: false,
+    doublePinyin: "全拼",
 };
 
 export default class Fuzyy_chinese extends Plugin {
     settings: Fuzyy_chineseSettings;
-    api = { pinyin: Pinyin, p: PinyinKeys, q: Query };
+    api = { pinyin: Pinyin, p: PinyinKeys, q: Query, f: fullPinyin2doublePinyin, d: DoublePinyinDict };
     index: PinyinIndex;
     async onload() {
         await this.loadSettings();
 
-        PinyinKeys = this.settings.traditionalChineseSupport ? Object.keys(TraditionalDict) : Object.keys(SimplifiedDict);
+        PinyinKeys_ = this.settings.traditionalChineseSupport ? Object.keys(TraditionalDict) : Object.keys(SimplifiedDict);
         PinyinValues = this.settings.traditionalChineseSupport ? Object.values(TraditionalDict) : Object.values(SimplifiedDict);
+        Object.freeze(PinyinKeys_);
+
+        if (this.settings.doublePinyin == "全拼") PinyinKeys = PinyinKeys_;
+        else PinyinKeys = PinyinKeys_.map((p) => fullPinyin2doublePinyin(p, DoublePinyinDict[this.settings.doublePinyin]));
 
         this.index = this.addChild(new PinyinIndex(this.app, this));
+        Index = this.index;
 
         this.addCommand({
             id: "open-search",
@@ -82,7 +115,7 @@ export default class Fuzyy_chinese extends Plugin {
             this.index.initIndex();
         }
     }
-    onunload() { }
+    onunload() {}
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
@@ -304,8 +337,8 @@ class FuzzyModal extends SuggestModal<MatchData> {
 
         if (this.plugin.settings.showTags) {
             let tags: string | Array<string> =
-                app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
+                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
+                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
                 tagArray: string[];
             if (tags) {
                 tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
@@ -383,13 +416,18 @@ class FuzzySettingTab extends PluginSettingTab {
                 })
             );
         new Setting(containerEl)
-            .setName("附件后缀").setDesc("只显示这些后缀的附件").addTextArea((text) => {
-                text.inputEl.addClass('fuzzy-chinese-attachment-extensions')
-                text.setValue(this.plugin.settings.attachmentExtensions.join('\n')).onChange(async (value) => {
-                    this.plugin.settings.attachmentExtensions = value.trim().split('\n').map(x => x.trim())
-                    await this.plugin.saveSettings()
-                })
-            })
+            .setName("附件后缀")
+            .setDesc("只显示这些后缀的附件")
+            .addTextArea((text) => {
+                text.inputEl.addClass("fuzzy-chinese-attachment-extensions");
+                text.setValue(this.plugin.settings.attachmentExtensions.join("\n")).onChange(async (value) => {
+                    this.plugin.settings.attachmentExtensions = value
+                        .trim()
+                        .split("\n")
+                        .map((x) => x.trim());
+                    await this.plugin.saveSettings();
+                });
+            });
         new Setting(containerEl).setName("显示所有类型文件").addToggle((text) =>
             text.setValue(this.plugin.settings.showAllFileTypes).onChange(async (value) => {
                 this.plugin.settings.showAllFileTypes = value;
@@ -420,9 +458,33 @@ class FuzzySettingTab extends PluginSettingTab {
         new Setting(containerEl).setName("繁体支持").addToggle((text) => {
             text.setValue(this.plugin.settings.traditionalChineseSupport).onChange(async (value) => {
                 this.plugin.settings.traditionalChineseSupport = value;
+                Object.seal(PinyinKeys_);
+                PinyinKeys_ = value ? Object.keys(TraditionalDict) : Object.keys(SimplifiedDict);
+                if (this.plugin.settings.doublePinyin == "全拼") PinyinKeys = PinyinKeys_;
+                else PinyinKeys = PinyinKeys_.map((p) => fullPinyin2doublePinyin(p, DoublePinyinDict[this.plugin.settings.doublePinyin]));
+                Object.freeze(PinyinKeys_);
+                PinyinValues = value ? Object.values(TraditionalDict) : Object.values(SimplifiedDict);
                 await this.plugin.saveSettings();
             });
         });
+        new Setting(containerEl).setName("双拼方案").addDropdown((text) =>
+            text
+                .addOptions({
+                    全拼: "全拼",
+                    智能ABC: "智能ABC",
+                    小鹤双拼: "小鹤双拼",
+                    微软双拼: "微软双拼",
+                })
+                .setValue(this.plugin.settings.doublePinyin)
+                .onChange(async (value: string) => {
+                    this.plugin.settings.doublePinyin = value;
+                    if (value == "全拼") PinyinKeys = PinyinKeys_;
+                    else PinyinKeys = PinyinKeys_.map((p) => fullPinyin2doublePinyin(p, DoublePinyinDict[value]));
+                    Index.initIndex();
+                    new Notice("双拼方案切换为：" + value, 4000);
+                    await this.plugin.saveSettings();
+                })
+        );
     }
 }
 
@@ -575,6 +637,22 @@ type PinyinChild = {
     pinyin: string | string[]; // pinyin: pinyin of Chinese characters, only for cc type nodes. For ot, it is itself.
 };
 
+function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict): string {
+    let doublePinyin = "";
+    let findKeys = (obj, condition) => {
+        return Object.keys(obj).find((key) => condition(obj[key]));
+    };
+    if (["sh", "ch", "zh"].some((p) => fullPinyin.startsWith(p))) {
+        doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin.slice(0, 2)));
+        fullPinyin = fullPinyin.slice(2);
+    } else {
+        doublePinyin += fullPinyin[0];
+        fullPinyin = fullPinyin.slice(1);
+    }
+    if (fullPinyin.length != 0) doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin));
+    return doublePinyin;
+}
+
 // 将一个有序的数字数组转换为一个由连续数字区间组成的数组
 // console.log(toRanges([2, 3, 5, 7, 8])); // 输出: [[2,3],[5,5],[7,8]]
 function toRanges(arr: Array<number>): Array<[number, number]> {
@@ -692,7 +770,7 @@ class PinyinIndex extends Component {
     initIndex() {
         let files: Array<TFile>,
             startTime = Date.now();
-        files = app.vault.getFiles().filter(f => this.isEffectiveFile(f))
+        files = app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
 
         this.items = files.map((file) => TFile2Item(file));
 

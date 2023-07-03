@@ -6,6 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "obsidian-plugin build ./src/main.ts && cp styles.css dist",
+    "build-win": "obsidian-plugin build ./src/main.ts && copy styles.css dist",
     "dev": "obsidian-plugin dev src/main.ts",
     "help": "obsidian-plugin --help"
   },

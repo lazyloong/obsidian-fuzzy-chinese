@@ -71,7 +71,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
 
 export default class Fuzyy_chinese extends Plugin {
     settings: Fuzyy_chineseSettings;
-    api = { pinyin: Pinyin, p: PinyinKeys, q: Query, f: fullPinyin2doublePinyin, d: DoublePinyinDict };
+    api = { m: FuzzyModal, pinyin: Pinyin, p: PinyinKeys, q: Query, f: fullPinyin2doublePinyin, d: DoublePinyinDict };
     index: PinyinIndex;
     async onload() {
         await this.loadSettings();
@@ -654,7 +654,8 @@ function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict): string {
 }
 
 // 将一个有序的数字数组转换为一个由连续数字区间组成的数组
-// console.log(toRanges([2, 3, 5, 7, 8])); // 输出: [[2,3],[5,5],[7,8]]
+// console.log(toRanges([2, 3, 5, 7, 8]));
+// 输出: [[2,3],[5,5],[7,8]]
 function toRanges(arr: Array<number>): Array<[number, number]> {
     const result = [];
     let start = arr[0];
@@ -837,7 +838,7 @@ function CachedMetadata2Item(file: TFile, cache?: CachedMetadata): Item[] {
     cache = cache ?? app.metadataCache.getFileCache(file);
     let alias = cache?.frontmatter?.alias || cache?.frontmatter?.aliases;
     if (alias) {
-        alias = Array.isArray(alias) ? alias : String(alias).split(/, ?/);
+        alias = Array.isArray(alias) ? alias.map((p) => String(p)) : String(alias).split(/, ?/);
         return alias.map((p: string) => {
             return {
                 type: "alias",

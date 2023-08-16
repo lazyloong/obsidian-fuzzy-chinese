@@ -139,9 +139,10 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
     }
     getScore(range: Array<[number, number]>) {
         let score = 0;
-        score += 40 / (this.query.length - range.reduce((p, i) => p + i[1] - i[0] + 1, 0)); //覆盖越广分越高
-        if (range[0][0] == 0) score += 8; //顶头加分
-        score += 20 / range.length; //分割越少分越高
+        let coverage = range.reduce((p, i) => p + i[1] - i[0] + 1, 0);
+        score += 30 * (coverage / this.query.length); // 使用线性函数计算覆盖度
+        score += 20 * Math.exp(-range[0][0] / this.query.length); // 靠前加分
+        score += 30 / range.length; // 分割越少分越高
         return score;
     }
     match(query: string, item: T): MatchData<T> | false {

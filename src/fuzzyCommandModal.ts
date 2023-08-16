@@ -61,7 +61,6 @@ class PinyinIndex extends PI<Item> {
         let newCommandsNames = commands.map((command) => command.name);
         let addedCommands = newCommandsNames.filter((command) => !oldCommandsNames.includes(command));
         let removedCommands = oldCommandsNames.filter((command) => !newCommandsNames.includes(command));
-        console.log(addedCommands, removedCommands);
         if (addedCommands.length > 0) {
             // 添加新命令
             this.items.push(

@@ -1,5 +1,5 @@
-import { TFile, App, WorkspaceLeaf, Component, Vault, MetadataCache, TAbstractFile, CachedMetadata, TFolder } from "obsidian";
-import { FuzzyModal, Pinyin, PinyinIndex as PI, Query, HistoryMatchDataNode } from "./fuzzyModal";
+import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata } from "obsidian";
+import { FuzzyModal, Pinyin, PinyinIndex as PI, HistoryMatchDataNode } from "./fuzzyModal";
 import Fuzyy_chinese from "./main";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
@@ -143,7 +143,7 @@ export class FuzzyFileModal extends FuzzyModal<Item> {
             node = node.next;
             if (_f) index++;
         }
-        let query_ = new Query(query.toLocaleLowerCase()),
+        let query_ = query.toLocaleLowerCase(),
             indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
         for (let p of toMatchData) {

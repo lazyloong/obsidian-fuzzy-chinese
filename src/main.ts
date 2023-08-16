@@ -1,5 +1,5 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
-import { Pinyin, Query } from "./fuzzyModal";
+import { Pinyin } from "./fuzzyModal";
 import { FuzzyFileModal } from "./fuzzyFileModal";
 import { FuzzyFolderModal } from "./fuzzyFolderModal";
 import { FuzzyCommandModal } from "./fuzzyCommandModal";
@@ -130,7 +130,7 @@ export default class Fuzyy_chinese extends Plugin {
             return false;
         });
         this.addSettingTab(new SettingTab(this.app, this));
-        this.api = { f: fullPinyin2doublePinyin, d: DoublePinyinDict, pinyin: Pinyin, query: Query };
+        this.api = { f: fullPinyin2doublePinyin, d: DoublePinyinDict, Pinyin: Pinyin };
     }
     onunload() {}
     async loadSettings() {

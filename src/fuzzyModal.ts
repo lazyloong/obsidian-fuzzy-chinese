@@ -133,7 +133,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
             this.push({
                 type: index.length == 0 ? "other" : "pinyin",
                 character: p,
-                pinyin: index.length == 0 ? p : pinyinDict.keys.filter((_, i) => index.includes(i)),
+                pinyin: index.length == 0 ? [p] : pinyinDict.keys.filter((_, i) => index.includes(i)),
             });
         });
     }
@@ -192,10 +192,8 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
         // 动态规划匹配
         for (let i = 1; i < dp.length; i++) {
             // options.continuous 为 false 或 options.space 为 ignore 且当前为空格时，第 i 个字可以不参与匹配
-            if (text[i - 1] === " ") {
-                for (let j = 1; j <= pinyin.length; j++) {
-                    dp[i][j - 1] = dp[i - 1][j - 1];
-                }
+            for (let j = 1; j <= pinyin.length; j++) {
+                dp[i][j - 1] = dp[i - 1][j - 1];
             }
             // 第 i 个字参与匹配
             for (let j = 1; j <= pinyin.length; j++) {
@@ -219,7 +217,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
                             return dp[i][j];
                         }
                     }
-                    if (typeof muls == "string") continue;
+
                     // 剩余长度小于等于 MAX_PINYIN_LENGTH(6) 时，有可能是最后一个拼音了
                     if (pinyin.length - j <= 6) {
                         // lastPrecision 参数处理
@@ -259,7 +257,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
 type PinyinChild = {
     type: "pinyin" | "other";
     character: string[1];
-    pinyin: string | string[];
+    pinyin: string[];
 };
 
 // 将一个有序的数字数组转换为一个由连续数字区间组成的数组

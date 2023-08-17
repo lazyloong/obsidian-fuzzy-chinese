@@ -290,12 +290,13 @@ export abstract class PinyinIndex<T> extends Component {
         this.vault = app.vault;
         this.metadataCache = app.metadataCache;
         this.items = [];
-        this.initEvent();
         if (app.workspace.layoutReady) {
             this.initIndex();
+            this.initEvent();
         } else {
             app.workspace.onLayoutReady(async () => {
                 this.initIndex();
+                this.initEvent();
             });
         }
     }

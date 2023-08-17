@@ -23,6 +23,7 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
         this.historyMatchData = new HistoryMatchDataNode("\0");
     }
     onOpen() {
+        this.inputEl.value = "";
         this.onInput(); // 无输入时触发历史记录
     }
     abstract getEmptyInputSuggestions(): MatchData<T>[];
@@ -84,8 +85,6 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
     }
     abstract onChooseSuggestion(matchData: MatchData<T>, evt: MouseEvent | KeyboardEvent): void;
     onClose() {
-        this.inputEl.value = "";
-        this.onInput();
         this.contentEl.empty();
     }
     getChoosenItem() {

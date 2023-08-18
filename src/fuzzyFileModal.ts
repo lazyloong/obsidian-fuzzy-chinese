@@ -24,7 +24,9 @@ export class FuzzyFileModal extends FuzzyModal<Item> {
     plugin: Fuzyy_chinese;
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
+        this.useInput = true;
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
+        this.emptyStateText = "未发现该笔记，按下回车创建。";
         this.setPlaceholder("输入以切换或创建文件……");
         let prompt = [
             {
@@ -59,7 +61,6 @@ export class FuzzyFileModal extends FuzzyModal<Item> {
             });
 
         this.setInstructions(prompt);
-        this.emptyStateText = "未发现该笔记，按下回车创建。";
         this.scope.register(["Mod"], "Enter", async (e) => {
             this.close();
             let file = await this.getChoosenItemFile();
@@ -115,8 +116,9 @@ export class FuzzyFileModal extends FuzzyModal<Item> {
                 .map((p) => {
                     return {
                         item: p,
-                        score: -1,
+                        score: 0,
                         range: null,
+                        usePath: true,
                     };
                 });
             return lastOpenFiles;
@@ -185,62 +187,51 @@ export class FuzzyFileModal extends FuzzyModal<Item> {
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
         el.addClass("fz-item");
         let range = matchData.range,
-            score = matchData.score,
             text: string,
             e_content = el.createEl("div", { cls: "fz-suggestion-content" }),
             e_title = e_content.createEl("div", { cls: "fz-suggestion-title" });
 
-        switch (score) {
-            case -1: {
-                e_title.appendText(matchData.item.path);
-                matchData.usePath = true;
-                break;
-            }
-            case -2: {
-                e_title.appendText(this.inputEl.value);
-                return;
-            }
-            default: {
-                text = matchData.usePath ? matchData.item.path : matchData.item.name;
+        text = matchData.usePath ? matchData.item.path : matchData.item.name;
 
-                let index = 0;
-                for (const r of range) {
-                    e_title.appendText(text.slice(index, r[0]));
-                    e_title.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
-                    index = r[1] + 1;
+        let index = 0;
+        if (range) {
+            for (const r of range) {
+                e_title.appendText(text.slice(index, r[0]));
+                e_title.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
+                index = r[1] + 1;
+            }
+        }
+        e_title.appendText(text.slice(index));
+
+        if (!matchData.usePath) {
+            if (this.plugin.settings.showTags) {
+                let tags: string | Array<string> =
+                        app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
+                        app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
+                    tagArray: string[];
+                if (tags) {
+                    tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
+                    let tagEl = e_title.createDiv({ cls: "fz-suggestion-tags" });
+                    tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
                 }
-                e_title.appendText(text.slice(index));
-                break;
             }
-        }
 
-        if (this.plugin.settings.showTags) {
-            let tags: string | Array<string> =
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
-                tagArray: string[];
-            if (tags) {
-                tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
-                let tagEl = e_title.createDiv({ cls: "fz-suggestion-tags" });
-                tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
+            let e_note: HTMLDivElement = null;
+            if (this.plugin.settings.showPath && !matchData.usePath)
+                e_note = e_content.createEl("div", {
+                    cls: "fz-suggestion-note",
+                    text: matchData.item.path,
+                });
+
+            if (matchData.item.type == "alias") {
+                let e_flair = el.createEl("span", {
+                    cls: "fz-suggestion-flair",
+                });
+                e_flair.innerHTML +=
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>';
+                if (!this.plugin.settings.showPath) e_flair.style.top = "9px";
+                if (e_note) e_note.style.width = "calc(100% - 30px)";
             }
-        }
-
-        let e_note: HTMLDivElement = null;
-        if (this.plugin.settings.showPath && !matchData.usePath)
-            e_note = e_content.createEl("div", {
-                cls: "fz-suggestion-note",
-                text: matchData.item.path,
-            });
-
-        if (matchData.item.type == "alias") {
-            let e_flair = el.createEl("span", {
-                cls: "fz-suggestion-flair",
-            });
-            e_flair.innerHTML +=
-                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>';
-            if (!this.plugin.settings.showPath) e_flair.style.top = "9px";
-            if (e_note) e_note.style.width = "calc(100% - 30px)";
         }
     }
     async onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent) {
@@ -256,14 +247,13 @@ export class FuzzyFileModal extends FuzzyModal<Item> {
         }
     }
     onNoSuggestion(): void {
-        super.onNoSuggestion();
-        this.chooser.setSuggestions([<MatchData>{ item: { type: "file", name: this.inputEl.value }, score: -2 }]);
+        super.onNoSuggestion(<MatchData>{ item: { type: "file", path: this.inputEl.value }, score: -1, usePath: true });
     }
     async getChoosenItemFile(matchData?: MatchData): Promise<TFile> {
         matchData = matchData ?? this.chooser.values[this.chooser.selectedItem];
         let file =
-            matchData.score == -2
-                ? await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + matchData.item.name + ".md", "")
+            matchData.score == -1
+                ? await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + matchData.item.path + ".md", "")
                 : matchData.item.file;
         return file;
     }

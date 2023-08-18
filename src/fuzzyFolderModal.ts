@@ -5,6 +5,7 @@ import Fuzyy_chinese from "./main";
 export class FuzzyFolderModal extends FuzzyModal<Item> {
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
+        this.useInput = true;
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
         this.emptyStateText = "未找到相关文件夹。";
         this.setPlaceholder("输入文件夹名称");
@@ -63,10 +64,6 @@ export class FuzzyFolderModal extends FuzzyModal<Item> {
         if (matchData.score == -1) await app.vault.createFolder(matchData.item.name);
         let file = app.workspace.getActiveFile();
         app.vault.rename(file, matchData.item.name + "/" + file.name);
-    }
-    onNoSuggestion(): void {
-        super.onNoSuggestion();
-        this.chooser.setSuggestions([<MatchData<Item>>{ item: { name: this.inputEl.value, pinyin: null }, score: -1, range: null }]);
     }
 }
 

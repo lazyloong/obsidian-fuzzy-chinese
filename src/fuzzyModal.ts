@@ -17,8 +17,10 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
     chooser: any;
     index: PinyinIndex<T>;
     plugin: Fuzyy_chinese;
+    useInput: boolean;
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app);
+        this.useInput = false;
         this.plugin = plugin;
         this.historyMatchData = new HistoryMatchDataNode("\0");
     }
@@ -80,7 +82,12 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
         }
         el.appendText(text.slice(index));
     }
-    onNoSuggestion(): void {
+    onNoSuggestion(value?: any): void {
+        this.chooser.setSuggestions(null);
+        if (this.useInput) {
+            value = value ?? <MatchData<Item>>{ item: { name: this.inputEl.value, pinyin: null }, score: -1, range: null };
+            this.chooser.setSuggestions([value]);
+        }
         this.chooser.addMessage(this.emptyStateText);
     }
     abstract onChooseSuggestion(matchData: MatchData<T>, evt: MouseEvent | KeyboardEvent): void;

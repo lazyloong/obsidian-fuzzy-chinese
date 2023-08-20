@@ -18,6 +18,7 @@ interface Fuzyy_chineseSettings {
     showPath: boolean;
     showTags: boolean;
     doublePinyin: string;
+    closeWithBackspace: boolean;
 }
 
 const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
@@ -51,6 +52,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
     showPath: true,
     showTags: false,
     doublePinyin: "全拼",
+    closeWithBackspace: false,
 };
 
 export default class Fuzyy_chinese extends Plugin {
@@ -151,6 +153,16 @@ class SettingTab extends PluginSettingTab {
         let { containerEl } = this;
         containerEl.empty();
         containerEl.createEl("h2", { text: "设置" });
+
+        new Setting(containerEl)
+            .setName("Backspace 关闭搜索")
+            .setDesc("当输入框为空时按下 Backspace 关闭搜索")
+            .addToggle((text) =>
+                text.setValue(this.plugin.settings.closeWithBackspace).onChange(async (val) => {
+                    this.plugin.settings.closeWithBackspace = val;
+                    await this.plugin.saveSettings();
+                })
+            );
         new Setting(containerEl)
             .setName("显示附件")
             .setDesc("显示如图片、视频、PDF等附件文件。")

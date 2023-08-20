@@ -23,6 +23,15 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
         this.useInput = false;
         this.plugin = plugin;
         this.historyMatchData = new HistoryMatchDataNode("\0");
+
+        this.scope.register([], "Backspace", async (event: KeyboardEvent) => {
+            // Have to cast this to access `value`
+            const el = event.target as HTMLInputElement;
+
+            if (plugin.settings.closeWithBackspace && el.value === "") {
+                this.close(event);
+            }
+        });
     }
     onOpen() {
         this.inputEl.value = "";

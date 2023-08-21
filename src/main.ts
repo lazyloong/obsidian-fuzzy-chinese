@@ -158,8 +158,8 @@ class SettingTab extends PluginSettingTab {
             .setName("Backspace 关闭搜索")
             .setDesc("当输入框为空时按下 Backspace 关闭搜索")
             .addToggle((text) =>
-                text.setValue(this.plugin.settings.closeWithBackspace).onChange(async (val) => {
-                    this.plugin.settings.closeWithBackspace = val;
+                text.setValue(this.plugin.settings.closeWithBackspace).onChange(async (value) => {
+                    this.plugin.settings.closeWithBackspace = value;
                     await this.plugin.saveSettings();
                 })
             );

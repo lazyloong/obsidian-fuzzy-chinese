@@ -38,6 +38,26 @@ export class FuzzyCommandModal extends FuzzyModal<Item> {
     onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent) {
         app.commands.executeCommand(matchData.item.command);
     }
+    renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
+        el.addClass("fz-item");
+        let range = matchData.range,
+            text = matchData.item.name,
+            index = 0,
+            e_content = el.createEl("div", { cls: "fz-suggestion-content" });
+        if (range) {
+            for (const r of range) {
+                e_content.appendText(text.slice(index, r[0]));
+                e_content.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
+                index = r[1] + 1;
+            }
+        }
+        e_content.appendText(text.slice(index));
+        let hotkey = app.hotkeyManager.printHotkeyForCommand(matchData.item.command.id);
+        if (hotkey != "") {
+            let e_aux = el.createEl("div", { cls: "fz-suggestion-aux" });
+            e_aux.createEl("kbd", { cls: "suggestion-command", text: hotkey });
+        }
+    }
 }
 class PinyinIndex extends PI<Item> {
     constructor(app: App, plugin: Fuzyy_chinese) {

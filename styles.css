@@ -1,8 +1,9 @@
 .suggestion-item.fz-item {
     position: relative;
+    display: flex;
 }
 .suggestion-item .fz-suggestion-content {
-    width: 100%;
+    width: auto;
     display: inline-block;
     flex-direction: column;
     overflow: hidden;
@@ -44,8 +45,15 @@
     overflow-wrap: break-word;
 }
 
+.suggestion-item .fz-suggestion-aux {
+    display: flex;
+    align-items: center;
+    align-self: center;
+    flex-shrink: 0;
+}
+
 .fuzzy-chinese-attachment-extensions {
-        width: 7rem;
-        height: 20rem;
-        resize: vertical;
+    width: 7rem;
+    height: 20rem;
+    resize: vertical;
 }

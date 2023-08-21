@@ -9,9 +9,11 @@ type Item = {
 };
 
 export class FuzzyCommandModal extends FuzzyModal<Item> {
+    historyCommand: Item[];
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
+        this.historyCommand = [];
         this.emptyStateText = "未发现命令。";
         this.setPlaceholder("输入命令……");
         let prompt = [
@@ -31,11 +33,15 @@ export class FuzzyCommandModal extends FuzzyModal<Item> {
         this.index.update();
     }
     getEmptyInputSuggestions(): MatchData<Item>[] {
-        return this.index.items.slice(0, 100).map((p) => {
-            return { item: p, score: 0, range: null };
-        });
+        return this.historyCommand
+            .concat(this.index.items.filter((p) => !this.historyCommand.includes(p)))
+            .slice(0, 100)
+            .map((p) => {
+                return { item: p, score: 0, range: null };
+            });
     }
     onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent) {
+        this.historyCommand.unshift(matchData.item);
         app.commands.executeCommand(matchData.item.command);
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {

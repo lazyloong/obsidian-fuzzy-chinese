@@ -71,6 +71,11 @@ class PinyinIndex extends PI<Item> {
     }
     initEvent() {}
     initIndex() {
+        if (this.plugin.settings.devMode && globalThis.FuzzyChineseIndex?.command) {
+            this.items = globalThis.FuzzyChineseIndex.command;
+            console.log("Fuzzy Chinese Pinyin: Use old command index");
+            return;
+        }
         let commands = app.commands.listCommands();
         this.items = commands.map((command) => {
             let item = {

@@ -98,7 +98,9 @@ export class FuzzyFileModal extends FuzzyModal<Item> {
             this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
                 this.close();
                 let item = this.chooser.values[this.chooser.selectedItem];
-                const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(undefined, () => this.app.workspace.setActiveLeaf(newLeaf));
+                const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(undefined, () =>
+                    this.app.workspace.setActiveLeaf(newLeaf)
+                );
                 newLeaf.openFile(item.item.file);
             });
     }
@@ -297,11 +299,15 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
 };
 
 class PinyinIndex extends PI<Item> {
-    plugin: Fuzyy_chinese;
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
     }
     initIndex() {
+        if (this.plugin.settings.devMode && globalThis.FuzzyChineseIndex?.file) {
+            this.items = globalThis.FuzzyChineseIndex.file;
+            console.log('Fuzzy Chinese Pinyin: Use old file index')
+            return;
+        }
         let files: Array<TFile>,
             startTime = Date.now();
         files = app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
@@ -312,7 +318,9 @@ class PinyinIndex extends PI<Item> {
             if (file.extension != "md") continue;
             this.items = this.items.concat(CachedMetadata2Item(file, this.plugin));
         }
-        console.log(`Fuzzy Chinese Pinyin: Indexing completed, totaling ${files.length} files, taking ${(Date.now() - startTime) / 1000.0}s`);
+        console.log(
+            `Fuzzy Chinese Pinyin: Indexing completed, totaling ${files.length} files, taking ${(Date.now() - startTime) / 1000.0}s`
+        );
     }
     initEvent() {
         this.registerEvent(
@@ -362,7 +370,14 @@ class PinyinIndex extends PI<Item> {
 
 function TFile2Item(file: TFile, plugin: Fuzyy_chinese): Item {
     let name = file.extension != "md" ? file.name : file.basename;
-    return { type: "file", file: file, name: name, pinyin: new Pinyin(name, plugin), path: file.path, pinyinOfPath: new Pinyin(file.path, plugin) };
+    return {
+        type: "file",
+        file: file,
+        name: name,
+        pinyin: new Pinyin(name, plugin),
+        path: file.path,
+        pinyinOfPath: new Pinyin(file.path, plugin),
+    };
 }
 
 function CachedMetadata2Item(file: TFile, plugin: Fuzyy_chinese, cache?: CachedMetadata): Item[] {

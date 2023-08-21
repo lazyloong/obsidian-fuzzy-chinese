@@ -19,6 +19,7 @@ interface Fuzyy_chineseSettings {
     showTags: boolean;
     doublePinyin: string;
     closeWithBackspace: boolean;
+    devMode: boolean;
 }
 
 const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
@@ -53,6 +54,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
     showTags: false,
     doublePinyin: "全拼",
     closeWithBackspace: false,
+    devMode: false,
 };
 
 export default class Fuzyy_chinese extends Plugin {
@@ -84,6 +86,15 @@ export default class Fuzyy_chinese extends Plugin {
         this.fileModal = new FuzzyFileModal(this.app, this);
         this.folderModal = new FuzzyFolderModal(this.app, this);
         this.commandModal = new FuzzyCommandModal(this.app, this);
+
+        if (this.settings.devMode) {
+            globalThis.refreshFuzzyChineseIndex = () => {
+                globalThis.FuzzyChineseIndex = {};
+                this.fileModal.index.initIndex();
+                this.folderModal.index.initIndex();
+                this.commandModal.index.initIndex();
+            };
+        }
 
         this.addCommand({
             id: "open-search",
@@ -134,7 +145,14 @@ export default class Fuzyy_chinese extends Plugin {
         this.addSettingTab(new SettingTab(this.app, this));
         this.api = { f: fullPinyin2doublePinyin, d: DoublePinyinDict, Pinyin: Pinyin };
     }
-    onunload() {}
+    onunload() {
+        if (this.settings.devMode) {
+            globalThis.FuzzyChineseIndex = {};
+            globalThis.FuzzyChineseIndex.file = this.fileModal.index.items;
+            globalThis.FuzzyChineseIndex.folder = this.folderModal.index.items;
+            globalThis.FuzzyChineseIndex.command = this.commandModal.index.items;
+        }
+    }
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     }
@@ -239,6 +257,15 @@ class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
         );
+        new Setting(containerEl)
+            .setName("dev 模式")
+            .setDesc("将索引存储到 global 以便重启时不重建索引")
+            .addToggle((text) =>
+                text.setValue(this.plugin.settings.devMode).onChange(async (value) => {
+                    this.plugin.settings.devMode = value;
+                    await this.plugin.saveSettings();
+                })
+            );
     }
 }
 

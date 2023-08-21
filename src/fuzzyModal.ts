@@ -30,14 +30,14 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
             }
         });
         this.scope.register(["Mod"], "N", async (e) => {
-            if (this.chooser.selectedItem != 0) {
-                this.chooser.setSelectedItem(this.chooser.selectedItem - 1);
+            if (this.chooser.selectedItem != this.chooser.values.length - 1) {
+                this.chooser.setSelectedItem(this.chooser.selectedItem + 1);
                 this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({ block: "center", behavior: "smooth" });
             }
         });
         this.scope.register(["Mod"], "P", async (e) => {
-            if (this.chooser.selectedItem != this.chooser.values.length - 1) {
-                this.chooser.setSelectedItem(this.chooser.selectedItem + 1);
+            if (this.chooser.selectedItem != 0) {
+                this.chooser.setSelectedItem(this.chooser.selectedItem - 1);
                 this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({ block: "center", behavior: "smooth" });
             }
         });

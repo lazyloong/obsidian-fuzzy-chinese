@@ -74,7 +74,7 @@ class PinyinIndex extends PI<Item> {
     initIndex() {
         if (this.plugin.settings.devMode && globalThis.FuzzyChineseIndex?.folder) {
             this.items = globalThis.FuzzyChineseIndex.folder;
-            console.log('Fuzzy Chinese Pinyin: Use old folder index')
+            console.log("Fuzzy Chinese Pinyin: Use old folder index");
             return;
         }
         let root = app.vault.getRoot();

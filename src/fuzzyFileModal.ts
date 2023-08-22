@@ -4,7 +4,7 @@ import Fuzyy_chinese from "./main";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
-type Item = {
+export type Item = {
     file: TFile;
     type: "file" | "alias";
     name: string;
@@ -13,7 +13,7 @@ type Item = {
     pinyinOfPath: Pinyin<Item>;
 };
 
-type MatchData = {
+export type MatchData = {
     item: Item;
     score: number;
     range: Array<[number, number]>;
@@ -305,7 +305,7 @@ class PinyinIndex extends PI<Item> {
     initIndex() {
         if (this.plugin.settings.devMode && globalThis.FuzzyChineseIndex?.file) {
             this.items = globalThis.FuzzyChineseIndex.file;
-            console.log('Fuzzy Chinese Pinyin: Use old file index')
+            console.log("Fuzzy Chinese Pinyin: Use old file index");
             return;
         }
         let files: Array<TFile>,

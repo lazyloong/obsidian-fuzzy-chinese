@@ -1,8 +1,9 @@
-import { App, Notice, Plugin, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, Plugin, PluginSettingTab, Setting, EditorSuggest } from "obsidian";
 import { Pinyin } from "./fuzzyModal";
 import { FuzzyFileModal } from "./fuzzyFileModal";
 import { FuzzyFolderModal } from "./fuzzyFolderModal";
 import { FuzzyCommandModal } from "./fuzzyCommandModal";
+import { FileEditorSuggest } from "./fileEditorSuggest";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
 import { SimplifiedDict } from "./simplified_dict";
 import { TraditionalDict } from "./traditional_dict";
@@ -15,6 +16,7 @@ interface Fuzyy_chineseSettings {
     showAttachments: boolean;
     attachmentExtensions: Array<string>;
     usePathToSearch: boolean;
+    useEditorSuggest: boolean;
     showPath: boolean;
     showTags: boolean;
     doublePinyin: string;
@@ -50,6 +52,7 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
         "pdf",
     ],
     usePathToSearch: false,
+    useEditorSuggest: false,
     showPath: true,
     showTags: false,
     doublePinyin: "全拼",
@@ -64,12 +67,11 @@ export default class Fuzyy_chinese extends Plugin {
     fileModal: FuzzyFileModal;
     folderModal: FuzzyFolderModal;
     commandModal: FuzzyCommandModal;
+    editorSuggest: FileEditorSuggest;
 
     loadPinyinDict() {
         let PinyinKeys_ = this.settings.traditionalChineseSupport ? Object.keys(TraditionalDict) : Object.keys(SimplifiedDict);
-
         let PinyinValues = this.settings.traditionalChineseSupport ? Object.values(TraditionalDict) : Object.values(SimplifiedDict);
-
         let PinyinKeys =
             this.settings.doublePinyin == "全拼"
                 ? PinyinKeys_
@@ -86,6 +88,11 @@ export default class Fuzyy_chinese extends Plugin {
         this.fileModal = new FuzzyFileModal(this.app, this);
         this.folderModal = new FuzzyFolderModal(this.app, this);
         this.commandModal = new FuzzyCommandModal(this.app, this);
+
+        if (this.settings.useEditorSuggest) {
+            this.editorSuggest = new FileEditorSuggest(this.app, this);
+            this.app.workspace.editorSuggest.suggests.unshift(this.editorSuggest);
+        }
 
         if (this.settings.devMode) {
             globalThis.refreshFuzzyChineseIndex = () => {
@@ -146,6 +153,7 @@ export default class Fuzyy_chinese extends Plugin {
         this.api = { f: fullPinyin2doublePinyin, d: DoublePinyinDict, Pinyin: Pinyin };
     }
     onunload() {
+        this.app.workspace.editorSuggest.removeSuggest(this.editorSuggest);
         if (this.settings.devMode) {
             globalThis.FuzzyChineseIndex = {};
             globalThis.FuzzyChineseIndex.file = this.fileModal.index.items;
@@ -245,6 +253,21 @@ class SettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
             })
         );
+        new Setting(containerEl)
+            .setName("使用双链建议")
+            .setDesc("输入[[的时候文件连接能支持中文拼音搜索（实验性功能，中文拼音搜索仅支持文件名和别名，#和^不能拼音搜索）")
+            .addToggle((text) =>
+                text.setValue(this.plugin.settings.useEditorSuggest).onChange(async (value) => {
+                    this.plugin.settings.useEditorSuggest = value;
+                    if (value) {
+                        this.plugin.editorSuggest = new FileEditorSuggest(this.app, this.plugin);
+                        this.app.workspace.editorSuggest.suggests.unshift(this.plugin.editorSuggest);
+                    } else {
+                        this.app.workspace.editorSuggest.removeSuggest(this.plugin.editorSuggest);
+                    }
+                    await this.plugin.saveSettings();
+                })
+            );
         new Setting(containerEl)
             .setName("附件后缀")
             .setDesc("只显示这些后缀的附件")

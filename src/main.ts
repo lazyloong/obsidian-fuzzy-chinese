@@ -170,8 +170,8 @@ class SettingTab extends PluginSettingTab {
     display(): void {
         let { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl("h2", { text: "设置" });
-
+        containerEl.createEl("h1", { text: "设置" });
+        containerEl.createEl("h2", { text: "全局" });
         new Setting(containerEl)
             .setName("Backspace 关闭搜索")
             .setDesc("当输入框为空时按下 Backspace 关闭搜索")
@@ -181,55 +181,6 @@ class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
-        new Setting(containerEl)
-            .setName("显示附件")
-            .setDesc("显示如图片、视频、PDF等附件文件。")
-            .addToggle((text) =>
-                text.setValue(this.plugin.settings.showAttachments).onChange(async (value) => {
-                    this.plugin.settings.showAttachments = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        new Setting(containerEl)
-            .setName("附件后缀")
-            .setDesc("只显示这些后缀的附件")
-            .addTextArea((text) => {
-                text.inputEl.addClass("fuzzy-chinese-attachment-extensions");
-                text.setValue(this.plugin.settings.attachmentExtensions.join("\n")).onChange(async (value) => {
-                    this.plugin.settings.attachmentExtensions = value
-                        .trim()
-                        .split("\n")
-                        .map((x) => x.trim());
-                    await this.plugin.saveSettings();
-                });
-            });
-        new Setting(containerEl).setName("显示所有类型文件").addToggle((text) =>
-            text.setValue(this.plugin.settings.showAllFileTypes).onChange(async (value) => {
-                this.plugin.settings.showAllFileTypes = value;
-                await this.plugin.saveSettings();
-            })
-        );
-        new Setting(containerEl)
-            .setName("使用路径搜索")
-            .setDesc("当搜索结果少于10个时搜索路径")
-            .addToggle((text) =>
-                text.setValue(this.plugin.settings.usePathToSearch).onChange(async (value) => {
-                    this.plugin.settings.usePathToSearch = value;
-                    await this.plugin.saveSettings();
-                })
-            );
-        new Setting(containerEl).setName("显示路径").addToggle((text) =>
-            text.setValue(this.plugin.settings.showPath).onChange(async (value) => {
-                this.plugin.settings.showPath = value;
-                await this.plugin.saveSettings();
-            })
-        );
-        new Setting(containerEl).setName("显示 Tag").addToggle((text) =>
-            text.setValue(this.plugin.settings.showTags).onChange(async (value) => {
-                this.plugin.settings.showTags = value;
-                await this.plugin.saveSettings();
-            })
-        );
         new Setting(containerEl).setName("繁体支持").addToggle((text) => {
             text.setValue(this.plugin.settings.traditionalChineseSupport).onChange(async (value) => {
                 this.plugin.settings.traditionalChineseSupport = value;
@@ -257,6 +208,57 @@ class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
         );
+        containerEl.createEl("h2", { text: "文件搜索" });
+        new Setting(containerEl)
+            .setName("显示附件")
+            .setDesc("显示如图片、视频、PDF等附件文件。")
+            .addToggle((text) =>
+                text.setValue(this.plugin.settings.showAttachments).onChange(async (value) => {
+                    this.plugin.settings.showAttachments = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerEl).setName("显示所有类型文件").addToggle((text) =>
+            text.setValue(this.plugin.settings.showAllFileTypes).onChange(async (value) => {
+                this.plugin.settings.showAllFileTypes = value;
+                await this.plugin.saveSettings();
+            })
+        );
+        new Setting(containerEl)
+            .setName("使用路径搜索")
+            .setDesc("当搜索结果少于10个时搜索路径")
+            .addToggle((text) =>
+                text.setValue(this.plugin.settings.usePathToSearch).onChange(async (value) => {
+                    this.plugin.settings.usePathToSearch = value;
+                    await this.plugin.saveSettings();
+                })
+            );
+        new Setting(containerEl).setName("显示路径").addToggle((text) =>
+            text.setValue(this.plugin.settings.showPath).onChange(async (value) => {
+                this.plugin.settings.showPath = value;
+                await this.plugin.saveSettings();
+            })
+        );
+        new Setting(containerEl).setName("显示 Tag").addToggle((text) =>
+            text.setValue(this.plugin.settings.showTags).onChange(async (value) => {
+                this.plugin.settings.showTags = value;
+                await this.plugin.saveSettings();
+            })
+        );
+        new Setting(containerEl)
+            .setName("附件后缀")
+            .setDesc("只显示这些后缀的附件")
+            .addTextArea((text) => {
+                text.inputEl.addClass("fuzzy-chinese-attachment-extensions");
+                text.setValue(this.plugin.settings.attachmentExtensions.join("\n")).onChange(async (value) => {
+                    this.plugin.settings.attachmentExtensions = value
+                        .trim()
+                        .split("\n")
+                        .map((x) => x.trim());
+                    await this.plugin.saveSettings();
+                });
+            });
+        containerEl.createEl("h2", { text: "其他" });
         new Setting(containerEl)
             .setName("dev 模式")
             .setDesc("将索引存储到 global 以便重启时不重建索引")

@@ -1,4 +1,4 @@
-import { App } from "obsidian";
+import { App, Hotkey, Platform } from "obsidian";
 import { FuzzyModal, MatchData, PinyinIndex as PI, Pinyin } from "./fuzzyModal";
 import Fuzyy_chinese from "./main";
 
@@ -7,6 +7,49 @@ type Item = {
     pinyin: Pinyin<Item>;
     command: any;
 };
+
+const BASIC_MODIFIER_ICONS = {
+    Mod: "Ctrl +",
+    Ctrl: "Ctrl +",
+    Meta: "Win +",
+    Alt: "Alt +",
+    Shift: "Shift +",
+    Hyper: "Caps +",
+};
+
+const MAC_MODIFIER_ICONS = {
+    Mod: "⌘",
+    Ctrl: "^",
+    Meta: "⌘",
+    Alt: "⌥",
+    Shift: "⇧",
+    Hyper: "⇪",
+};
+
+const SPECIAL_KEYS: Record<string, string> = {
+    TAB: "↹",
+    ENTER: "↵",
+    ARROWLEFT: "←",
+    ARROWRIGHT: "→",
+    ARROWUP: "↑",
+    ARROWDOWN: "↓",
+    BACKSPACE: "⌫",
+    ESC: "Esc",
+};
+
+function generateHotKeyText(hotkey: Hotkey): string {
+    let modifierIcons = Platform.isMacOS ? MAC_MODIFIER_ICONS : BASIC_MODIFIER_ICONS;
+    const hotKeyStrings: string[] = [];
+
+    hotkey.modifiers.forEach((mod: Modifier) => {
+        hotKeyStrings.push(modifierIcons[mod]);
+    });
+
+    const key = hotkey.key.toUpperCase();
+    hotKeyStrings.push(SPECIAL_KEYS[key] || key);
+
+    return hotKeyStrings.join(" ");
+}
 
 export class FuzzyCommandModal extends FuzzyModal<Item> {
     historyCommand: Array<Item>;
@@ -49,7 +92,13 @@ export class FuzzyCommandModal extends FuzzyModal<Item> {
         let range = matchData.range,
             text = matchData.item.name,
             index = 0,
-            e_content = el.createEl("div", { cls: "fz-suggestion-content" });
+            e_content = el.createEl("span", { cls: "fz-suggestion-content" }),
+            e_aux = el.createEl("span", { cls: "fz-suggestion-aux" });
+
+        const customHotkeys = this.app.hotkeyManager.getHotkeys(matchData.item.command.id);
+        const defaultHotkeys = this.app.hotkeyManager.getDefaultHotkeys(matchData.item.command.id);
+        const hotkeys = customHotkeys || defaultHotkeys || [];
+
         if (range) {
             for (const r of range) {
                 e_content.appendText(text.slice(index, r[0]));
@@ -58,11 +107,13 @@ export class FuzzyCommandModal extends FuzzyModal<Item> {
             }
         }
         e_content.appendText(text.slice(index));
-        let hotkey = app.hotkeyManager.printHotkeyForCommand(matchData.item.command.id);
-        if (hotkey != "") {
-            let e_aux = el.createEl("div", { cls: "fz-suggestion-aux" });
-            e_aux.createEl("kbd", { cls: "suggestion-command", text: hotkey });
-        }
+
+        hotkeys.forEach((hotkey) => {
+            e_aux.createEl("kbd", {
+                cls: "suggestion-command",
+                text: generateHotKeyText(hotkey),
+            });
+        });
     }
 }
 class PinyinIndex extends PI<Item> {

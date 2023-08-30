@@ -6,6 +6,7 @@ import Fuzyy_chinese from "./main";
 export class FileEditorSuggest extends EditorSuggest<MatchData> {
     plugin: Fuzyy_chinese;
     index: PinyinIndex<Item>;
+    tempItems: Item[] = [];
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app);
         this.plugin = plugin;
@@ -52,20 +53,21 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
     getSuggestions(context: EditorSuggestContext): MatchData[] | Promise<MatchData[]> {
         let e = app.workspace.editorSuggest.suggests.find((p) => p.hasOwnProperty("mode"));
         let query = context.query,
-            matchData: MatchData[];
+            matchData: MatchData[] | Promise<MatchData[]>;
         switch (this.findLastChar(query)) {
             case "|": {
                 matchData = this.getFileAliases(query);
                 break;
             }
             case "#": {
-                this.close();
-                e.onTrigger(context.editor.getCursor(), context.editor);
+                e.context = context;
+                matchData = e.getSuggestions(context).then((items) => {
+                    return this.getHeadings(query, items);
+                });
                 break;
             }
             case "^": {
                 this.close();
-                e.onTrigger(context.editor.getCursor(), context.editor);
                 break;
             }
             default: {
@@ -77,9 +79,25 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
     getFileAliases(query: string) {
         let [name, q] = query.split("|");
         let items = this.index.items.filter((p) => p.type == "alias" && p.file.basename == name);
-        return q == "" ? items.map((p) => <MatchData>{ item: p, score: -1, range: null, usePath: false }) : this.match(q, items);
+        return this.match(q, items);
+    }
+    getHeadings(query: string, items: Item[] | any) {
+        let [_, q] = query.split("#");
+        if (q == "")
+            this.tempItems = items.map(
+                (p) =>
+                    <Item>{
+                        file: p.file,
+                        type: "heading",
+                        name: p.heading,
+                        pinyin: new Pinyin(p.heading, this.plugin),
+                        path: p.file.basename,
+                    }
+            );
+        return this.match(q, this.tempItems);
     }
     match(query: string, items: Item[]) {
+        if (query == "") return items.map((p) => <MatchData>{ item: p, score: -1, range: null, usePath: false });
         query = query.toLocaleLowerCase();
         let matchData: MatchData[] = [];
         for (let p of items) {
@@ -137,7 +155,7 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
         }
         toHighlightEl.appendText(text.slice(index));
 
-        if (this.plugin.settings.showTags) {
+        if (this.plugin.settings.showTags && !(matchData.item.type == "heading")) {
             let tags: string | Array<string> =
                     app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
                     app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
@@ -155,11 +173,13 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
             });
             e_flair.innerHTML +=
                 '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>';
-            if (!this.plugin.settings.showPath) e_flair.style.top = "9px";
+            e_flair.style.top = "9px";
+            e_note.style.width = "calc(100% - 30px)";
         }
     }
     selectSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent): void {
         let editor = this.context.editor;
+        console.log(this.context);
         let cursor = editor.getCursor();
         const cursorLine = cursor.line;
         const lineText = editor.getLine(cursorLine);
@@ -167,14 +187,30 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
         let rightText = lineText.substring(cursor.ch);
 
         const openBracketIndex = leftText.lastIndexOf("[[");
-        const closeBracketIndex = leftText.length + rightText.indexOf("]]");
+        let i = rightText.indexOf("[[");
+        const closeBracketIndex = leftText.length + (i == -1 ? rightText : rightText.slice(0, i)).indexOf("]]");
 
-        let text = (matchData.item.type == "file" ? matchData.item.name : matchData.item.file.basename + "|" + matchData.item.name) + "]]";
+        let text: string;
+        switch (matchData.item.type) {
+            case "file": {
+                text = matchData.item.name;
+                break;
+            }
+            case "alias": {
+                text = this.context.query.slice(0, this.context.query.indexOf("|")) + "|" + matchData.item.name;
+                break;
+            }
+            case "heading": {
+                text = matchData.item.file.basename + "#" + matchData.item.name;
+                break;
+            }
+        }
+        text += "]]";
         editor.transaction({
             changes: [
                 {
                     from: { line: cursorLine, ch: openBracketIndex + 2 },
-                    to: { line: cursorLine, ch: closeBracketIndex + 2 },
+                    to: { line: cursorLine, ch: closeBracketIndex == leftText.length - 1 ? cursor.ch : closeBracketIndex + 2 },
                     text,
                 },
             ],

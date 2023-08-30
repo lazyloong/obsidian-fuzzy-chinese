@@ -3,7 +3,7 @@
     display: flex;
 }
 .suggestion-item .fz-suggestion-content {
-    width: auto;
+    width: 100%;
     display: inline-block;
     flex-direction: column;
     overflow: hidden;
@@ -50,6 +50,10 @@
     align-items: center;
     align-self: center;
     flex-shrink: 0;
+}
+
+.suggestion-item .fz-suggestion-aux kbd.suggestion-command {
+    margin-left: 10px;
 }
 
 .fuzzy-chinese-attachment-extensions {

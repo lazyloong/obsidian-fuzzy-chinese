@@ -6,7 +6,7 @@ const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
 export type Item = {
     file: TFile;
-    type: "file" | "alias";
+    type: "file" | "alias" | "heading";
     name: string;
     pinyin: Pinyin<Item>;
     path: string;

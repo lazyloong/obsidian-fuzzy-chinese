@@ -197,7 +197,7 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
                 break;
             }
             case "alias": {
-                text = this.context.query.slice(0, this.context.query.indexOf("|")) + "|" + matchData.item.name;
+                text = matchData.item.file.basename + "|" + matchData.item.name;
                 break;
             }
             case "heading": {

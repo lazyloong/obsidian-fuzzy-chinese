@@ -98,7 +98,6 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
     }
     match(query: string, items: Item[]) {
         if (query == "") return items.map((p) => <MatchData>{ item: p, score: -1, range: null, usePath: false });
-        query = query.toLocaleLowerCase();
         let matchData: MatchData[] = [];
         for (let p of items) {
             let d = p.pinyin.match(query, p);

@@ -147,18 +147,18 @@ export class FuzzyFileModal extends FuzzyModal<Item> {
             node = node.next;
             if (_f) index++;
         }
-        let query_ = query.toLocaleLowerCase(),
-            indexNode = this.historyMatchData.index(index - 1),
+        let indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
+
         for (let p of toMatchData) {
-            let d = p.pinyin.match(query_, p);
+            let d = p.pinyin.match(query, p);
             if (d) matchData1.push(d);
         }
 
         if (this.plugin.settings.usePathToSearch && matchData1.length <= 10) {
             toMatchData = indexNode.itemIndexByPath.length == 0 ? this.index.items : indexNode.itemIndexByPath;
             for (let p of toMatchData.filter((p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path))) {
-                let d = <MatchData>p.pinyinOfPath.match(query_, p);
+                let d = <MatchData>p.pinyinOfPath.match(query, p);
                 if (d) {
                     d.usePath = true;
                     matchData2.push(d);

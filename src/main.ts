@@ -11,6 +11,7 @@ import { TraditionalDict } from "./traditional_dict";
 import { DoublePinyinDict } from "./double_pinyin";
 
 interface Fuzyy_chineseSettings {
+    smartCase: boolean;
     traditionalChineseSupport: boolean;
     showAllFileTypes: boolean;
     showAttachments: boolean;
@@ -25,6 +26,7 @@ interface Fuzyy_chineseSettings {
 }
 
 const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
+    smartCase: true,
     traditionalChineseSupport: false,
     showAttachments: false,
     showAllFileTypes: false,
@@ -216,6 +218,16 @@ class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
         );
+        new Setting(containerEl)
+            .setName("Smart Case")
+            .setDesc("开启时当输入有大写字母则大小写敏感，否则不敏感；关闭时大小写不敏感；重启生效")
+            .addToggle((text) => {
+                text.setValue(this.plugin.settings.smartCase).onChange(async (value) => {
+                    this.plugin.settings.smartCase = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.loadPinyinDict();
+                });
+            });
         containerEl.createEl("h2", { text: "文件搜索" });
         new Setting(containerEl)
             .setName("显示附件")

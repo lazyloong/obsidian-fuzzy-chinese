@@ -71,11 +71,11 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
             node = node.next;
             if (_f) index++;
         }
-        let query_ = query.toLocaleLowerCase(),
-            indexNode = this.historyMatchData.index(index - 1),
+        let indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
+
         for (let p of toMatchData) {
-            let d = p.pinyin.match(query_, p);
+            let d = p.pinyin.match(query, p);
             if (d) matchData.push(d as MatchData<T>);
         }
 
@@ -147,12 +147,13 @@ export class HistoryMatchDataNode<T> {
 }
 
 export class Pinyin<T extends Item> extends Array<PinyinChild> {
-    query: string;
-    constructor(query: string, plugin: Fuzyy_chinese) {
+    text: string;
+    smartCase: boolean;
+    constructor(text: string, plugin: Fuzyy_chinese) {
         super();
         let pinyinDict = plugin?.pinyinDict;
-        this.query = query.toLowerCase();
-        this.query.split("").forEach((p) => {
+        this.text = text;
+        this.text.split("").forEach((p) => {
             let index = pinyinDict.values.map((q, i) => (q.includes(p) ? i : null)).filter((p) => p);
             this.push({
                 type: index.length == 0 ? "other" : "pinyin",
@@ -160,16 +161,21 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
                 pinyin: index.length == 0 ? [p] : pinyinDict.keys.filter((_, i) => index.includes(i)),
             });
         });
+
+        this.smartCase = plugin.settings.smartCase;
     }
     getScore(range: Array<[number, number]>) {
         let score = 0;
         let coverage = range.reduce((p, i) => p + i[1] - i[0] + 1, 0);
-        score += 30 * (coverage / this.query.length); // 使用线性函数计算覆盖度
-        score += 20 * Math.exp(-range[0][0] / this.query.length); // 靠前加分
+        score += 30 * (coverage / this.text.length); // 使用线性函数计算覆盖度
+        score += 20 * Math.exp(-range[0][0] / this.text.length); // 靠前加分
         score += 30 / range.length; // 分割越少分越高
         return score;
     }
     match(query: string, item: T): MatchData<T> | false {
+        if (!this.smartCase) {
+            query = query.toLocaleLowerCase();
+        }
         let range = this.match_(query);
         range = range ? toRanges(range) : false;
         if (!range) return false;
@@ -182,7 +188,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
     }
     concat(pinyin: Pinyin<T>) {
         let result = new Pinyin<T>("", null);
-        result.query = this.query + pinyin.query;
+        result.text = this.text + pinyin.text;
         for (let i of this) {
             result.push(i);
         }
@@ -193,20 +199,25 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
     }
     // The following two functions are based on the work of zh-lx (https://github.com/zh-lx).
     // Original code: https://github.com/zh-lx/pinyin-pro/blob/main/lib/core/match/index.ts.
-    match_(pinyin: string) {
-        pinyin = pinyin.replace(/\s/g, "");
-        const result = this.matchAboveStart(this.query, pinyin);
+    match_(query: string) {
+        query = query.replace(/\s/g, "");
+        let text = this.text;
+        const allLower = query.toLocaleLowerCase() == query;
+        if (!this.smartCase || allLower) {
+            text = this.text.toLocaleLowerCase();
+        }
+        const result = this.matchAboveStart(text, query);
         return result;
     }
 
-    matchAboveStart(text: string, pinyin: string) {
+    matchAboveStart(text: string, query: string) {
         const words = text.split("");
 
         // 二维数组 dp[i][j]，i 表示遍历到的 text 索引+1, j 表示遍历到的 pinyin 的索引+1
         const dp = Array(words.length + 1);
         // 使用哨兵初始化 dp
         for (let i = 0; i < dp.length; i++) {
-            dp[i] = Array(pinyin.length + 1);
+            dp[i] = Array(query.length + 1);
             dp[i][0] = [];
         }
         for (let i = 0; i < dp[0].length; i++) {
@@ -216,11 +227,11 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
         // 动态规划匹配
         for (let i = 1; i < dp.length; i++) {
             // options.continuous 为 false 或 options.space 为 ignore 且当前为空格时，第 i 个字可以不参与匹配
-            for (let j = 1; j <= pinyin.length; j++) {
+            for (let j = 1; j <= query.length; j++) {
                 dp[i][j - 1] = dp[i - 1][j - 1];
             }
             // 第 i 个字参与匹配
-            for (let j = 1; j <= pinyin.length; j++) {
+            for (let j = 1; j <= query.length; j++) {
                 if (!dp[i - 1][j - 1]) {
                     // 第 i - 1 已经匹配失败，停止向后匹配
                     continue;
@@ -230,30 +241,30 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
                 } else {
                     const muls = this[i - 1].pinyin;
                     // 非中文匹配
-                    if (text[i - 1] === pinyin[j - 1]) {
+                    if (text[i - 1] === query[j - 1]) {
                         const matches = [...dp[i - 1][j - 1], i - 1];
                         // 记录最长的可匹配下标数组
                         if (!dp[i][j] || matches.length > dp[i][j].length) {
                             dp[i][j] = matches;
                         }
                         // pinyin 参数完全匹配完成，记录结果
-                        if (j === pinyin.length) {
+                        if (j === query.length) {
                             return dp[i][j];
                         }
                     }
 
                     // 剩余长度小于等于 MAX_PINYIN_LENGTH(6) 时，有可能是最后一个拼音了
-                    if (pinyin.length - j <= 6) {
+                    if (query.length - j <= 6) {
                         // lastPrecision 参数处理
                         const last = muls.some((py) => {
-                            return py.startsWith(pinyin.slice(j - 1, pinyin.length));
+                            return py.startsWith(query.slice(j - 1, query.length));
                         });
                         if (last) {
                             return [...dp[i - 1][j - 1], i - 1];
                         }
                     }
 
-                    if (muls.some((py) => py[0] === pinyin[j - 1])) {
+                    if (muls.some((py) => py[0] === query[j - 1])) {
                         const matches = [...dp[i - 1][j - 1], i - 1];
                         // 记录最长的可匹配下标数组
                         if (!dp[i][j] || matches.length > dp[i][j].length) {
@@ -262,7 +273,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
                     }
 
                     // 匹配当前汉字的完整拼音
-                    const completeMatch = muls.find((py: string) => py === pinyin.slice(j - 1, j - 1 + py.length));
+                    const completeMatch = muls.find((py: string) => py === query.slice(j - 1, j - 1 + py.length));
                     if (completeMatch) {
                         const matches = [...dp[i - 1][j - 1], i - 1];
                         const endIndex = j - 1 + completeMatch.length;

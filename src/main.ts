@@ -88,9 +88,9 @@ export default class Fuzyy_chinese extends Plugin {
         this.fileModal = new FuzzyFileModal(this.app, this);
         this.folderModal = new FuzzyFolderModal(this.app, this);
         this.commandModal = new FuzzyCommandModal(this.app, this);
+        this.editorSuggest = new FileEditorSuggest(this.app, this);
 
         if (this.settings.useEditorSuggest) {
-            this.editorSuggest = new FileEditorSuggest(this.app, this);
             this.app.workspace.editorSuggest.suggests.unshift(this.editorSuggest);
         }
 
@@ -255,12 +255,11 @@ class SettingTab extends PluginSettingTab {
         );
         new Setting(containerEl)
             .setName("使用双链建议")
-            .setDesc("输入[[的时候文件连接能支持中文拼音搜索（实验性功能，中文拼音搜索仅支持文件名和别名，#和^不能拼音搜索）")
+            .setDesc("输入[[的时候文件连接能支持中文拼音搜索（实验性功能）")
             .addToggle((text) =>
                 text.setValue(this.plugin.settings.useEditorSuggest).onChange(async (value) => {
                     this.plugin.settings.useEditorSuggest = value;
                     if (value) {
-                        this.plugin.editorSuggest = new FileEditorSuggest(this.app, this.plugin);
                         this.app.workspace.editorSuggest.suggests.unshift(this.plugin.editorSuggest);
                     } else {
                         this.app.workspace.editorSuggest.removeSuggest(this.plugin.editorSuggest);

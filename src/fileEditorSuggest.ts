@@ -7,10 +7,14 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
     plugin: Fuzyy_chinese;
     index: PinyinIndex<Item>;
     tempItems: Item[] = [];
+    originEditorSuggest: EditorSuggest<any>;
+    originEditorSuggestCache: any;
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app);
+        this.originEditorSuggest = app.workspace.editorSuggest.suggests[0];
         this.plugin = plugin;
         this.index = this.plugin.fileModal.index;
+        this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
         let prompt = [
             {
                 command: "输入 #",
@@ -51,7 +55,8 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
         }
     }
     getSuggestions(context: EditorSuggestContext): MatchData[] | Promise<MatchData[]> {
-        let e = app.workspace.editorSuggest.suggests.find((p) => p.hasOwnProperty("mode"));
+        this.context = context;
+        let e = this.originEditorSuggest;
         let query = context.query,
             matchData: MatchData[] | Promise<MatchData[]>;
         switch (this.findLastChar(query)) {
@@ -61,7 +66,7 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
             }
             case "#": {
                 e.context = context;
-                matchData = e.getSuggestions(context).then((items) => {
+                matchData = (e.getSuggestions(context) as any).then((items) => {
                     return this.getHeadings(query, items);
                 });
                 break;
@@ -86,12 +91,13 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
         if (q == "")
             this.tempItems = items.map(
                 (p) =>
-                    <Item>{
+                    <Item & { originData: any }>{
                         file: p.file,
                         type: "heading",
                         name: p.heading,
                         pinyin: new Pinyin(p.heading, this.plugin),
                         path: p.file.basename,
+                        originData: p,
                     }
             );
         return this.match(q, this.tempItems);
@@ -178,46 +184,19 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
         }
     }
     selectSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent): void {
-        let editor = this.context.editor;
-        console.log(this.context);
-        let cursor = editor.getCursor();
-        const cursorLine = cursor.line;
-        const lineText = editor.getLine(cursorLine);
-        let leftText = lineText.substring(0, cursor.ch);
-        let rightText = lineText.substring(cursor.ch);
-
-        const openBracketIndex = leftText.lastIndexOf("[[");
-        let i = rightText.indexOf("[[");
-        const closeBracketIndex = leftText.length + (i == -1 ? rightText : rightText.slice(0, i)).indexOf("]]");
-
-        let text: string;
-        switch (matchData.item.type) {
-            case "file": {
-                text = matchData.item.name;
-                break;
-            }
-            case "alias": {
-                text = matchData.item.file.basename + "|" + matchData.item.name;
-                break;
-            }
-            case "heading": {
-                text = matchData.item.file.basename + "#" + matchData.item.name;
-                break;
-            }
+        if (matchData.item.type == "heading") {
+            this.originEditorSuggest.selectSuggestion((<Item & { originData: any }>matchData.item).originData, evt);
+        } else {
+            this.originEditorSuggest.context = this.context;
+            this.originEditorSuggestCache.then((matchDatas) => {
+                let matchData_ = matchDatas.find((p) => {
+                    if (p.type == matchData.item.type && p.file == matchData.item.file) {
+                        if (p.type == "alias") return p.alias == matchData.item.name;
+                        else return true;
+                    } else return false;
+                });
+                this.originEditorSuggest.selectSuggestion(matchData_, evt);
+            });
         }
-        text += "]]";
-        editor.transaction({
-            changes: [
-                {
-                    from: { line: cursorLine, ch: openBracketIndex + 2 },
-                    to: { line: cursorLine, ch: closeBracketIndex == leftText.length - 1 ? cursor.ch : closeBracketIndex + 2 },
-                    text,
-                },
-            ],
-            selection: { from: { line: cursorLine, ch: openBracketIndex + text.length + 2 } },
-        });
-        setTimeout(function () {
-            return editor.focus();
-        });
     }
 }

@@ -151,7 +151,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
     constructor(query: string, plugin: Fuzyy_chinese) {
         super();
         let pinyinDict = plugin?.pinyinDict;
-        this.query = query.toLowerCase();
+        this.query = query;
         this.query.split("").forEach((p) => {
             let index = pinyinDict.values.map((q, i) => (q.includes(p) ? i : null)).filter((p) => p);
             this.push({
@@ -169,8 +169,8 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
         score += 30 / range.length; // 分割越少分越高
         return score;
     }
-    match(query: string, item: T): MatchData<T> | false {
-        let range = this.match_(query);
+    match(query: string, item: T, smathCase = false): MatchData<T> | false {
+        let range = this.match_(query, smathCase);
         range = range ? toRanges(range) : false;
         if (!range) return false;
         let data: MatchData<T> = {
@@ -193,9 +193,10 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
     }
     // The following two functions are based on the work of zh-lx (https://github.com/zh-lx).
     // Original code: https://github.com/zh-lx/pinyin-pro/blob/main/lib/core/match/index.ts.
-    match_(pinyin: string) {
+    match_(pinyin: string, smathCase: boolean) {
         pinyin = pinyin.replace(/\s/g, "");
-        const result = this.matchAboveStart(this.query, pinyin);
+        let f = (str: string) => (smathCase ? str : str.toLocaleLowerCase());
+        const result = this.matchAboveStart(f(this.query), f(pinyin));
         return result;
     }
 

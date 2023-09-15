@@ -71,11 +71,11 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
             node = node.next;
             if (_f) index++;
         }
-        let query_ = query.toLocaleLowerCase(),
+        let smathCase = /[A-Z]/.test(query),
             indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
         for (let p of toMatchData) {
-            let d = p.pinyin.match(query_, p);
+            let d = p.pinyin.match(query, p, smathCase);
             if (d) matchData.push(d as MatchData<T>);
         }
 
@@ -147,12 +147,12 @@ export class HistoryMatchDataNode<T> {
 }
 
 export class Pinyin<T extends Item> extends Array<PinyinChild> {
-    query: string;
+    text: string;
     constructor(query: string, plugin: Fuzyy_chinese) {
         super();
         let pinyinDict = plugin?.pinyinDict;
-        this.query = query;
-        this.query.split("").forEach((p) => {
+        this.text = query;
+        this.text.split("").forEach((p) => {
             let index = pinyinDict.values.map((q, i) => (q.includes(p) ? i : null)).filter((p) => p);
             this.push({
                 type: index.length == 0 ? "other" : "pinyin",
@@ -164,8 +164,8 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
     getScore(range: Array<[number, number]>) {
         let score = 0;
         let coverage = range.reduce((p, i) => p + i[1] - i[0] + 1, 0);
-        score += 30 * (coverage / this.query.length); // 使用线性函数计算覆盖度
-        score += 20 * Math.exp(-range[0][0] / this.query.length); // 靠前加分
+        score += 30 * (coverage / this.text.length); // 使用线性函数计算覆盖度
+        score += 20 * Math.exp(-range[0][0] / this.text.length); // 靠前加分
         score += 30 / range.length; // 分割越少分越高
         return score;
     }
@@ -182,7 +182,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
     }
     concat(pinyin: Pinyin<T>) {
         let result = new Pinyin<T>("", null);
-        result.query = this.query + pinyin.query;
+        result.text = this.text + pinyin.text;
         for (let i of this) {
             result.push(i);
         }
@@ -196,7 +196,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
     match_(pinyin: string, smathCase: boolean) {
         pinyin = pinyin.replace(/\s/g, "");
         let f = (str: string) => (smathCase ? str : str.toLocaleLowerCase());
-        const result = this.matchAboveStart(f(this.query), f(pinyin));
+        const result = this.matchAboveStart(f(this.text), f(pinyin));
         return result;
     }
 

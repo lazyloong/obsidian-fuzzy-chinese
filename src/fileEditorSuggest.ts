@@ -14,7 +14,13 @@ export class FileEditorSuggest extends EditorSuggest<MatchData> {
         this.originEditorSuggest = app.workspace.editorSuggest.suggests[0];
         this.plugin = plugin;
         this.index = this.plugin.fileModal.index;
-        this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
+        if (app.workspace.layoutReady) {
+            this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
+        } else {
+            app.workspace.onLayoutReady(async () => {
+                this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
+            });
+        }
         let prompt = [
             {
                 command: "输入 #",

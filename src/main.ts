@@ -4,6 +4,7 @@ import { FuzzyFileModal } from "./fuzzyFileModal";
 import { FuzzyFolderModal } from "./fuzzyFolderModal";
 import { FuzzyCommandModal } from "./fuzzyCommandModal";
 import { FileEditorSuggest } from "./fileEditorSuggest";
+import { TagEditorSuggest } from "./tagEditorSuggest";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
 import { SimplifiedDict } from "./simplified_dict";
 import { TraditionalDict } from "./traditional_dict";
@@ -16,7 +17,8 @@ interface Fuzyy_chineseSettings {
     showAttachments: boolean;
     attachmentExtensions: Array<string>;
     usePathToSearch: boolean;
-    useEditorSuggest: boolean;
+    useFileEditorSuggest: boolean;
+    useTagEditorSuggest: boolean;
     showPath: boolean;
     showTags: boolean;
     doublePinyin: string;
@@ -52,7 +54,8 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
         "pdf",
     ],
     usePathToSearch: false,
-    useEditorSuggest: false,
+    useFileEditorSuggest: false,
+    useTagEditorSuggest: false,
     showPath: true,
     showTags: false,
     doublePinyin: "全拼",
@@ -67,7 +70,8 @@ export default class Fuzyy_chinese extends Plugin {
     fileModal: FuzzyFileModal;
     folderModal: FuzzyFolderModal;
     commandModal: FuzzyCommandModal;
-    editorSuggest: FileEditorSuggest;
+    fileEditorSuggest: FileEditorSuggest;
+    tagEditorSuggest: TagEditorSuggest;
 
     loadPinyinDict() {
         let PinyinKeys_ = this.settings.traditionalChineseSupport ? Object.keys(TraditionalDict) : Object.keys(SimplifiedDict);
@@ -88,10 +92,14 @@ export default class Fuzyy_chinese extends Plugin {
         this.fileModal = new FuzzyFileModal(this.app, this);
         this.folderModal = new FuzzyFolderModal(this.app, this);
         this.commandModal = new FuzzyCommandModal(this.app, this);
-        this.editorSuggest = new FileEditorSuggest(this.app, this);
+        this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
+        this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
 
-        if (this.settings.useEditorSuggest) {
-            this.app.workspace.editorSuggest.suggests.unshift(this.editorSuggest);
+        if (this.settings.useFileEditorSuggest) {
+            this.app.workspace.editorSuggest.suggests.unshift(this.fileEditorSuggest);
+        }
+        if (this.settings.useTagEditorSuggest) {
+            this.app.workspace.editorSuggest.suggests.unshift(this.tagEditorSuggest);
         }
 
         if (this.settings.devMode) {
@@ -100,6 +108,7 @@ export default class Fuzyy_chinese extends Plugin {
                 this.fileModal.index.initIndex();
                 this.folderModal.index.initIndex();
                 this.commandModal.index.initIndex();
+                this.tagEditorSuggest.index.initIndex();
             };
         }
 
@@ -153,12 +162,14 @@ export default class Fuzyy_chinese extends Plugin {
         this.api = { f: fullPinyin2doublePinyin, d: DoublePinyinDict, Pinyin: Pinyin };
     }
     onunload() {
-        this.app.workspace.editorSuggest.removeSuggest(this.editorSuggest);
+        this.app.workspace.editorSuggest.removeSuggest(this.fileEditorSuggest);
+        this.app.workspace.editorSuggest.removeSuggest(this.tagEditorSuggest);
         if (this.settings.devMode) {
             globalThis.FuzzyChineseIndex = {};
             globalThis.FuzzyChineseIndex.file = this.fileModal.index.items;
             globalThis.FuzzyChineseIndex.folder = this.folderModal.index.items;
             globalThis.FuzzyChineseIndex.command = this.commandModal.index.items;
+            globalThis.FuzzyChineseIndex.tag = this.tagEditorSuggest.index.items;
         }
     }
     async loadSettings() {
@@ -257,12 +268,12 @@ class SettingTab extends PluginSettingTab {
             .setName("使用双链建议")
             .setDesc("输入[[的时候文件连接能支持中文拼音搜索（实验性功能）")
             .addToggle((text) =>
-                text.setValue(this.plugin.settings.useEditorSuggest).onChange(async (value) => {
-                    this.plugin.settings.useEditorSuggest = value;
+                text.setValue(this.plugin.settings.useFileEditorSuggest).onChange(async (value) => {
+                    this.plugin.settings.useFileEditorSuggest = value;
                     if (value) {
-                        this.app.workspace.editorSuggest.suggests.unshift(this.plugin.editorSuggest);
+                        this.app.workspace.editorSuggest.suggests.unshift(this.plugin.fileEditorSuggest);
                     } else {
-                        this.app.workspace.editorSuggest.removeSuggest(this.plugin.editorSuggest);
+                        this.app.workspace.editorSuggest.removeSuggest(this.plugin.fileEditorSuggest);
                     }
                     await this.plugin.saveSettings();
                 })
@@ -281,6 +292,20 @@ class SettingTab extends PluginSettingTab {
                 });
             });
         containerEl.createEl("h2", { text: "其他" });
+        new Setting(containerEl)
+            .setName("使用标签建议")
+            .setDesc("实验性功能")
+            .addToggle((text) =>
+                text.setValue(this.plugin.settings.useTagEditorSuggest).onChange(async (value) => {
+                    this.plugin.settings.useTagEditorSuggest = value;
+                    if (value) {
+                        this.app.workspace.editorSuggest.suggests.unshift(this.plugin.tagEditorSuggest);
+                    } else {
+                        this.app.workspace.editorSuggest.removeSuggest(this.plugin.tagEditorSuggest);
+                    }
+                    await this.plugin.saveSettings();
+                })
+            );
         new Setting(containerEl)
             .setName("dev 模式")
             .setDesc("将索引存储到 global 以便重启时不重建索引")

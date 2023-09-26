@@ -301,16 +301,10 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
 class PinyinIndex extends PI<Item> {
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
+        this.id = "file";
     }
     initIndex() {
-        if (this.plugin.settings.devMode && globalThis.FuzzyChineseIndex?.file) {
-            this.items = globalThis.FuzzyChineseIndex.file;
-            console.log("Fuzzy Chinese Pinyin: Use old file index");
-            return;
-        }
-        let files: Array<TFile>,
-            startTime = Date.now();
-        files = app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
+        let files = app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
 
         this.items = files.map((file) => TFile2Item(file, this.plugin));
 
@@ -318,9 +312,6 @@ class PinyinIndex extends PI<Item> {
             if (file.extension != "md") continue;
             this.items = this.items.concat(CachedMetadata2Item(file, this.plugin));
         }
-        console.log(
-            `Fuzzy Chinese Pinyin: Indexing completed, totaling ${files.length} files, taking ${(Date.now() - startTime) / 1000.0}s`
-        );
     }
     initEvent() {
         this.registerEvent(

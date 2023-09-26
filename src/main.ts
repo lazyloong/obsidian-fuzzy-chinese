@@ -1,5 +1,5 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, EditorSuggest } from "obsidian";
-import { Pinyin } from "./fuzzyModal";
+import { FuzzyModal, Pinyin, PinyinIndex } from "./fuzzyModal";
 import { FuzzyFileModal } from "./fuzzyFileModal";
 import { FuzzyFolderModal } from "./fuzzyFolderModal";
 import { FuzzyCommandModal } from "./fuzzyCommandModal";
@@ -72,6 +72,8 @@ export default class Fuzyy_chinese extends Plugin {
     commandModal: FuzzyCommandModal;
     fileEditorSuggest: FileEditorSuggest;
     tagEditorSuggest: TagEditorSuggest;
+    indexManager: IndexManager;
+    editorSuggests: EditorSuggest<any>[];
 
     loadPinyinDict() {
         let PinyinKeys_ = this.settings.traditionalChineseSupport ? Object.keys(TraditionalDict) : Object.keys(SimplifiedDict);
@@ -95,6 +97,9 @@ export default class Fuzyy_chinese extends Plugin {
         this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
         this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
 
+        this.indexManager = new IndexManager(this, [this.fileModal, this.folderModal, this.commandModal, this.tagEditorSuggest]);
+        this.editorSuggests = [this.fileEditorSuggest, this.tagEditorSuggest];
+
         if (this.settings.useFileEditorSuggest) {
             this.app.workspace.editorSuggest.suggests.unshift(this.fileEditorSuggest);
         }
@@ -103,13 +108,10 @@ export default class Fuzyy_chinese extends Plugin {
         }
 
         if (this.settings.devMode) {
-            globalThis.refreshFuzzyChineseIndex = () => {
-                globalThis.FuzzyChineseIndex = {};
-                this.fileModal.index.initIndex();
-                this.folderModal.index.initIndex();
-                this.commandModal.index.initIndex();
-                this.tagEditorSuggest.index.initIndex();
-            };
+            this.indexManager.devLoad();
+            globalThis.refreshFuzzyChineseIndex = this.indexManager.refreshFuzzyChineseIndex;
+        } else {
+            this.indexManager.load();
         }
 
         this.addCommand({
@@ -162,14 +164,9 @@ export default class Fuzyy_chinese extends Plugin {
         this.api = { f: fullPinyin2doublePinyin, d: DoublePinyinDict, Pinyin: Pinyin };
     }
     onunload() {
-        this.app.workspace.editorSuggest.removeSuggest(this.fileEditorSuggest);
-        this.app.workspace.editorSuggest.removeSuggest(this.tagEditorSuggest);
+        this.editorSuggests.forEach((editorSuggest) => this.app.workspace.editorSuggest.removeSuggest(editorSuggest));
         if (this.settings.devMode) {
-            globalThis.FuzzyChineseIndex = {};
-            globalThis.FuzzyChineseIndex.file = this.fileModal.index.items;
-            globalThis.FuzzyChineseIndex.folder = this.folderModal.index.items;
-            globalThis.FuzzyChineseIndex.command = this.commandModal.index.items;
-            globalThis.FuzzyChineseIndex.tag = this.tagEditorSuggest.index.items;
+            this.indexManager.devUnload();
         }
     }
     async loadSettings() {
@@ -332,4 +329,44 @@ function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict): string {
     }
     if (fullPinyin.length != 0) doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin));
     return doublePinyin;
+}
+
+class IndexManager extends Array<PinyinIndex<any>> {
+    plugin: Fuzyy_chinese;
+    constructor(plugin: Fuzyy_chinese, com: Array<FuzzyModal<any> | EditorSuggest<any>>) {
+        super();
+        com.forEach((p: any) => this.push(p.index));
+        this.plugin = plugin;
+    }
+    load() {
+        this.forEach((index) => {
+            let startTime = Date.now();
+            index.initIndex();
+            console.log(
+                `Fuzzy Chinese Pinyin: ${index.id} indexing completed, totaling ${index.items.length} items, taking ${
+                    (Date.now() - startTime) / 1000.0
+                }s`
+            );
+        });
+    }
+    devLoad() {
+        this.forEach((index) => {
+            if (globalThis.FuzzyChineseIndex[index.id]) {
+                index.items = globalThis.FuzzyChineseIndex[index.id];
+                console.log(`Fuzzy Chinese Pinyin: Use old ${index.id} index`);
+            } else {
+                index.initIndex();
+            }
+        });
+    }
+    devUnload() {
+        globalThis.FuzzyChineseIndex = {};
+        this.forEach((index) => {
+            globalThis.FuzzyChineseIndex[index.id] = index.items;
+        });
+    }
+    refreshFuzzyChineseIndex() {
+        globalThis.FuzzyChineseIndex = {};
+        this.forEach((index) => index.initIndex());
+    }
 }

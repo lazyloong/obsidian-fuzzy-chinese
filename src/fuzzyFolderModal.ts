@@ -70,13 +70,9 @@ export class FuzzyFolderModal extends FuzzyModal<Item> {
 class PinyinIndex extends PI<Item> {
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
+        this.id = "folder";
     }
     initIndex() {
-        if (this.plugin.settings.devMode && globalThis.FuzzyChineseIndex?.folder) {
-            this.items = globalThis.FuzzyChineseIndex.folder;
-            console.log("Fuzzy Chinese Pinyin: Use old folder index");
-            return;
-        }
         let root = app.vault.getRoot();
         let iterate = (node: TFolder, nodePinyin: Pinyin<Item>) => {
             let children = node.children;

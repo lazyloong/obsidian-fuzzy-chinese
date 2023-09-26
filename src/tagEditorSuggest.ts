@@ -119,13 +119,9 @@ export class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
 class PinyinIndex extends PI<Item> {
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
+        this.id = "tag";
     }
     initIndex() {
-        if (this.plugin.settings.devMode && globalThis.FuzzyChineseIndex?.tag) {
-            this.items = globalThis.FuzzyChineseIndex.tag;
-            console.log("Fuzzy Chinese Pinyin: Use old tag index");
-            return;
-        }
         let tags: string[] = Object.keys(app.metadataCache.getTags()).map((p) => p.slice(1));
         this.items = tags.map((tag) => {
             let item = {

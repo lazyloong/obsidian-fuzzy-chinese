@@ -119,14 +119,10 @@ export class FuzzyCommandModal extends FuzzyModal<Item> {
 class PinyinIndex extends PI<Item> {
     constructor(app: App, plugin: Fuzyy_chinese) {
         super(app, plugin);
+        this.id = "command";
     }
     initEvent() {}
     initIndex() {
-        if (this.plugin.settings.devMode && globalThis.FuzzyChineseIndex?.command) {
-            this.items = globalThis.FuzzyChineseIndex.command;
-            console.log("Fuzzy Chinese Pinyin: Use old command index");
-            return;
-        }
         let commands = app.commands.listCommands();
         this.items = commands.map((command) => {
             let item = {

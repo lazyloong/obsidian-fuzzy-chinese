@@ -309,6 +309,7 @@ export abstract class PinyinIndex<T> extends Component {
     vault: Vault;
     metadataCache: MetadataCache;
     items: Array<T>;
+    id: string;
     plugin: Fuzyy_chinese;
     constructor(app: App, plugin: Fuzyy_chinese) {
         super();
@@ -317,11 +318,9 @@ export abstract class PinyinIndex<T> extends Component {
         this.metadataCache = app.metadataCache;
         this.items = [];
         if (app.workspace.layoutReady) {
-            this.initIndex();
             this.initEvent();
         } else {
             app.workspace.onLayoutReady(async () => {
-                this.initIndex();
                 this.initEvent();
             });
         }

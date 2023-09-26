@@ -49,6 +49,9 @@ export class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
         let query = content.query;
         if (query == "") {
             this.historyMatchData = new HistoryMatchDataNode("\0");
+            return this.index.items.map((p) => {
+                return { item: p, score: 0, range: null };
+            });
         }
 
         let matchData: MatchData<Item>[] = [];

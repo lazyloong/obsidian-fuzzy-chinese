@@ -1,26 +1,22 @@
 import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, TFile } from "obsidian";
 import { MatchData, Item } from "./fuzzyFileModal";
 import { PinyinIndex, Pinyin } from "./fuzzyModal";
-import Fuzyy_chinese from "./main";
+import FuzzyChinesePinyinPlugin, { runOnLayoutReady } from "./main";
 
 export class FileEditorSuggest extends EditorSuggest<MatchData> {
-    plugin: Fuzyy_chinese;
+    plugin: FuzzyChinesePinyinPlugin;
     index: PinyinIndex<Item>;
     tempItems: Item[] = [];
     originEditorSuggest: EditorSuggest<any>;
     originEditorSuggestCache: any;
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.originEditorSuggest = app.workspace.editorSuggest.suggests[0];
         this.plugin = plugin;
         this.index = this.plugin.fileModal.index;
-        if (app.workspace.layoutReady) {
+        runOnLayoutReady(() => {
             this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
-        } else {
-            app.workspace.onLayoutReady(async () => {
-                this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
-            });
-        }
+        });
         let prompt = [
             {
                 command: "输入 #",

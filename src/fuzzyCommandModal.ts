@@ -1,6 +1,6 @@
 import { App, Hotkey, Modifier, Platform } from "obsidian";
 import { FuzzyModal, MatchData, PinyinIndex as PI, Pinyin } from "./fuzzyModal";
-import Fuzyy_chinese from "./main";
+import FuzzyChinesePinyinPlugin from "./main";
 
 type Item = {
     name: string;
@@ -53,7 +53,7 @@ function generateHotKeyText(hotkey: Hotkey): string {
 
 export class FuzzyCommandModal extends FuzzyModal<Item> {
     historyCommand: Array<Item>;
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
         this.historyCommand = [];
@@ -117,7 +117,7 @@ export class FuzzyCommandModal extends FuzzyModal<Item> {
     }
 }
 class PinyinIndex extends PI<Item> {
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.id = "command";
     }

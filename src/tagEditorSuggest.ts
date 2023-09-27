@@ -10,13 +10,13 @@ import {
     TFolder,
 } from "obsidian";
 import { PinyinIndex as PI, HistoryMatchDataNode, Pinyin, MatchData, Item } from "./fuzzyModal";
-import Fuzyy_chinese from "./main";
+import FuzzyChinesePinyinPlugin from "./main";
 
 export class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
-    plugin: Fuzyy_chinese;
+    plugin: FuzzyChinesePinyinPlugin;
     index: PinyinIndex;
     historyMatchData: HistoryMatchDataNode<Item>;
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.plugin = plugin;
         this.index = this.plugin.addChild(new PinyinIndex(app, this.plugin));
@@ -120,7 +120,7 @@ export class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
 }
 
 class PinyinIndex extends PI<Item> {
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.id = "tag";
     }

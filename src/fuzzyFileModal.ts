@@ -1,6 +1,6 @@
 import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata } from "obsidian";
 import { FuzzyModal, Pinyin, PinyinIndex as PI, HistoryMatchDataNode } from "./fuzzyModal";
-import Fuzyy_chinese from "./main";
+import FuzzyChinesePinyinPlugin from "./main";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
@@ -21,8 +21,8 @@ export type MatchData = {
 };
 
 export class FuzzyFileModal extends FuzzyModal<Item> {
-    plugin: Fuzyy_chinese;
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    plugin: FuzzyChinesePinyinPlugin;
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.useInput = true;
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
@@ -299,7 +299,7 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
 };
 
 class PinyinIndex extends PI<Item> {
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.id = "file";
     }
@@ -359,7 +359,7 @@ class PinyinIndex extends PI<Item> {
     }
 }
 
-function TFile2Item(file: TFile, plugin: Fuzyy_chinese): Item {
+function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): Item {
     let name = file.extension != "md" ? file.name : file.basename;
     return {
         type: "file",
@@ -371,7 +371,7 @@ function TFile2Item(file: TFile, plugin: Fuzyy_chinese): Item {
     };
 }
 
-function CachedMetadata2Item(file: TFile, plugin: Fuzyy_chinese, cache?: CachedMetadata): Item[] {
+function CachedMetadata2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin, cache?: CachedMetadata): Item[] {
     cache = cache ?? app.metadataCache.getFileCache(file);
     let alias = cache?.frontmatter?.alias || cache?.frontmatter?.aliases;
     if (alias) {

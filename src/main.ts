@@ -11,7 +11,7 @@ import { TraditionalDict } from "./traditional_dict";
 
 import { DoublePinyinDict } from "./double_pinyin";
 
-interface Fuzyy_chineseSettings {
+interface FuzyyChinesePinyinSettings {
     traditionalChineseSupport: boolean;
     showAllFileTypes: boolean;
     showAttachments: boolean;
@@ -26,7 +26,7 @@ interface Fuzyy_chineseSettings {
     devMode: boolean;
 }
 
-const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
+const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
     traditionalChineseSupport: false,
     showAttachments: false,
     showAllFileTypes: false,
@@ -63,8 +63,8 @@ const DEFAULT_SETTINGS: Fuzyy_chineseSettings = {
     devMode: false,
 };
 
-export default class Fuzyy_chinese extends Plugin {
-    settings: Fuzyy_chineseSettings;
+export default class FuzzyChinesePinyinPlugin extends Plugin {
+    settings: FuzyyChinesePinyinSettings;
     pinyinDict: { originalKeys: any; keys: string[]; values: string[] };
     api: any;
     fileModal: FuzzyFileModal;
@@ -107,13 +107,17 @@ export default class Fuzyy_chinese extends Plugin {
             this.app.workspace.editorSuggest.suggests.unshift(this.tagEditorSuggest);
         }
 
-        if (this.settings.devMode) {
-            this.indexManager.devLoad();
-            globalThis.refreshFuzzyChineseIndex = this.indexManager.refreshFuzzyChineseIndex;
-        } else {
-            this.indexManager.load();
-        }
-
+        runOnLayoutReady(() => {
+            if (this.settings.devMode) {
+                this.indexManager.devLoad();
+                globalThis.refreshFuzzyChineseIndex = () => {
+                    globalThis.FuzzyChineseIndex = {};
+                    this.indexManager.load();
+                };
+            } else {
+                this.indexManager.load();
+            }
+        });
         this.addCommand({
             id: "open-search",
             name: "Open Search",
@@ -178,8 +182,8 @@ export default class Fuzyy_chinese extends Plugin {
 }
 
 class SettingTab extends PluginSettingTab {
-    plugin: Fuzyy_chinese;
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    plugin: FuzzyChinesePinyinPlugin;
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -332,30 +336,31 @@ function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict): string {
 }
 
 class IndexManager extends Array<PinyinIndex<any>> {
-    plugin: Fuzyy_chinese;
-    constructor(plugin: Fuzyy_chinese, com: Array<FuzzyModal<any> | EditorSuggest<any>>) {
+    plugin: FuzzyChinesePinyinPlugin;
+    constructor(plugin: FuzzyChinesePinyinPlugin, com: Array<FuzzyModal<any> | EditorSuggest<any>>) {
         super();
         com.forEach((p: any) => this.push(p.index));
         this.plugin = plugin;
     }
     load() {
-        this.forEach((index) => {
-            let startTime = Date.now();
-            index.initIndex();
-            console.log(
-                `Fuzzy Chinese Pinyin: ${index.id} indexing completed, totaling ${index.items.length} items, taking ${
-                    (Date.now() - startTime) / 1000.0
-                }s`
-            );
-        });
+        this.forEach((index) => this.load_(index));
+    }
+    load_(index: PinyinIndex<any>) {
+        let startTime = Date.now();
+        index.initIndex();
+        console.log(
+            `Fuzzy Chinese Pinyin: ${index.id} indexing completed, totaling ${index.items.length} items, taking ${
+                (Date.now() - startTime) / 1000.0
+            }s`
+        );
     }
     devLoad() {
         this.forEach((index) => {
-            if (globalThis.FuzzyChineseIndex[index.id]) {
+            if (globalThis.FuzzyChineseIndex && globalThis.FuzzyChineseIndex[index.id]) {
                 index.items = globalThis.FuzzyChineseIndex[index.id];
                 console.log(`Fuzzy Chinese Pinyin: Use old ${index.id} index`);
             } else {
-                index.initIndex();
+                this.load_(index);
             }
         });
     }
@@ -365,8 +370,14 @@ class IndexManager extends Array<PinyinIndex<any>> {
             globalThis.FuzzyChineseIndex[index.id] = index.items;
         });
     }
-    refreshFuzzyChineseIndex() {
-        globalThis.FuzzyChineseIndex = {};
-        this.forEach((index) => index.initIndex());
+}
+
+export function runOnLayoutReady(fun: Function) {
+    if (app.workspace.layoutReady) {
+        fun();
+    } else {
+        app.workspace.onLayoutReady(async () => {
+            fun();
+        });
     }
 }

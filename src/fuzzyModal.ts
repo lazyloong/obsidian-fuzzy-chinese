@@ -1,5 +1,5 @@
 import { SuggestModal, App, Component, MetadataCache, Vault } from "obsidian";
-import Fuzyy_chinese from "./main";
+import FuzzyChinesePinyinPlugin, { runOnLayoutReady } from "./main";
 
 export type MatchData<T> = {
     item: T;
@@ -16,9 +16,9 @@ export abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<
     historyMatchData: HistoryMatchDataNode<T>;
     chooser: any;
     index: PinyinIndex<T>;
-    plugin: Fuzyy_chinese;
+    plugin: FuzzyChinesePinyinPlugin;
     useInput: boolean;
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.useInput = false;
         this.plugin = plugin;
@@ -148,7 +148,7 @@ export class HistoryMatchDataNode<T> {
 
 export class Pinyin<T extends Item> extends Array<PinyinChild> {
     text: string;
-    constructor(query: string, plugin: Fuzyy_chinese) {
+    constructor(query: string, plugin: FuzzyChinesePinyinPlugin) {
         super();
         let pinyinDict = plugin?.pinyinDict;
         this.text = query;
@@ -310,20 +310,16 @@ export abstract class PinyinIndex<T> extends Component {
     metadataCache: MetadataCache;
     items: Array<T>;
     id: string;
-    plugin: Fuzyy_chinese;
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    plugin: FuzzyChinesePinyinPlugin;
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super();
         this.plugin = plugin;
         this.vault = app.vault;
         this.metadataCache = app.metadataCache;
         this.items = [];
-        if (app.workspace.layoutReady) {
+        runOnLayoutReady(() => {
             this.initEvent();
-        } else {
-            app.workspace.onLayoutReady(async () => {
-                this.initEvent();
-            });
-        }
+        })
     }
     abstract initIndex(): void;
     abstract initEvent(): void;

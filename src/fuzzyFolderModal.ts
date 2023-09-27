@@ -1,9 +1,9 @@
 import { TFile, App, TAbstractFile, TFolder } from "obsidian";
 import { FuzzyModal, PinyinIndex as PI, Item, MatchData, Pinyin } from "./fuzzyModal";
-import Fuzyy_chinese from "./main";
+import FuzzyChinesePinyinPlugin from "./main";
 
 export class FuzzyFolderModal extends FuzzyModal<Item> {
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.useInput = true;
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
@@ -68,7 +68,7 @@ export class FuzzyFolderModal extends FuzzyModal<Item> {
 }
 
 class PinyinIndex extends PI<Item> {
-    constructor(app: App, plugin: Fuzyy_chinese) {
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.id = "folder";
     }

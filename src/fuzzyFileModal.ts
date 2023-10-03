@@ -1,6 +1,7 @@
 import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata } from "obsidian";
-import { FuzzyModal, Pinyin, PinyinIndex as PI, HistoryMatchDataNode } from "./fuzzyModal";
+import { Pinyin, PinyinIndex as PI, HistoryMatchDataNode } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
+import FuzzyModal from "./fuzzyModal";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
@@ -20,7 +21,7 @@ export type MatchData = {
     usePath?: boolean;
 };
 
-export class FuzzyFileModal extends FuzzyModal<Item> {
+export default class FuzzyFileModal extends FuzzyModal<Item> {
     plugin: FuzzyChinesePinyinPlugin;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);

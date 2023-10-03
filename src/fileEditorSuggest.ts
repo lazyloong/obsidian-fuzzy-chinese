@@ -1,9 +1,10 @@
 import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, TFile } from "obsidian";
 import { MatchData, Item } from "./fuzzyFileModal";
-import { PinyinIndex, Pinyin } from "./fuzzyModal";
-import FuzzyChinesePinyinPlugin, { runOnLayoutReady } from "./main";
+import { PinyinIndex, Pinyin } from "./utils";
+import FuzzyChinesePinyinPlugin from "./main";
+import { runOnLayoutReady } from "./utils";
 
-export class FileEditorSuggest extends EditorSuggest<MatchData> {
+export default class FileEditorSuggest extends EditorSuggest<MatchData> {
     plugin: FuzzyChinesePinyinPlugin;
     index: PinyinIndex<Item>;
     tempItems: Item[] = [];

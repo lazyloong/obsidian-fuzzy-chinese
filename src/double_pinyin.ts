@@ -1,4 +1,4 @@
-let dict = {
+let DoublePinyinDict = {
     智能ABC: {
         q: ["q", "ei"],
         w: ["w", "ian"],
@@ -86,4 +86,4 @@ let dict = {
     },
 };
 
-export const DoublePinyinDict = dict;
+export default DoublePinyinDict;

@@ -1,15 +1,16 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, EditorSuggest } from "obsidian";
-import { FuzzyModal, Pinyin, PinyinIndex } from "./fuzzyModal";
-import { FuzzyFileModal } from "./fuzzyFileModal";
-import { FuzzyFolderModal } from "./fuzzyFolderModal";
-import { FuzzyCommandModal } from "./fuzzyCommandModal";
-import { FileEditorSuggest } from "./fileEditorSuggest";
-import { TagEditorSuggest } from "./tagEditorSuggest";
+import { Pinyin, PinyinIndex, runOnLayoutReady } from "./utils";
+import FuzzyModal from "./fuzzyModal";
+import FuzzyFileModal from "./fuzzyFileModal";
+import FuzzyFolderModal from "./fuzzyFolderModal";
+import FuzzyCommandModal from "./fuzzyCommandModal";
+import FileEditorSuggest from "./fileEditorSuggest";
+import TagEditorSuggest from "./tagEditorSuggest";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
-import { SimplifiedDict } from "./simplified_dict";
-import { TraditionalDict } from "./traditional_dict";
+import SimplifiedDict from "./simplified_dict";
+import TraditionalDict from "./traditional_dict";
 
-import { DoublePinyinDict } from "./double_pinyin";
+import DoublePinyinDict from "./double_pinyin";
 
 interface FuzyyChinesePinyinSettings {
     traditionalChineseSupport: boolean;
@@ -368,16 +369,6 @@ class IndexManager extends Array<PinyinIndex<any>> {
         globalThis.FuzzyChineseIndex = {};
         this.forEach((index) => {
             globalThis.FuzzyChineseIndex[index.id] = index.items;
-        });
-    }
-}
-
-export function runOnLayoutReady(fun: Function) {
-    if (app.workspace.layoutReady) {
-        fun();
-    } else {
-        app.workspace.onLayoutReady(async () => {
-            fun();
         });
     }
 }

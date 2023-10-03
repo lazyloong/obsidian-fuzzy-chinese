@@ -1,8 +1,9 @@
 import { TFile, App, TAbstractFile, TFolder } from "obsidian";
-import { FuzzyModal, PinyinIndex as PI, Item, MatchData, Pinyin } from "./fuzzyModal";
+import FuzzyModal from "./fuzzyModal";
+import { PinyinIndex as PI, Item, MatchData, Pinyin } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 
-export class FuzzyFolderModal extends FuzzyModal<Item> {
+export default class FuzzyFolderModal extends FuzzyModal<Item> {
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.useInput = true;

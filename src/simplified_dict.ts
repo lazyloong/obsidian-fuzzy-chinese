@@ -1,7 +1,7 @@
 ﻿/**
  * 收录常用简体汉字
  */
-let dict = {
+let SimplifiedDict = {
     a: "阿啊呵腌嗄吖锕",
     e: "额阿俄恶鹅遏鄂厄饿峨扼娥鳄哦蛾噩愕讹锷垩婀鹗萼谔莪腭锇颚呃阏屙苊轭",
     ai: "爱埃艾碍癌哀挨矮隘蔼唉皑哎霭捱暧嫒嗳瑷嗌锿砹",
@@ -408,4 +408,4 @@ let dict = {
     nou: "耨",
 };
 
-export const SimplifiedDict = dict;
+export default SimplifiedDict;

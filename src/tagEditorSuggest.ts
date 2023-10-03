@@ -5,14 +5,12 @@ import {
     EditorSuggest,
     EditorSuggestContext,
     EditorSuggestTriggerInfo,
-    TAbstractFile,
     TFile,
-    TFolder,
 } from "obsidian";
-import { PinyinIndex as PI, HistoryMatchDataNode, Pinyin, MatchData, Item } from "./fuzzyModal";
+import { PinyinIndex as PI, HistoryMatchDataNode, Pinyin, MatchData, Item } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 
-export class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
+export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     plugin: FuzzyChinesePinyinPlugin;
     index: PinyinIndex;
     historyMatchData: HistoryMatchDataNode<Item>;

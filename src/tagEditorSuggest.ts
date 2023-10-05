@@ -1,12 +1,4 @@
-import {
-    App,
-    Editor,
-    EditorPosition,
-    EditorSuggest,
-    EditorSuggestContext,
-    EditorSuggestTriggerInfo,
-    TFile,
-} from "obsidian";
+import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, TFile } from "obsidian";
 import { PinyinIndex as PI, HistoryMatchDataNode, Pinyin, MatchData, Item } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 
@@ -14,21 +6,25 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     plugin: FuzzyChinesePinyinPlugin;
     index: PinyinIndex;
     historyMatchData: HistoryMatchDataNode<Item>;
+    isYaml: boolean;
+    preWord: string;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.plugin = plugin;
         this.index = this.plugin.addChild(new PinyinIndex(app, this.plugin));
+        this.historyMatchData = new HistoryMatchDataNode("\0");
     }
     onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo {
         var lineIndex = cursor.line,
             lineContent = editor.getLine(lineIndex),
-            o = lineContent.substr(0, cursor.ch);
+            sub = lineContent.substr(0, cursor.ch);
         if (
-            o.match(/(^|\s)#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]*$/g) &&
+            sub.match(/(^|\s)#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]*$/g) &&
             "#" !== lineContent.substr(cursor.ch, 1)
         ) {
-            var a = o.lastIndexOf("#"),
-                s = o.substr(a + 1);
+            this.isYaml = false;
+            var a = sub.lastIndexOf("#"),
+                s = sub.substr(a + 1);
             return {
                 start: {
                     line: lineIndex,
@@ -39,6 +35,25 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
                     ch: cursor.ch,
                 },
                 query: s,
+            };
+        }
+        let frontmatterPosition = (app.metadataCache.getFileCache(file) as any)?.frontmatterPosition;
+        if (
+            sub.match(/tags?: /) &&
+            frontmatterPosition &&
+            lineIndex > frontmatterPosition.start.line &&
+            lineIndex < frontmatterPosition.end.line
+        ) {
+            this.isYaml = true;
+            let match = sub.match(/(\S+)$/)?.first() ?? "";
+            if (this.preWord == match) return null;
+            return {
+                end: cursor,
+                start: {
+                    ch: sub.lastIndexOf(match),
+                    line: cursor.line,
+                },
+                query: match,
             };
         }
         return null;
@@ -101,18 +116,21 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     selectSuggestion(matchData: MatchData<Item>): void {
         var context = this.context;
         if (context) {
+            this.preWord = matchData.item.name;
             var editor = context.editor,
                 start = context.start,
-                end = context.end;
+                end = context.end,
+                text = this.isYaml ? matchData.item.name : "#" + matchData.item.name + " ";
             editor.transaction({
                 changes: [
                     {
                         from: start,
                         to: end,
-                        text: "#" + matchData.item.name + " ",
+                        text,
                     },
                 ],
             });
+            editor.setCursor({ line: start.line, ch: start.ch + text.length });
         }
     }
 }
@@ -140,7 +158,6 @@ class PinyinIndex extends PI<Item> {
         let addedTags = newTags.filter((tag) => !oldTags.includes(tag));
         let removedTags = oldTags.filter((tag) => !newTags.includes(tag));
         if (addedTags.length > 0) {
-            // 添加新命令
             this.items.push(
                 ...addedTags.map((tag) => {
                     let item = {
@@ -152,7 +169,6 @@ class PinyinIndex extends PI<Item> {
             );
         }
         if (removedTags.length > 0) {
-            // 删除旧命令
             this.items = this.items.filter((item) => !removedTags.includes(item.name));
         }
     }

@@ -191,6 +191,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
             this.originEditorSuggest.selectSuggestion((<Item & { originData: any }>matchData.item).originData, evt);
         } else {
             this.originEditorSuggest.context = this.context;
+            this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
             this.originEditorSuggestCache.then((matchDatas) => {
                 let matchData_ = matchDatas.find((p) => {
                     if (p.type == matchData.item.type && p.file == matchData.item.file) {

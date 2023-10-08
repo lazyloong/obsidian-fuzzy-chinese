@@ -7,7 +7,6 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     index: PinyinIndex;
     historyMatchData: HistoryMatchDataNode<Item>;
     isYaml: boolean;
-    preWord: string;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.plugin = plugin;
@@ -46,7 +45,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
         ) {
             this.isYaml = true;
             let match = sub.match(/(\S+)$/)?.first() ?? "";
-            if (this.preWord == match) return null;
+            if (this.index.items.map((p) => p.name).includes(match)) return null;
             return {
                 end: cursor,
                 start: {
@@ -116,7 +115,6 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     selectSuggestion(matchData: MatchData<Item>): void {
         var context = this.context;
         if (context) {
-            this.preWord = matchData.item.name;
             var editor = context.editor,
                 start = context.start,
                 end = context.end,

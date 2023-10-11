@@ -50,7 +50,6 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
         this.text.split("").forEach((p) => {
             let index = pinyinDict.values.map((q, i) => (q.includes(p) ? i : null)).filter((p) => p);
             this.push({
-                type: index.length == 0 ? "other" : "pinyin",
                 character: p,
                 pinyin: index.length == 0 ? [p] : pinyinDict.keys.filter((_, i) => index.includes(i)),
             });
@@ -175,7 +174,6 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
 }
 
 type PinyinChild = {
-    type: "pinyin" | "other";
     character: string[1];
     pinyin: string[];
 };

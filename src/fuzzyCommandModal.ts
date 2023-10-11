@@ -85,7 +85,8 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
             });
     }
     onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent) {
-        this.historyCommand.filter((p) => p.command.id != matchData.item.command.id).unshift(matchData.item);
+        this.historyCommand = this.historyCommand.filter((p) => p.command.id != matchData.item.command.id);
+        this.historyCommand.unshift(matchData.item);
         app.commands.executeCommand(matchData.item.command);
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {

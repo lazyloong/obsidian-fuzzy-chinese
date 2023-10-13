@@ -98,7 +98,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
         this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
 
-        this.indexManager = new IndexManager(this, [this.fileModal, this.folderModal, this.commandModal, this.tagEditorSuggest]);
+        this.indexManager = new IndexManager(this, [this.folderModal, this.fileModal, this.commandModal, this.tagEditorSuggest]);
         this.editorSuggests = [this.fileEditorSuggest, this.tagEditorSuggest];
 
         if (this.settings.useFileEditorSuggest) {

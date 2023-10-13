@@ -311,7 +311,7 @@ class PinyinIndex extends PI<Item> {
 
         for (let file of files) {
             if (file.extension != "md") continue;
-            this.items = this.items.concat(CachedMetadata2Item(file, this.plugin));
+            this.items = this.items.concat(CachedMetadata2Item(file, this.plugin, this.items));
         }
     }
     initEvent() {
@@ -331,7 +331,7 @@ class PinyinIndex extends PI<Item> {
             case "changed": {
                 this.items = this.items
                     .filter((item) => !(item.path == file.path && item.type == "alias"))
-                    .concat(CachedMetadata2Item(file, this.plugin, keys.cache));
+                    .concat(CachedMetadata2Item(file, this.plugin, this.items, keys.cache));
                 break;
             }
             case "create": {
@@ -339,7 +339,9 @@ class PinyinIndex extends PI<Item> {
                 break;
             }
             case "rename": {
-                this.items = this.items.filter((item) => item.path != keys.oldPath).concat(CachedMetadata2Item(file, this.plugin));
+                this.items = this.items
+                    .filter((item) => item.path != keys.oldPath)
+                    .concat(CachedMetadata2Item(file, this.plugin, this.items));
                 this.items.push(TFile2Item(file, this.plugin));
                 break;
             }
@@ -362,19 +364,27 @@ class PinyinIndex extends PI<Item> {
 
 function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): Item {
     let name = file.extension != "md" ? file.name : file.basename;
+    let folderIndex = plugin.folderModal.index.items;
+    let folderPathPinyin: Pinyin<any> = folderIndex.find((folder) => folder.name == file.parent.path)?.pinyin;
+    let fileNamePinyin = new Pinyin<Item>(name, plugin);
+    folderPathPinyin = new Pinyin<Item>("", plugin)
+        .concat(folderPathPinyin as any)
+        .concat(new Pinyin<Item>("/", plugin))
+        .concat(fileNamePinyin);
     return {
         type: "file",
         file: file,
         name: name,
-        pinyin: new Pinyin(name, plugin),
+        pinyin: fileNamePinyin,
         path: file.path,
-        pinyinOfPath: new Pinyin(file.path, plugin),
+        pinyinOfPath: folderPathPinyin,
     };
 }
 
-function CachedMetadata2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin, cache?: CachedMetadata): Item[] {
+function CachedMetadata2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin, items: Item[], cache?: CachedMetadata): Item[] {
     cache = cache ?? app.metadataCache.getFileCache(file);
     let alias = cache?.frontmatter?.alias || cache?.frontmatter?.aliases;
+    let item = items.find((item) => item.path == file.path && item.type == "file");
     if (alias) {
         alias = Array.isArray(alias) ? alias.map((p) => String(p)) : String(alias).split(/, ?/);
         return alias.map((p: string) => {
@@ -383,7 +393,7 @@ function CachedMetadata2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin, cach
                 name: p,
                 pinyin: new Pinyin(p, plugin),
                 path: file.path,
-                pinyinOfPath: new Pinyin(file.path, plugin),
+                pinyinOfPath: item.pinyinOfPath,
                 file: file,
             };
         });

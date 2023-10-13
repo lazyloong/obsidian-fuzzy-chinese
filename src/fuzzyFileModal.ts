@@ -112,6 +112,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         if (query == "") {
             this.historyMatchData = new HistoryMatchDataNode("\0");
             let items = this.index.items;
+            let fileHistoryDisplay = this.plugin.settings.fileHistoryDisplay == "使用完整路径";
             let lastOpenFiles: MatchData[] = app.workspace
                 .getLastOpenFiles()
                 .map((p) => items.find((q) => q.type == "file" && q.path == p))
@@ -121,7 +122,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                         item: p,
                         score: 0,
                         range: null,
-                        usePath: true,
+                        usePath: fileHistoryDisplay,
                     };
                 });
             return lastOpenFiles;

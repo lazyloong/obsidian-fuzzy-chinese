@@ -16,6 +16,7 @@ interface FuzyyChinesePinyinSettings {
     traditionalChineseSupport: boolean;
     showAllFileTypes: boolean;
     showAttachments: boolean;
+    fileHistoryDisplay: string;
     attachmentExtensions: Array<string>;
     usePathToSearch: boolean;
     useFileEditorSuggest: boolean;
@@ -62,6 +63,7 @@ const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
     doublePinyin: "全拼",
     closeWithBackspace: false,
     devMode: false,
+    fileHistoryDisplay: "使用完整路径",
 };
 
 export default class FuzzyChinesePinyinPlugin extends Plugin {
@@ -280,6 +282,18 @@ class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
+        new Setting(containerEl).setName("历史记录").addDropdown((text) =>
+            text
+                .addOptions({
+                    使用完整路径: "使用完整路径",
+                    仅使用文件名: "仅使用文件名",
+                })
+                .setValue(this.plugin.settings.fileHistoryDisplay)
+                .onChange(async (value: string) => {
+                    this.plugin.settings.fileHistoryDisplay = value;
+                    await this.plugin.saveSettings();
+                })
+        );
         new Setting(containerEl)
             .setName("附件后缀")
             .setDesc("只显示这些后缀的附件")

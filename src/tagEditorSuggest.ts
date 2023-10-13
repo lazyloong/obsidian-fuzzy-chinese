@@ -58,6 +58,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
         return null;
     }
     getSuggestions(content: EditorSuggestContext): MatchData<Item>[] {
+        this.index.update();
         let query = content.query;
         if (query == "") {
             this.historyMatchData = new HistoryMatchDataNode("\0");

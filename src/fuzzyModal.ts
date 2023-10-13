@@ -78,17 +78,18 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
 
     renderSuggestion(matchData: MatchData<T>, el: HTMLElement) {
         el.addClass("fz-item");
+        let e_content = el.createEl("div", { cls: "fz-suggestion-content" });
         let range = matchData.range,
             text = matchData.item.name,
             index = 0;
         if (range) {
             for (const r of range) {
-                el.appendText(text.slice(index, r[0]));
-                el.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
+                e_content.appendText(text.slice(index, r[0]));
+                e_content.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
                 index = r[1] + 1;
             }
         }
-        el.appendText(text.slice(index));
+        e_content.appendText(text.slice(index));
     }
     onNoSuggestion(value?: any): void {
         this.chooser.setSuggestions(null);

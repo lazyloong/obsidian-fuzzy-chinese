@@ -6,6 +6,7 @@ import FuzzyFolderModal from "./fuzzyFolderModal";
 import FuzzyCommandModal from "./fuzzyCommandModal";
 import FileEditorSuggest from "./fileEditorSuggest";
 import TagEditorSuggest from "./tagEditorSuggest";
+import FuzzySuggestModal from "./fuzzySuggestModal";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
 import SimplifiedDict from "./simplified_dict";
 import TraditionalDict from "./traditional_dict";
@@ -168,7 +169,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             return false;
         });
         this.addSettingTab(new SettingTab(this.app, this));
-        this.api = { f: fullPinyin2doublePinyin, d: DoublePinyinDict, Pinyin: Pinyin };
+        this.api = { suggester: this.suggester };
     }
     onunload() {
         this.editorSuggests.forEach((editorSuggest) => this.app.workspace.editorSuggest.removeSuggest(editorSuggest));
@@ -181,6 +182,11 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
     }
     async saveSettings() {
         await this.saveData(this.settings);
+    }
+    async suggester(text_items: string[], items: string[]): Promise<string> {
+        let modal = new FuzzySuggestModal(app, this, text_items, items);
+        const promise: Promise<string> = new Promise((resolve: (value?: string) => void, reject) => modal.openAndGetValue(resolve, reject));
+        return await promise;
     }
 }
 

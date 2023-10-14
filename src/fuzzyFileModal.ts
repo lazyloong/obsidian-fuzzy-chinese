@@ -112,7 +112,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         if (query == "") {
             this.historyMatchData = new HistoryMatchDataNode("\0");
             let items = this.index.items;
-            let fileHistoryDisplay = this.plugin.settings.fileHistoryDisplay == "使用完整路径";
+            let fileHistoryDisplay = this.plugin.settings.file.historyDisplay == "使用完整路径";
             let lastOpenFiles: MatchData[] = app.workspace
                 .getLastOpenFiles()
                 .map((p) => items.find((q) => q.type == "file" && q.path == p))
@@ -157,7 +157,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             if (d) matchData1.push(d);
         }
 
-        if (this.plugin.settings.usePathToSearch && matchData1.length <= 10) {
+        if (this.plugin.settings.file.usePathToSearch && matchData1.length <= 10) {
             toMatchData = indexNode.itemIndexByPath.length == 0 ? this.index.items : indexNode.itemIndexByPath;
             for (let p of toMatchData.filter((p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path))) {
                 let d = <MatchData>p.pinyinOfPath.match(query, p);
@@ -208,7 +208,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         e_title.appendText(text.slice(index));
 
         if (!matchData.usePath) {
-            if (this.plugin.settings.showTags) {
+            if (this.plugin.settings.file.showTags) {
                 let tags: string | Array<string> =
                         app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
                         app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
@@ -221,7 +221,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             }
 
             let e_note: HTMLDivElement = null;
-            if (this.plugin.settings.showPath && !matchData.usePath)
+            if (this.plugin.settings.file.showPath && !matchData.usePath)
                 e_note = e_content.createEl("div", {
                     cls: "fz-suggestion-note",
                     text: matchData.item.path,
@@ -233,7 +233,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                 });
                 e_flair.innerHTML +=
                     '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>';
-                if (!this.plugin.settings.showPath) e_flair.style.top = "9px";
+                if (!this.plugin.settings.file.showPath) e_flair.style.top = "9px";
                 if (e_note) e_note.style.width = "calc(100% - 30px)";
             }
         }
@@ -356,9 +356,9 @@ class PinyinIndex extends PI<Item> {
     isEffectiveFile(file: TAbstractFile) {
         if (!(file instanceof TFile)) return false;
 
-        if (this.plugin.settings.showAllFileTypes) return true;
+        if (this.plugin.settings.file.showAllFileTypes) return true;
         else if (DOCUMENT_EXTENSIONS.includes(file.extension)) return true;
-        else if (this.plugin.settings.showAttachments && this.plugin.settings.attachmentExtensions.includes(file.extension)) return true;
+        else if (this.plugin.settings.file.showAttachments && this.plugin.settings.file.attachmentExtensions.includes(file.extension)) return true;
         else return false;
     }
 }

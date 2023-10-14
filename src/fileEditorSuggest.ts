@@ -164,7 +164,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         }
         toHighlightEl.appendText(text.slice(index));
 
-        if (this.plugin.settings.showTags && !(matchData.item.type == "heading")) {
+        if (this.plugin.settings.file.showTags && !(matchData.item.type == "heading")) {
             let tags: string | Array<string> =
                     app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
                     app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,

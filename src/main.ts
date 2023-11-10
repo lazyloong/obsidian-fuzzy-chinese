@@ -195,7 +195,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
     async saveSettings() {
         await this.saveData(this.settings);
     }
-    async suggester(text_items: string[], items: string[]): Promise<string> {
+    async suggester(text_items: string[], items: any[]): Promise<string> {
         let modal = new FuzzySuggestModal(app, this, text_items, items);
         const promise: Promise<string> = new Promise((resolve: (value?: string) => void, reject) => modal.openAndGetValue(resolve, reject));
         return await promise;

@@ -5,7 +5,7 @@ import FuzzyChinesePinyinPlugin from "./main";
 
 export default class fuzzySuggestModal extends FuzzyModal<Item> {
     index: any;
-    items: string[];
+    items: any[];
     resolve: (value?: string) => void;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin, text_items: string[], items: string[]) {
         super(app, plugin);

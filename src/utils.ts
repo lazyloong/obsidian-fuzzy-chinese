@@ -9,7 +9,7 @@ export type MatchData<T> = {
 
 export type Item = {
     name: string;
-    pinyin: Pinyin<Item>;
+    pinyin: Pinyin;
 };
 
 export class HistoryMatchDataNode<T> {
@@ -41,7 +41,7 @@ export class HistoryMatchDataNode<T> {
     }
 }
 
-export class Pinyin<T extends Item> extends Array<PinyinChild> {
+export class Pinyin extends Array<PinyinChild> {
     text: string;
     constructor(query: string, plugin: FuzzyChinesePinyinPlugin) {
         super();
@@ -63,7 +63,7 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
         score += 30 / range.length; // 分割越少分越高
         return score;
     }
-    match(query: string, item: T, smathCase = false): MatchData<T> | false {
+    match<T extends Item>(query: string, item: T, smathCase = false): MatchData<T> | false {
         let range = this.match_(query, smathCase);
         range = range ? toRanges(range) : false;
         if (!range) return false;
@@ -74,8 +74,8 @@ export class Pinyin<T extends Item> extends Array<PinyinChild> {
         };
         return data;
     }
-    concat(pinyin: Pinyin<T>) {
-        let result = new Pinyin<T>("", null);
+    concat(pinyin: Pinyin) {
+        let result = new Pinyin("", null);
         result.text = this.text + pinyin.text;
         for (let i of this) {
             result.push(i);

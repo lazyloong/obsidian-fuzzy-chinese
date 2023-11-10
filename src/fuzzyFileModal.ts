@@ -9,9 +9,9 @@ export type Item = {
     file: TFile;
     type: "file" | "alias" | "heading";
     name: string;
-    pinyin: Pinyin<Item>;
+    pinyin: Pinyin;
     path: string;
-    pinyinOfPath: Pinyin<Item>;
+    pinyinOfPath: Pinyin;
 };
 
 export type MatchData = {
@@ -358,7 +358,8 @@ class PinyinIndex extends PI<Item> {
 
         if (this.plugin.settings.file.showAllFileTypes) return true;
         else if (DOCUMENT_EXTENSIONS.includes(file.extension)) return true;
-        else if (this.plugin.settings.file.showAttachments && this.plugin.settings.file.attachmentExtensions.includes(file.extension)) return true;
+        else if (this.plugin.settings.file.showAttachments && this.plugin.settings.file.attachmentExtensions.includes(file.extension))
+            return true;
         else return false;
     }
 }
@@ -366,19 +367,22 @@ class PinyinIndex extends PI<Item> {
 function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): Item {
     let name = file.extension != "md" ? file.name : file.basename;
     let folderIndex = plugin.folderModal.index.items;
-    let folderPathPinyin: Pinyin<any> = folderIndex.find((folder) => folder.name == file.parent.path)?.pinyin;
-    let fileNamePinyin = new Pinyin<Item>(name, plugin);
-    folderPathPinyin = new Pinyin<Item>("", plugin)
-        .concat(folderPathPinyin as any)
-        .concat(new Pinyin<Item>("/", plugin))
-        .concat(fileNamePinyin);
+    let fileNamePinyin = new Pinyin(name, plugin);
+    let folderPathPinyin: Pinyin;
+    let pathPinyin: Pinyin;
+    if (file.parent.path == "/") {
+        pathPinyin = fileNamePinyin;
+    } else {
+        folderPathPinyin = folderIndex.find((folder) => folder.name == file.parent.path).pinyin;
+        pathPinyin = folderPathPinyin.concat(new Pinyin("/", plugin)).concat(fileNamePinyin);
+    }
     return {
         type: "file",
         file: file,
         name: name,
         pinyin: fileNamePinyin,
         path: file.path,
-        pinyinOfPath: folderPathPinyin,
+        pinyinOfPath: pathPinyin,
     };
 }
 

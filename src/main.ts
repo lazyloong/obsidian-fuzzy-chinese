@@ -68,13 +68,13 @@ const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
             "pdf",
         ],
         usePathToSearch: false,
-        useFileEditorSuggest: false,
+        useFileEditorSuggest: true,
         showPath: true,
         showTags: false,
         historyDisplay: "使用完整路径",
     },
     other: {
-        useTagEditorSuggest: false,
+        useTagEditorSuggest: true,
         devMode: false,
     },
 };

@@ -1,6 +1,6 @@
 # Fuzzy Chinese Pinyin
 
-平替 Obsidian 的核心插件搜索，提供中文拼音搜索的功能，其他功能与核心插件一致。
+为 Obsidian 提供中文拼音搜索的功能（支持双拼和繁体）。
 
 ## 使用方法
 
@@ -11,7 +11,7 @@
 
 ![](README.jpg)
 
-可以设置是否显示 tag 或打开繁体支持。
+可以设置是否显示 tag 或使用路径搜索。
 
 快捷键设置：
 Obsidian -> 选项 -> 快捷键 -> 搜索 `Fuzzy` -> 给 `Fuzzy Chinese Pinyin: Open Search` 设置 `<Cmd+o>` 快捷键，就可以平替默认的 `快速切换：打开快速切换` 面板。
@@ -27,6 +27,11 @@ Obsidian -> 选项 -> 快捷键 -> 搜索 `Fuzzy` -> 给 `Fuzzy Chinese Pinyin: 
 快捷键设置：
 Obsidian -> 选项 -> 快捷键 -> 搜索 `Fuzzy` -> 给 `Fuzzy Chinese Pinyin: Execute Command` 设置 `<Cmd+p>` 快捷键，就可以平替默认的 `命令面板：打开命令面板`。
 
+### 双链
+
+选项设置：
+Obsidian -> 选项 -> 第三方插件 -> Fuzzy Chinese Pinyin -> 开启 `使用双链建议` 选项。
+
 ### 标签
 
 选项设置：
@@ -34,6 +39,7 @@ Obsidian -> 选项 -> 第三方插件 -> Fuzzy Chinese Pinyin -> 开启 `使用�
 
 使用：
 在笔记文档中直接输入 `#` 就会有中文标签建议（默认只有英文标签建议），可以继续输入拼音搜索中文标签，回车即可自动补全标签。
+在 yaml 区的 `tag: ` 或 `tags: ` 后也有同样的效果。
 
 ## 安装
 

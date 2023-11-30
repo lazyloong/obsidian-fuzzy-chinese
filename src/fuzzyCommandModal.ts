@@ -5,7 +5,7 @@ import FuzzyChinesePinyinPlugin from "./main";
 
 type Item = {
     name: string;
-    pinyin: Pinyin<Item>;
+    pinyin: Pinyin;
     command: any;
 };
 
@@ -126,14 +126,11 @@ class PinyinIndex extends PI<Item> {
     initEvent() {}
     initIndex() {
         let commands = app.commands.listCommands();
-        this.items = commands.map((command) => {
-            let item = {
-                name: command.name,
-                pinyin: new Pinyin(command.name, this.plugin),
-                command: command,
-            };
-            return item;
-        });
+        this.items = commands.map((command) => ({
+            name: command.name,
+            pinyin: new Pinyin(command.name, this.plugin),
+            command: command,
+        }));
     }
     update() {
         let commands = app.commands.listCommands();

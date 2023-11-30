@@ -1,5 +1,5 @@
 import { App, Notice, Plugin, PluginSettingTab, Setting, EditorSuggest } from "obsidian";
-import { Pinyin, PinyinIndex, runOnLayoutReady } from "./utils";
+import { Item, PinyinIndex, runOnLayoutReady } from "./utils";
 import FuzzyModal from "./fuzzyModal";
 import FuzzyFileModal from "./fuzzyFileModal";
 import FuzzyFolderModal from "./fuzzyFolderModal";
@@ -12,6 +12,7 @@ import SimplifiedDict from "./simplified_dict";
 import TraditionalDict from "./traditional_dict";
 
 import DoublePinyinDict from "./double_pinyin";
+import { fuzzyPinyinSearch, stringArray2Items } from "./search";
 
 interface FuzyyChinesePinyinSettings {
     global: {
@@ -181,7 +182,11 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             return false;
         });
         this.addSettingTab(new SettingTab(this.app, this));
-        this.api = { suggester: this.suggester };
+        this.api = {
+            suggester: this.suggester,
+            search: (query: string, items: string[] | Item[]) => fuzzyPinyinSearch(query, items, this),
+            stringArray2Items: stringArray2Items,
+        };
     }
     onunload() {
         this.editorSuggests.forEach((editorSuggest) => this.app.workspace.editorSuggest.removeSuggest(editorSuggest));

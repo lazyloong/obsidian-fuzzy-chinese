@@ -19,6 +19,7 @@ interface FuzyyChinesePinyinSettings {
         traditionalChineseSupport: boolean;
         doublePinyin: string;
         closeWithBackspace: boolean;
+        autoCaseSensitivity: boolean,
     };
     file: {
         showAllFileTypes: boolean;
@@ -41,6 +42,7 @@ const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
         traditionalChineseSupport: false,
         doublePinyin: "全拼",
         closeWithBackspace: false,
+        autoCaseSensitivity: true,
     },
     file: {
         showAttachments: false,
@@ -254,6 +256,12 @@ class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
         );
+        new Setting(containerEl).setName("自动大小写敏感").addToggle((text) => {
+            text.setValue(this.plugin.settings.global.autoCaseSensitivity).onChange(async (value) => {
+                this.plugin.settings.global.autoCaseSensitivity = value;
+                await this.plugin.saveSettings();
+            });
+        });
         containerEl.createEl("h2", { text: "文件搜索" });
         new Setting(containerEl)
             .setName("显示附件")

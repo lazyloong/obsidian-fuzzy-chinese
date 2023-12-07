@@ -149,7 +149,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             node = node.next;
             if (_f) index++;
         }
-        let smathCase = /[A-Z]/.test(query),
+        let smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity,
             indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
         for (let p of toMatchData) {
@@ -160,7 +160,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         if (this.plugin.settings.file.usePathToSearch && matchData1.length <= 10) {
             toMatchData = indexNode.itemIndexByPath.length == 0 ? this.index.items : indexNode.itemIndexByPath;
             for (let p of toMatchData.filter((p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path))) {
-                let d = <MatchData>p.pinyinOfPath.match(query, p);
+                let d = <MatchData>p.pinyinOfPath.match(query, p, smathCase);
                 if (d) {
                     d.usePath = true;
                     matchData2.push(d);
@@ -316,18 +316,13 @@ class PinyinIndex extends PI<Item> {
         }
     }
     initEvent() {
-        this.registerEvent(
-            this.metadataCache.on("changed", (file, data, cache) => {
-                this.update("changed", file, { data, cache });
-            })
-        );
+        this.registerEvent(this.metadataCache.on("changed", (file, data, cache) => this.update("changed", file, { data, cache })));
         this.registerEvent(this.vault.on("rename", (file, oldPath) => this.update("rename", file, { oldPath })));
         this.registerEvent(this.vault.on("create", (file) => this.update("create", file)));
         this.registerEvent(this.vault.on("delete", (file) => this.update("delete", file)));
     }
-    update(type: string, f: TAbstractFile, keys?: { oldPath?: string; data?: string; cache?: CachedMetadata }) {
-        if (!this.isEffectiveFile(f)) return;
-        let file = f as TFile;
+    update(type: string, file: TAbstractFile, keys?: { oldPath?: string; data?: string; cache?: CachedMetadata }) {
+        if (!this.isEffectiveFile(file)) return;
         switch (type) {
             case "changed": {
                 this.items = this.items
@@ -353,7 +348,7 @@ class PinyinIndex extends PI<Item> {
         }
     }
 
-    isEffectiveFile(file: TAbstractFile) {
+    isEffectiveFile(file: TAbstractFile): file is TFile {
         if (!(file instanceof TFile)) return false;
 
         if (this.plugin.settings.file.showAllFileTypes) return true;

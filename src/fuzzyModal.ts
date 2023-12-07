@@ -61,7 +61,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
             node = node.next;
             if (_f) index++;
         }
-        let smathCase = /[A-Z]/.test(query),
+        let smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity,
             indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
         for (let p of toMatchData) {

@@ -85,7 +85,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
             node = node.next;
             if (_f) index++;
         }
-        let smathCase = /[A-Z]/.test(query),
+        let smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity,
             indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
         for (let p of toMatchData) {

@@ -57,9 +57,10 @@ export class Pinyin extends Array<PinyinChild> {
     }
     getScore(range: Array<[number, number]>) {
         let score = 0;
-        let coverage = range.reduce((p, i) => p + i[1] - i[0] + 1, 0);
-        score += 30 * (coverage / this.text.length); // 使用线性函数计算覆盖度
-        score += 20 * Math.exp(-range[0][0] / this.text.length); // 靠前加分
+        let coverage = range.reduce((p, c) => p + c[1] - c[0] + 1, 0);
+        coverage = coverage / this.text.length;
+        score += coverage < 0.5 ? 150 * coverage : 50 * coverage + 50; // 使用线性函数计算覆盖度
+        score += 20 / (range[0][0] + 1); // 靠前加分
         score += 30 / range.length; // 分割越少分越高
         return score;
     }

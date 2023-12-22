@@ -1,4 +1,4 @@
-import { App, Hotkey, Modifier, Platform } from "obsidian";
+import { App, Hotkey, Modifier, Platform, getIcon } from "obsidian";
 import FuzzyModal from "./fuzzyModal";
 import { PinyinIndex as PI, Pinyin, MatchData } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
@@ -53,11 +53,11 @@ function generateHotKeyText(hotkey: Hotkey): string {
 }
 
 export default class FuzzyCommandModal extends FuzzyModal<Item> {
-    historyCommand: Array<Item>;
+    historyCommands: Array<Item>;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
-        this.historyCommand = [];
+        this.historyCommands = [];
         this.emptyStateText = "未发现命令。";
         this.setPlaceholder("输入命令……");
         let prompt = [
@@ -77,16 +77,42 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
         this.index.update();
     }
     getEmptyInputSuggestions(): MatchData<Item>[] {
-        return this.historyCommand
-            .concat(this.index.items.filter((p) => !this.historyCommand.includes(p)))
-            .slice(0, 100)
-            .map((p) => {
-                return { item: p, score: 0, range: null };
-            });
+        let pinnedCommands: MatchData<Item>[] = this.plugin.settings.command.pinnedCommands.map(
+                (p) => ({
+                    item: this.index.items.find((q) => q.name == p),
+                    score: -2,
+                    range: null,
+                })
+            ),
+            historyCommands: MatchData<Item>[] = this.historyCommands
+                .filter((p) => !this.plugin.settings.command.pinnedCommands.includes(p.name))
+                .map((p) => ({
+                    item: this.index.items.find((q) => q.name == p.name),
+                    score: -1,
+                    range: null,
+                })),
+            commonCommands: MatchData<Item>[] = this.index.items
+                .filter(
+                    (p) =>
+                        !this.plugin.settings.command.pinnedCommands.includes(p.name) &&
+                        !this.historyCommands.includes(p)
+                )
+                .map((p) => ({
+                    item: p,
+                    score: 0,
+                    range: null,
+                }));
+        return pinnedCommands
+            .concat(historyCommands)
+            .concat(commonCommands)
+            .filter((p) => p.item)
+            .slice(0, 100);
     }
     onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent) {
-        this.historyCommand = this.historyCommand.filter((p) => p.command.id != matchData.item.command.id);
-        this.historyCommand.unshift(matchData.item);
+        this.historyCommands = this.historyCommands.filter(
+            (p) => p.command.id != matchData.item.command.id
+        );
+        this.historyCommands.unshift(matchData.item);
         app.commands.executeCommand(matchData.item.command);
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
@@ -104,7 +130,10 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
         if (range) {
             for (const r of range) {
                 e_content.appendText(text.slice(index, r[0]));
-                e_content.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
+                e_content.createSpan({
+                    cls: "suggestion-highlight",
+                    text: text.slice(r[0], r[1] + 1),
+                });
                 index = r[1] + 1;
             }
         }
@@ -116,6 +145,12 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
                 text: generateHotKeyText(hotkey),
             });
         });
+
+        let e_flair = el.createEl("span", {
+            cls: "suggestion-flair",
+        });
+        if (matchData.score == -2) e_flair.appendChild(getIcon("pin"));
+        else if (matchData.score == -1) e_flair.appendChild(getIcon("history"));
     }
 }
 class PinyinIndex extends PI<Item> {
@@ -136,8 +171,12 @@ class PinyinIndex extends PI<Item> {
         let commands = app.commands.listCommands();
         let oldCommandsNames = this.items.map((item) => item.name);
         let newCommandsNames = commands.map((command) => command.name);
-        let addedCommands = newCommandsNames.filter((command) => !oldCommandsNames.includes(command));
-        let removedCommands = oldCommandsNames.filter((command) => !newCommandsNames.includes(command));
+        let addedCommands = newCommandsNames.filter(
+            (command) => !oldCommandsNames.includes(command)
+        );
+        let removedCommands = oldCommandsNames.filter(
+            (command) => !newCommandsNames.includes(command)
+        );
         if (addedCommands.length > 0) {
             // 添加新命令
             this.items.push(

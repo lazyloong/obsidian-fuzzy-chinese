@@ -229,3 +229,28 @@ export function runOnLayoutReady(fun: Function) {
         });
     }
 }
+
+export function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict): string {
+    let doublePinyin = "";
+    let findKeys = (obj, condition) => {
+        return Object.keys(obj).find((key) => condition(obj[key]));
+    };
+    if (["sh", "ch", "zh"].some((p) => fullPinyin.startsWith(p))) {
+        doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin.slice(0, 2)));
+        fullPinyin = fullPinyin.slice(2);
+    } else {
+        doublePinyin += fullPinyin[0];
+        fullPinyin = fullPinyin.slice(1);
+    }
+    if (fullPinyin.length != 0) doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin));
+    return doublePinyin;
+}
+
+export function arraymove<T>(arr: T[], fromIndex: number, toIndex: number): void {
+    if (toIndex < 0 || toIndex === arr.length) {
+        return;
+    }
+    const element = arr[fromIndex];
+    arr[fromIndex] = arr[toIndex];
+    arr[toIndex] = element;
+}

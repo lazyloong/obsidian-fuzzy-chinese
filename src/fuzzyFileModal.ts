@@ -1,4 +1,4 @@
-import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata } from "obsidian";
+import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata, getIcon } from "obsidian";
 import { Pinyin, PinyinIndex as PI, HistoryMatchDataNode } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 import FuzzyModal from "./fuzzyModal";
@@ -75,19 +75,28 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         this.scope.register(["Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md", "");
+            let nf = await app.vault.create(
+                app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md",
+                ""
+            );
             app.workspace.getMostRecentLeaf().openFile(nf);
         });
         this.scope.register(["Mod", "Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md", "");
+            let nf = await app.vault.create(
+                app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md",
+                ""
+            );
             app.workspace.getLeaf("tab").openFile(nf);
         });
         this.scope.register(["Shift", "Alt"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md", "");
+            let nf = await app.vault.create(
+                app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md",
+                ""
+            );
             getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()).openFile(nf);
         });
         this.scope.register(["Alt"], "Enter", async (e) => {
@@ -99,8 +108,9 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
                 this.close();
                 let item = this.chooser.values[this.chooser.selectedItem];
-                const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(undefined, () =>
-                    this.app.workspace.setActiveLeaf(newLeaf)
+                const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(
+                    undefined,
+                    () => this.app.workspace.setActiveLeaf(newLeaf)
                 );
                 newLeaf.openFile(item.item.file);
             });
@@ -158,8 +168,13 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         }
 
         if (this.plugin.settings.file.usePathToSearch && matchData1.length <= 10) {
-            toMatchData = indexNode.itemIndexByPath.length == 0 ? this.index.items : indexNode.itemIndexByPath;
-            for (let p of toMatchData.filter((p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path))) {
+            toMatchData =
+                indexNode.itemIndexByPath.length == 0
+                    ? this.index.items
+                    : indexNode.itemIndexByPath;
+            for (let p of toMatchData.filter(
+                (p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path)
+            )) {
                 let d = <MatchData>p.pinyinOfPath.match(query, p, smathCase);
                 if (d) {
                     d.usePath = true;
@@ -201,7 +216,10 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         if (range) {
             for (const r of range) {
                 e_title.appendText(text.slice(index, r[0]));
-                e_title.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
+                e_title.createSpan({
+                    cls: "suggestion-highlight",
+                    text: text.slice(r[0], r[1] + 1),
+                });
                 index = r[1] + 1;
             }
         }
@@ -231,8 +249,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                 let e_flair = el.createEl("span", {
                     cls: "fz-suggestion-flair",
                 });
-                e_flair.innerHTML +=
-                    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>';
+                e_flair.appendChild(getIcon("forward"));
                 if (!this.plugin.settings.file.showPath) e_flair.style.top = "9px";
                 if (e_note) e_note.style.width = "calc(100% - 30px)";
             }
@@ -251,13 +268,20 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         }
     }
     onNoSuggestion(): void {
-        super.onNoSuggestion(<MatchData>{ item: { type: "file", path: this.inputEl.value }, score: -1, usePath: true });
+        super.onNoSuggestion(<MatchData>{
+            item: { type: "file", path: this.inputEl.value },
+            score: -1,
+            usePath: true,
+        });
     }
     async getChoosenItemFile(matchData?: MatchData): Promise<TFile> {
         matchData = matchData ?? this.chooser.values[this.chooser.selectedItem];
         let file =
             matchData.score == -1
-                ? await app.vault.create(app.fileManager.getNewFileParent("").path + "/" + matchData.item.path + ".md", "")
+                ? await app.vault.create(
+                      app.fileManager.getNewFileParent("").path + "/" + matchData.item.path + ".md",
+                      ""
+                  )
                 : matchData.item.file;
         return file;
     }
@@ -281,13 +305,18 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
 
     const getMainLeaf = (): WorkspaceLeaf => {
         let mainLeaf = app.workspace.getMostRecentLeaf();
-        if (mainLeaf && mainLeaf !== leaf && mainLeaf.view?.containerEl.ownerDocument === document) {
+        if (
+            mainLeaf &&
+            mainLeaf !== leaf &&
+            mainLeaf.view?.containerEl.ownerDocument === document
+        ) {
             return mainLeaf;
         }
 
         mainLeavesIds.forEach((id: any) => {
             const l = app.workspace.getLeafById(id);
-            if ((leaf.parent.id == l.parent.id && mainLeaf) || !l.view?.navigation || leaf === l) return;
+            if ((leaf.parent.id == l.parent.id && mainLeaf) || !l.view?.navigation || leaf === l)
+                return;
             mainLeaf = l;
         });
         let newLeaf: WorkspaceLeaf;
@@ -316,12 +345,22 @@ class PinyinIndex extends PI<Item> {
         }
     }
     initEvent() {
-        this.registerEvent(this.metadataCache.on("changed", (file, data, cache) => this.update("changed", file, { data, cache })));
-        this.registerEvent(this.vault.on("rename", (file, oldPath) => this.update("rename", file, { oldPath })));
+        this.registerEvent(
+            this.metadataCache.on("changed", (file, data, cache) =>
+                this.update("changed", file, { data, cache })
+            )
+        );
+        this.registerEvent(
+            this.vault.on("rename", (file, oldPath) => this.update("rename", file, { oldPath }))
+        );
         this.registerEvent(this.vault.on("create", (file) => this.update("create", file)));
         this.registerEvent(this.vault.on("delete", (file) => this.update("delete", file)));
     }
-    update(type: string, file: TAbstractFile, keys?: { oldPath?: string; data?: string; cache?: CachedMetadata }) {
+    update(
+        type: string,
+        file: TAbstractFile,
+        keys?: { oldPath?: string; data?: string; cache?: CachedMetadata }
+    ) {
         if (!this.isEffectiveFile(file)) return;
         switch (type) {
             case "changed": {
@@ -353,7 +392,10 @@ class PinyinIndex extends PI<Item> {
 
         if (this.plugin.settings.file.showAllFileTypes) return true;
         else if (DOCUMENT_EXTENSIONS.includes(file.extension)) return true;
-        else if (this.plugin.settings.file.showAttachments && this.plugin.settings.file.attachmentExtensions.includes(file.extension))
+        else if (
+            this.plugin.settings.file.showAttachments &&
+            this.plugin.settings.file.attachmentExtensions.includes(file.extension)
+        )
             return true;
         else return false;
     }
@@ -381,7 +423,12 @@ function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): Item {
     };
 }
 
-function CachedMetadata2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin, items: Item[], cache?: CachedMetadata): Item[] {
+function CachedMetadata2Item(
+    file: TFile,
+    plugin: FuzzyChinesePinyinPlugin,
+    items: Item[],
+    cache?: CachedMetadata
+): Item[] {
     cache = cache ?? app.metadataCache.getFileCache(file);
     let alias = cache?.frontmatter?.alias || cache?.frontmatter?.aliases;
     let item = items.find((item) => item.path == file.path && item.type == "file");

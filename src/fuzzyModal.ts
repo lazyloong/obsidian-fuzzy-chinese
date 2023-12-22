@@ -8,6 +8,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     index: PinyinIndex<T>;
     plugin: FuzzyChinesePinyinPlugin;
     useInput: boolean;
+    onInput: any;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.useInput = false;

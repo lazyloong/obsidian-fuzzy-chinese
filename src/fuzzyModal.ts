@@ -40,6 +40,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     }
     onOpen() {
         this.inputEl.value = "";
+        this.inputEl.focus();
         this.onInput(); // 无输入时触发历史记录
     }
     abstract getEmptyInputSuggestions(): MatchData<T>[];

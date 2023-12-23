@@ -24,17 +24,21 @@ export default class SettingTab extends PluginSettingTab {
             .setName("Backspace 关闭搜索")
             .setDesc("当输入框为空时按下 Backspace 关闭搜索")
             .addToggle((cb) =>
-                cb.setValue(this.plugin.settings.global.closeWithBackspace).onChange(async (value) => {
-                    this.plugin.settings.global.closeWithBackspace = value;
-                    await this.plugin.saveSettings();
-                })
+                cb
+                    .setValue(this.plugin.settings.global.closeWithBackspace)
+                    .onChange(async (value) => {
+                        this.plugin.settings.global.closeWithBackspace = value;
+                        await this.plugin.saveSettings();
+                    })
             );
         new Setting(this.containerEl).setName("繁体支持").addToggle((cb) => {
-            cb.setValue(this.plugin.settings.global.traditionalChineseSupport).onChange(async (value) => {
-                this.plugin.settings.global.traditionalChineseSupport = value;
-                await this.plugin.saveSettings();
-                this.plugin.loadPinyinDict();
-            });
+            cb.setValue(this.plugin.settings.global.traditionalChineseSupport).onChange(
+                async (value) => {
+                    this.plugin.settings.global.traditionalChineseSupport = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.loadPinyinDict();
+                }
+            );
         });
         new Setting(this.containerEl).setName("双拼方案").addDropdown((cb) =>
             cb
@@ -50,7 +54,9 @@ export default class SettingTab extends PluginSettingTab {
                     this.plugin.pinyinDict.keys =
                         value == "全拼"
                             ? this.plugin.pinyinDict.originalKeys
-                            : this.plugin.pinyinDict.originalKeys.map((p) => fullPinyin2doublePinyin(p, DoublePinyinDict[value]));
+                            : this.plugin.pinyinDict.originalKeys.map((p) =>
+                                  fullPinyin2doublePinyin(p, DoublePinyinDict[value])
+                              );
                     this.plugin.fileModal.index.initIndex();
                     new Notice("双拼方案切换为：" + value, 4000);
                     await this.plugin.saveSettings();
@@ -105,15 +111,21 @@ export default class SettingTab extends PluginSettingTab {
             .setName("使用双链建议")
             .setDesc("输入[[的时候文件连接能支持中文拼音搜索（实验性功能）")
             .addToggle((cb) =>
-                cb.setValue(this.plugin.settings.file.useFileEditorSuggest).onChange(async (value) => {
-                    this.plugin.settings.file.useFileEditorSuggest = value;
-                    if (value) {
-                        this.app.workspace.editorSuggest.suggests.unshift(this.plugin.fileEditorSuggest);
-                    } else {
-                        this.app.workspace.editorSuggest.removeSuggest(this.plugin.fileEditorSuggest);
-                    }
-                    await this.plugin.saveSettings();
-                })
+                cb
+                    .setValue(this.plugin.settings.file.useFileEditorSuggest)
+                    .onChange(async (value) => {
+                        this.plugin.settings.file.useFileEditorSuggest = value;
+                        if (value) {
+                            this.app.workspace.editorSuggest.suggests.unshift(
+                                this.plugin.fileEditorSuggest
+                            );
+                        } else {
+                            this.app.workspace.editorSuggest.removeSuggest(
+                                this.plugin.fileEditorSuggest
+                            );
+                        }
+                        await this.plugin.saveSettings();
+                    })
             );
         new Setting(this.containerEl).setName("历史记录").addDropdown((cb) =>
             cb
@@ -132,13 +144,15 @@ export default class SettingTab extends PluginSettingTab {
             .setDesc("只显示这些后缀的附件")
             .addTextArea((cb) => {
                 cb.inputEl.addClass("fuzzy-chinese-attachment-extensions");
-                cb.setValue(this.plugin.settings.file.attachmentExtensions.join("\n")).onChange(async (value) => {
-                    this.plugin.settings.file.attachmentExtensions = value
-                        .trim()
-                        .split("\n")
-                        .map((x) => x.trim());
-                    await this.plugin.saveSettings();
-                });
+                cb.setValue(this.plugin.settings.file.attachmentExtensions.join("\n")).onChange(
+                    async (value) => {
+                        this.plugin.settings.file.attachmentExtensions = value
+                            .trim()
+                            .split("\n")
+                            .map((x) => x.trim());
+                        await this.plugin.saveSettings();
+                    }
+                );
             });
     }
     addCommandSettings() {
@@ -167,9 +181,10 @@ export default class SettingTab extends PluginSettingTab {
                         .setIcon("x")
                         .setTooltip("删除")
                         .onClick(() => {
-                            this.plugin.settings.command.pinnedCommands = this.plugin.settings.command.pinnedCommands.filter(
-                                (x) => x !== command
-                            );
+                            this.plugin.settings.command.pinnedCommands =
+                                this.plugin.settings.command.pinnedCommands.filter(
+                                    (x) => x !== command
+                                );
                             this.plugin.saveSettings();
                             this.display();
                         })
@@ -178,7 +193,11 @@ export default class SettingTab extends PluginSettingTab {
                     cb.setIcon("up-chevron-glyph")
                         .setTooltip("Move up")
                         .onClick(() => {
-                            arraymove(this.plugin.settings.command.pinnedCommands, index, index - 1);
+                            arraymove(
+                                this.plugin.settings.command.pinnedCommands,
+                                index,
+                                index - 1
+                            );
                             this.plugin.saveSettings();
                             this.display();
                         });
@@ -187,7 +206,11 @@ export default class SettingTab extends PluginSettingTab {
                     cb.setIcon("down-chevron-glyph")
                         .setTooltip("Move down")
                         .onClick(() => {
-                            arraymove(this.plugin.settings.command.pinnedCommands, index, index + 1);
+                            arraymove(
+                                this.plugin.settings.command.pinnedCommands,
+                                index,
+                                index + 1
+                            );
                             this.plugin.saveSettings();
                             this.display();
                         });
@@ -200,15 +223,21 @@ export default class SettingTab extends PluginSettingTab {
             .setName("使用标签建议")
             .setDesc("实验性功能")
             .addToggle((cb) =>
-                cb.setValue(this.plugin.settings.other.useTagEditorSuggest).onChange(async (value) => {
-                    this.plugin.settings.other.useTagEditorSuggest = value;
-                    if (value) {
-                        this.app.workspace.editorSuggest.suggests.unshift(this.plugin.tagEditorSuggest);
-                    } else {
-                        this.app.workspace.editorSuggest.removeSuggest(this.plugin.tagEditorSuggest);
-                    }
-                    await this.plugin.saveSettings();
-                })
+                cb
+                    .setValue(this.plugin.settings.other.useTagEditorSuggest)
+                    .onChange(async (value) => {
+                        this.plugin.settings.other.useTagEditorSuggest = value;
+                        if (value) {
+                            this.app.workspace.editorSuggest.suggests.unshift(
+                                this.plugin.tagEditorSuggest
+                            );
+                        } else {
+                            this.app.workspace.editorSuggest.removeSuggest(
+                                this.plugin.tagEditorSuggest
+                            );
+                        }
+                        await this.plugin.saveSettings();
+                    })
             );
         new Setting(this.containerEl)
             .setName("dev 模式")
@@ -233,7 +262,22 @@ export class CommandSuggest extends TextInputSuggest<MatchData<Item>> {
     }
 
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
-        el.setText(matchData.item.name);
+        el.addClass("fz-item");
+        let e_content = el.createEl("div", { cls: "fz-suggestion-content" });
+        let range = matchData.range,
+            text = matchData.item.name,
+            index = 0;
+        if (range) {
+            for (const r of range) {
+                e_content.appendText(text.slice(index, r[0]));
+                e_content.createSpan({
+                    cls: "suggestion-highlight",
+                    text: text.slice(r[0], r[1] + 1),
+                });
+                index = r[1] + 1;
+            }
+        }
+        e_content.appendText(text.slice(index));
     }
 
     selectSuggestion(matchData: MatchData<Item>): void {

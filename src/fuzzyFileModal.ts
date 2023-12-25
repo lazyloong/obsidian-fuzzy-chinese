@@ -57,7 +57,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         ];
         if (app.plugins.plugins["obsidian-hover-editor"])
             prompt.push({
-                command: "ctrl p",
+                command: "ctrl o",
                 purpose: "打开到新浮窗",
             });
 
@@ -105,7 +105,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()).openFile(file);
         });
         if (app.plugins.plugins["obsidian-hover-editor"])
-            this.scope.register(["Mod"], "p", (event: KeyboardEvent) => {
+            this.scope.register(["Mod"], "o", (event: KeyboardEvent) => {
                 this.close();
                 let item = this.chooser.values[this.chooser.selectedItem];
                 const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(

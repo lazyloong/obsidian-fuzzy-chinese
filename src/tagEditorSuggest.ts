@@ -1,6 +1,16 @@
-import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, TFile } from "obsidian";
+import {
+    App,
+    Editor,
+    EditorPosition,
+    EditorSuggest,
+    EditorSuggestContext,
+    EditorSuggestTriggerInfo,
+    TFile,
+    WorkspaceLeaf,
+} from "obsidian";
 import { PinyinIndex as PI, HistoryMatchDataNode, Pinyin, MatchData, Item } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
+import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
 export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     plugin: FuzzyChinesePinyinPlugin;
@@ -18,7 +28,9 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
             lineContent = editor.getLine(lineIndex),
             sub = lineContent.substr(0, cursor.ch);
         if (
-            sub.match(/(^|\s)#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]*$/g) &&
+            sub.match(
+                /(^|\s)#[^\u2000-\u206F\u2E00-\u2E7F'!"#$%&()*+,.:;<=>?@^`{|}~\[\]\\\s]*$/g
+            ) &&
             "#" !== lineContent.substr(cursor.ch, 1)
         ) {
             this.isYaml = false;
@@ -36,7 +48,8 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
                 query: s,
             };
         }
-        let frontmatterPosition = (app.metadataCache.getFileCache(file) as any)?.frontmatterPosition;
+        let frontmatterPosition = (app.metadataCache.getFileCache(file) as any)
+            ?.frontmatterPosition;
         if (
             sub.match(/tags?: /) &&
             frontmatterPosition &&

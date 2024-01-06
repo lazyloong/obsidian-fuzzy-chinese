@@ -4,6 +4,7 @@ import { PinyinIndex as PI, Item, MatchData, Pinyin } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 
 export default class FuzzyFolderModal extends FuzzyModal<Item> {
+    toMoveFiles: TAbstractFile | TFile[];
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.useInput = true;
@@ -34,6 +35,7 @@ export default class FuzzyFolderModal extends FuzzyModal<Item> {
             let file = app.workspace.getActiveFile();
             app.vault.rename(file, this.getChoosenItem().item.name + "/" + file.name);
         });
+        this.toMoveFiles = null;
     }
     getEmptyInputSuggestions(): MatchData<Item>[] {
         let root = app.vault.getRoot();
@@ -61,10 +63,18 @@ export default class FuzzyFolderModal extends FuzzyModal<Item> {
         }
         return result.slice(0, 20);
     }
-    async onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent): Promise<void> {
+    async onChooseSuggestion(
+        matchData: MatchData<Item>,
+        evt: MouseEvent | KeyboardEvent
+    ): Promise<void> {
         if (matchData.score == -1) await app.vault.createFolder(matchData.item.name);
-        let file = app.workspace.getActiveFile();
-        app.vault.rename(file, matchData.item.name + "/" + file.name);
+        if (!this.toMoveFiles) this.toMoveFiles = app.workspace.getActiveFile();
+        if (Array.isArray(this.toMoveFiles))
+            this.toMoveFiles.forEach((file) =>
+                app.vault.rename(file, matchData.item.name + "/" + file.name)
+            );
+        else app.vault.rename(this.toMoveFiles, matchData.item.name + "/" + this.toMoveFiles.name);
+        this.toMoveFiles = null;
     }
 }
 
@@ -90,7 +100,9 @@ class PinyinIndex extends PI<Item> {
         iterate(root, new Pinyin("", this.plugin));
     }
     initEvent() {
-        this.registerEvent(this.vault.on("rename", (folder, oldPath) => this.update("rename", folder, { oldPath })));
+        this.registerEvent(
+            this.vault.on("rename", (folder, oldPath) => this.update("rename", folder, { oldPath }))
+        );
         this.registerEvent(this.vault.on("create", (folder) => this.update("create", folder)));
         this.registerEvent(this.vault.on("delete", (folder) => this.update("delete", folder)));
     }
@@ -99,14 +111,20 @@ class PinyinIndex extends PI<Item> {
         let folder = f as TFolder;
         switch (type) {
             case "create":
-                this.items.push({ name: folder.path, pinyin: new Pinyin(folder.path, this.plugin) });
+                this.items.push({
+                    name: folder.path,
+                    pinyin: new Pinyin(folder.path, this.plugin),
+                });
                 break;
             case "delete":
                 this.items = this.items.filter((item) => item.name == folder.path);
                 break;
             case "rename":
                 this.items = this.items.filter((item) => item.name == data.oldPath);
-                this.items.push({ name: folder.path, pinyin: new Pinyin(folder.path, this.plugin) });
+                this.items.push({
+                    name: folder.path,
+                    pinyin: new Pinyin(folder.path, this.plugin),
+                });
                 break;
         }
     }

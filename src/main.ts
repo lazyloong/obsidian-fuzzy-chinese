@@ -1,11 +1,11 @@
-import { Plugin, EditorSuggest } from "obsidian";
+import { Plugin, EditorSuggest, WorkspaceLeaf, Menu, TFile, TAbstractFile } from "obsidian";
 import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "./utils";
 import FuzzyModal from "./fuzzyModal";
 import FuzzyFileModal from "./fuzzyFileModal";
 import FuzzyFolderModal from "./fuzzyFolderModal";
 import FuzzyCommandModal from "./fuzzyCommandModal";
 import FileEditorSuggest from "./fileEditorSuggest";
-import TagEditorSuggest from "./tagEditorSuggest";
+import TagEditorSuggest, { addMetadataEditor } from "./tagEditorSuggest";
 import FuzzySuggestModal from "./fuzzySuggestModal";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
 import SimplifiedDict from "./simplified_dict";
@@ -101,18 +101,6 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
     indexManager: IndexManager;
     editorSuggests: EditorSuggest<any>[];
 
-    loadPinyinDict() {
-        let PinyinKeys_ = this.settings.global.traditionalChineseSupport ? Object.keys(TraditionalDict) : Object.keys(SimplifiedDict);
-        let PinyinValues = this.settings.global.traditionalChineseSupport ? Object.values(TraditionalDict) : Object.values(SimplifiedDict);
-        let PinyinKeys =
-            this.settings.global.doublePinyin == "全拼"
-                ? PinyinKeys_
-                : PinyinKeys_.map((p) => fullPinyin2doublePinyin(p, DoublePinyinDict[this.settings.global.doublePinyin]));
-
-        // originalKeys 永远是全拼的拼音，keys 是转换后的拼音（可能也是全拼或双拼）
-        this.pinyinDict = { keys: PinyinKeys, values: PinyinValues, originalKeys: PinyinKeys_ };
-    }
-
     async onload() {
         await this.loadSettings();
 
@@ -123,7 +111,12 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
         this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
 
-        this.indexManager = new IndexManager(this, [this.folderModal, this.fileModal, this.commandModal, this.tagEditorSuggest]);
+        this.indexManager = new IndexManager(this, [
+            this.folderModal,
+            this.fileModal,
+            this.commandModal,
+            this.tagEditorSuggest,
+        ]);
         this.editorSuggests = [this.fileEditorSuggest, this.tagEditorSuggest];
 
         if (this.settings.file.useFileEditorSuggest) {
@@ -132,6 +125,8 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         if (this.settings.other.useTagEditorSuggest) {
             this.app.workspace.editorSuggest.suggests.unshift(this.tagEditorSuggest);
         }
+
+        this.registerFileMenu();
 
         runOnLayoutReady(() => {
             if (this.settings.other.devMode) {
@@ -193,12 +188,15 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         this.addSettingTab(new SettingTab(this.app, this));
         this.api = {
             suggester: this.suggester,
-            search: (query: string, items: string[] | Item[]) => fuzzyPinyinSearch(query, items, this),
+            search: (query: string, items: string[] | Item[]) =>
+                fuzzyPinyinSearch(query, items, this),
             stringArray2Items: stringArray2Items,
         };
     }
     onunload() {
-        this.editorSuggests.forEach((editorSuggest) => this.app.workspace.editorSuggest.removeSuggest(editorSuggest));
+        this.editorSuggests.forEach((editorSuggest) =>
+            this.app.workspace.editorSuggest.removeSuggest(editorSuggest)
+        );
         if (this.settings.other.devMode) {
             this.indexManager.devUnload();
         }
@@ -209,16 +207,68 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
     async saveSettings() {
         await this.saveData(this.settings);
     }
+    loadPinyinDict() {
+        let PinyinKeys_ = this.settings.global.traditionalChineseSupport
+            ? Object.keys(TraditionalDict)
+            : Object.keys(SimplifiedDict);
+        let PinyinValues = this.settings.global.traditionalChineseSupport
+            ? Object.values(TraditionalDict)
+            : Object.values(SimplifiedDict);
+        let PinyinKeys =
+            this.settings.global.doublePinyin == "全拼"
+                ? PinyinKeys_
+                : PinyinKeys_.map((p) =>
+                      fullPinyin2doublePinyin(
+                          p,
+                          DoublePinyinDict[this.settings.global.doublePinyin]
+                      )
+                  );
+
+        // originalKeys 永远是全拼的拼音，keys 是转换后的拼音（可能也是全拼或双拼）
+        this.pinyinDict = { keys: PinyinKeys, values: PinyinValues, originalKeys: PinyinKeys_ };
+    }
     async suggester(text_items: string[], items: any[]): Promise<string> {
         let modal = new FuzzySuggestModal(app, this, text_items, items);
-        const promise: Promise<string> = new Promise((resolve: (value?: string) => void, reject) => modal.openAndGetValue(resolve, reject));
+        const promise: Promise<string> = new Promise((resolve: (value?: string) => void, reject) =>
+            modal.openAndGetValue(resolve, reject)
+        );
         return await promise;
+    }
+    registerFileMenu() {
+        this.registerEvent(
+            this.app.workspace.on("file-menu", (menu: Menu, file: TAbstractFile) => {
+                let title = file instanceof TFile ? "文件" : "文件夹";
+                menu.addItem((item) => {
+                    item.setIcon("folder-tree")
+                        .setTitle("FuzzyPinyin: 移动" + title)
+                        .onClick(() => {
+                            this.folderModal.toMoveFiles = file;
+                            this.folderModal.open();
+                        });
+                });
+            })
+        );
+        this.registerEvent(
+            this.app.workspace.on("files-menu", (menu: Menu, files: TFile[]) => {
+                menu.addItem((item) => {
+                    item.setIcon("folder-tree")
+                        .setTitle(`FuzzyPinyin: 移动${files.length}个文件`)
+                        .onClick(() => {
+                            this.folderModal.toMoveFiles = files;
+                            this.folderModal.open();
+                        });
+                });
+            })
+        );
     }
 }
 
 class IndexManager extends Array<PinyinIndex<any>> {
     plugin: FuzzyChinesePinyinPlugin;
-    constructor(plugin: FuzzyChinesePinyinPlugin, component: Array<FuzzyModal<any> | EditorSuggest<any>>) {
+    constructor(
+        plugin: FuzzyChinesePinyinPlugin,
+        component: Array<FuzzyModal<any> | EditorSuggest<any>>
+    ) {
         super();
         component.forEach((p: any) => this.push(p.index));
         this.plugin = plugin;
@@ -230,9 +280,9 @@ class IndexManager extends Array<PinyinIndex<any>> {
         let startTime = Date.now();
         index.initIndex();
         console.log(
-            `Fuzzy Chinese Pinyin: ${index.id} indexing completed, totaling ${index.items.length} items, taking ${
-                (Date.now() - startTime) / 1000.0
-            }s`
+            `Fuzzy Chinese Pinyin: ${index.id} indexing completed, totaling ${
+                index.items.length
+            } items, taking ${(Date.now() - startTime) / 1000.0}s`
         );
     }
     devLoad() {

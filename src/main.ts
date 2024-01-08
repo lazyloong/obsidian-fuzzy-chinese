@@ -1,4 +1,16 @@
-import { Plugin, EditorSuggest, WorkspaceLeaf, Menu, TFile, TAbstractFile } from "obsidian";
+import {
+    Plugin,
+    EditorSuggest,
+    WorkspaceLeaf,
+    Menu,
+    TFile,
+    TAbstractFile,
+    Scope,
+    App,
+    KeymapEventHandler,
+    View,
+    Hotkey,
+} from "obsidian";
 import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "./utils";
 import FuzzyModal from "./fuzzyModal";
 import FuzzyFileModal from "./fuzzyFileModal";
@@ -100,6 +112,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
     tagEditorSuggest: TagEditorSuggest;
     indexManager: IndexManager;
     editorSuggests: EditorSuggest<any>[];
+    fileExplorerHotkey: FileExplorerHotkey;
 
     async onload() {
         await this.loadSettings();
@@ -138,6 +151,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             } else {
                 this.indexManager.load();
             }
+            this.registerFileExplorer();
         });
         this.addCommand({
             id: "open-search",
@@ -157,8 +171,14 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             id: "move-file",
             name: "Move File",
             checkCallback: (checking: boolean) => {
-                let file = app.workspace.getActiveFile();
-                if (file) {
+                let files = this.fileExplorerHotkey.getFiles();
+                let file = this.app.workspace.getActiveFile();
+                if (this.fileExplorerHotkey.working && files.length > 0) {
+                    if (!checking) {
+                        this.folderModal.openWithFiles(files);
+                    }
+                    return true;
+                } else if (file) {
                     if (!checking) {
                         this.folderModal.open();
                     }
@@ -242,8 +262,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
                     item.setIcon("folder-tree")
                         .setTitle("FuzzyPinyin: 移动" + title)
                         .onClick(() => {
-                            this.folderModal.toMoveFiles = file;
-                            this.folderModal.open();
+                            this.folderModal.openWithFiles(file);
                         });
                 });
             })
@@ -252,14 +271,37 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             this.app.workspace.on("files-menu", (menu: Menu, files: TFile[]) => {
                 menu.addItem((item) => {
                     item.setIcon("folder-tree")
-                        .setTitle(`FuzzyPinyin: 移动${files.length}个文件`)
+                        .setTitle(`FuzzyPinyin: 移动 ${files.length} 个文件`)
                         .onClick(() => {
-                            this.folderModal.toMoveFiles = files;
-                            this.folderModal.open();
+                            this.folderModal.openWithFiles(files);
                         });
                 });
             })
         );
+    }
+    registerFileExplorer() {
+        this.fileExplorerHotkey = new FileExplorerHotkey(this.app, this);
+    }
+}
+
+class FileExplorerHotkey {
+    plugin: FuzzyChinesePinyinPlugin;
+    app: App;
+    leaf: WorkspaceLeaf;
+    view: View;
+    working = false;
+    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+        this.plugin = plugin;
+        this.app = app;
+        this.app.workspace.iterateAllLeaves((leaf) => {
+            if (leaf.view?.tree?.id == "file-explorer") this.leaf = leaf;
+        });
+        if (!this.leaf) return;
+        this.working = true;
+        this.view = this.leaf.view;
+    }
+    getFiles(): TFile[] {
+        return Array.from(this.view.tree.selectedDoms).map((p) => p.file);
     }
 }
 

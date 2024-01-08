@@ -76,6 +76,10 @@ export default class FuzzyFolderModal extends FuzzyModal<Item> {
         else app.vault.rename(this.toMoveFiles, matchData.item.name + "/" + this.toMoveFiles.name);
         this.toMoveFiles = null;
     }
+    openWithFiles(files: TAbstractFile | TFile[]) {
+        this.toMoveFiles = files;
+        this.open();
+    }
 }
 
 class PinyinIndex extends PI<Item> {

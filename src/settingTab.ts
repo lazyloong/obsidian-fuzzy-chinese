@@ -1,7 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import DoublePinyinDict from "./double_pinyin";
 import FuzzyChinesePinyinPlugin from "./main";
-import { Item, MatchData, arraymove, fullPinyin2doublePinyin } from "./utils";
+import { Item, MatchData, SuggestionRenderer, arraymove, fullPinyin2doublePinyin } from "./utils";
 import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
 export default class SettingTab extends PluginSettingTab {
@@ -273,21 +273,7 @@ export class CommandSuggest extends TextInputSuggest<MatchData<Item>> {
 
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
         el.addClass("fz-item");
-        let e_content = el.createEl("div", { cls: "fz-suggestion-content" });
-        let range = matchData.range,
-            text = matchData.item.name,
-            index = 0;
-        if (range) {
-            for (const r of range) {
-                e_content.appendText(text.slice(index, r[0]));
-                e_content.createSpan({
-                    cls: "suggestion-highlight",
-                    text: text.slice(r[0], r[1] + 1),
-                });
-                index = r[1] + 1;
-            }
-        }
-        e_content.appendText(text.slice(index));
+        new SuggestionRenderer(el).render(matchData);
     }
 
     selectSuggestion(matchData: MatchData<Item>): void {

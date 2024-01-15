@@ -13,6 +13,7 @@ import {
     HistoryMatchDataNode,
     MatchData as uMatchData,
     Item as uItem,
+    SuggestionRenderer,
 } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 import FuzzyModal from "./fuzzyModal";
@@ -143,8 +144,8 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         });
         if (this.plugin.settings.file.searchWithTag) this.tagInput.show();
     }
-    onOpen(): void {
-        super.onOpen();
+    onClose(): void {
+        super.onClose();
         this.tags = [];
         this.tagInput.setValue("");
     }
@@ -264,55 +265,35 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
 
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
         el.addClass("fz-item");
-        let range = matchData.range,
-            text: string,
-            e_content = el.createEl("div", { cls: "fz-suggestion-content" }),
-            e_title = e_content.createEl("div", { cls: "fz-suggestion-title" });
+        let renderer = new SuggestionRenderer(el);
+        if (matchData.score == -1) {
+            renderer.render(matchData);
+            return;
+        }
+        renderer.setNote(matchData.item.path);
+        if (matchData.usePath) renderer.setToHighlightEl("note");
+        renderer.render(matchData);
 
-        text = matchData.usePath ? matchData.item.path : matchData.item.name;
-
-        let index = 0;
-        if (range) {
-            for (const r of range) {
-                e_title.appendText(text.slice(index, r[0]));
-                e_title.createSpan({
-                    cls: "suggestion-highlight",
-                    text: text.slice(r[0], r[1] + 1),
-                });
-                index = r[1] + 1;
+        if (this.plugin.settings.file.showTags) {
+            let tags: string | Array<string> =
+                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
+                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
+                tagArray: string[];
+            if (tags) {
+                tagArray = Array.isArray(tags)
+                    ? tags
+                    : String(tags)
+                          .split(/(, ?)| +/)
+                          .filter((p) => p);
+                let tagEl = renderer.titleEl.createDiv({ cls: "fz-suggestion-tags" });
+                tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
         }
-        e_title.appendText(text.slice(index));
 
-        if (!matchData.usePath) {
-            if (this.plugin.settings.file.showTags) {
-                let tags: string | Array<string> =
-                        this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter
-                            ?.tags ||
-                        this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
-                    tagArray: string[];
-                if (tags) {
-                    tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
-                    let tagEl = e_title.createDiv({ cls: "fz-suggestion-tags" });
-                    tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
-                }
-            }
-
-            let e_note: HTMLDivElement = null;
-            if (this.plugin.settings.file.showPath && !matchData.usePath)
-                e_note = e_content.createEl("div", {
-                    cls: "fz-suggestion-note",
-                    text: matchData.item.path,
-                });
-
-            if (matchData.item.type == "alias") {
-                let e_flair = el.createEl("span", {
-                    cls: "fz-suggestion-flair",
-                });
-                e_flair.appendChild(getIcon("forward"));
-                if (!this.plugin.settings.file.showPath) e_flair.style.top = "9px";
-                if (e_note) e_note.style.width = "calc(100% - 30px)";
-            }
+        if (matchData.item.type == "alias") {
+            renderer.addIcon("forward");
+            if (!this.plugin.settings.file.showPath) renderer.flairEl.style.top = "9px";
+            if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
         }
     }
     async onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent) {
@@ -329,17 +310,20 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
     }
     onNoSuggestion(): void {
         super.onNoSuggestion(<MatchData>{
-            item: { type: "file", path: this.inputEl.value },
+            item: { type: "file", name: this.inputEl.value },
             score: -1,
-            usePath: true,
+            usePath: false,
         });
     }
     async getChoosenItemFile(matchData?: MatchData): Promise<TFile> {
         matchData = matchData ?? this.chooser.values[this.chooser.selectedItem];
         let file =
             matchData.score == -1
-                ? await app.vault.create(
-                      app.fileManager.getNewFileParent("").path + "/" + matchData.item.path + ".md",
+                ? await this.app.vault.create(
+                      this.app.fileManager.getNewFileParent("").path +
+                          "/" +
+                          matchData.item.path +
+                          ".md",
                       ""
                   )
                 : matchData.item.file;
@@ -537,21 +521,7 @@ class TagSuggest extends TextInputSuggest<uMatchData<uItem>> {
 
     renderSuggestion(matchData: uMatchData<uItem>, el: HTMLElement): void {
         el.addClass("fz-item");
-        let e_content = el.createEl("div", { cls: "fz-suggestion-content" });
-        let range = matchData.range,
-            text = matchData.item.name,
-            index = 0;
-        if (range) {
-            for (const r of range) {
-                e_content.appendText(text.slice(index, r[0]));
-                e_content.createSpan({
-                    cls: "suggestion-highlight",
-                    text: text.slice(r[0], r[1] + 1),
-                });
-                index = r[1] + 1;
-            }
-        }
-        e_content.appendText(text.slice(index));
+        new SuggestionRenderer(el).render(matchData);
     }
 
     selectSuggestion(matchData: uMatchData<uItem>): void {

@@ -88,7 +88,8 @@ class PinyinIndex extends PI<Item> {
         this.id = "folder";
     }
     initIndex() {
-        let root = app.vault.getRoot();
+        this.items = [];
+        let root = this.app.vault.getRoot();
         let iterate = (node: TFolder, nodePinyin: Pinyin) => {
             let children = node.children;
             for (let child of children) {

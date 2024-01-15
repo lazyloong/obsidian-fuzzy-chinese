@@ -1,6 +1,6 @@
 import { SuggestModal, App } from "obsidian";
 import FuzzyChinesePinyinPlugin from "./main";
-import { HistoryMatchDataNode, PinyinIndex, MatchData, Item } from "./utils";
+import { HistoryMatchDataNode, PinyinIndex, MatchData, Item, SuggestionRenderer } from "./utils";
 
 export default abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<T>> {
     historyMatchData: HistoryMatchDataNode<T>;
@@ -23,19 +23,31 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         this.scope.register(["Mod"], "N", async (e) => {
             if (this.chooser.selectedItem != this.chooser.values.length - 1) {
                 this.chooser.setSelectedItem(this.chooser.selectedItem + 1);
-                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({ block: "center", behavior: "smooth" });
+                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({
+                    block: "center",
+                    behavior: "smooth",
+                });
             } else {
                 this.chooser.setSelectedItem(0);
-                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({ block: "center", behavior: "smooth" });
+                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({
+                    block: "center",
+                    behavior: "smooth",
+                });
             }
         });
         this.scope.register(["Mod"], "P", async (e) => {
             if (this.chooser.selectedItem != 0) {
                 this.chooser.setSelectedItem(this.chooser.selectedItem - 1);
-                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({ block: "center", behavior: "smooth" });
+                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({
+                    block: "center",
+                    behavior: "smooth",
+                });
             } else {
                 this.chooser.setSelectedItem(this.chooser.values.length - 1);
-                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({ block: "center", behavior: "smooth" });
+                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({
+                    block: "center",
+                    behavior: "smooth",
+                });
             }
         });
     }
@@ -86,23 +98,18 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
 
     renderSuggestion(matchData: MatchData<T>, el: HTMLElement) {
         el.addClass("fz-item");
-        let e_content = el.createEl("div", { cls: "fz-suggestion-content" });
-        let range = matchData.range,
-            text = matchData.item.name,
-            index = 0;
-        if (range) {
-            for (const r of range) {
-                e_content.appendText(text.slice(index, r[0]));
-                e_content.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
-                index = r[1] + 1;
-            }
-        }
-        e_content.appendText(text.slice(index));
+        new SuggestionRenderer(el).render(matchData);
     }
     onNoSuggestion(value?: any): void {
         this.chooser.setSuggestions(null);
         if (this.useInput) {
-            value = value ?? <MatchData<Item>>{ item: { name: this.inputEl.value, pinyin: null }, score: -1, range: null };
+            value =
+                value ??
+                <MatchData<Item>>{
+                    item: { name: this.inputEl.value, pinyin: null },
+                    score: -1,
+                    range: null,
+                };
             this.chooser.setSuggestions([value]);
         }
         this.chooser.addMessage(this.emptyStateText);

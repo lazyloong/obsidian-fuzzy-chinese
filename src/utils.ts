@@ -1,4 +1,4 @@
-import { Component, Vault, MetadataCache, App } from "obsidian";
+import { Component, Vault, MetadataCache, App, getIcon } from "obsidian";
 import FuzzyChinesePinyinPlugin from "./main";
 
 export type MatchData<T> = {
@@ -48,10 +48,13 @@ export class Pinyin extends Array<PinyinChild> {
         let pinyinDict = plugin?.pinyinDict;
         this.text = query;
         this.text.split("").forEach((p) => {
-            let index = pinyinDict.values.map((q, i) => (q.includes(p) ? i : null)).filter((p) => p);
+            let index = pinyinDict.values
+                .map((q, i) => (q.includes(p) ? i : null))
+                .filter((p) => p);
             this.push({
                 character: p,
-                pinyin: index.length == 0 ? [p] : pinyinDict.keys.filter((_, i) => index.includes(i)),
+                pinyin:
+                    index.length == 0 ? [p] : pinyinDict.keys.filter((_, i) => index.includes(i)),
             });
         });
     }
@@ -158,7 +161,9 @@ export class Pinyin extends Array<PinyinChild> {
                     }
 
                     // 匹配当前汉字的完整拼音
-                    const completeMatch = muls.find((py: string) => py === pinyin.slice(j - 1, j - 1 + py.length));
+                    const completeMatch = muls.find(
+                        (py: string) => py === pinyin.slice(j - 1, j - 1 + py.length)
+                    );
                     if (completeMatch) {
                         const matches = [...dp[i - 1][j - 1], i - 1];
                         const endIndex = j - 1 + completeMatch.length;
@@ -185,8 +190,10 @@ export abstract class PinyinIndex<T> extends Component {
     items: Array<T>;
     id: string;
     plugin: FuzzyChinesePinyinPlugin;
+    app: App;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super();
+        this.app = app;
         this.plugin = plugin;
         this.vault = app.vault;
         this.metadataCache = app.metadataCache;
@@ -242,7 +249,8 @@ export function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict): s
         doublePinyin += fullPinyin[0];
         fullPinyin = fullPinyin.slice(1);
     }
-    if (fullPinyin.length != 0) doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin));
+    if (fullPinyin.length != 0)
+        doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin));
     return doublePinyin;
 }
 
@@ -253,4 +261,64 @@ export function arraymove<T>(arr: T[], fromIndex: number, toIndex: number): void
     const element = arr[fromIndex];
     arr[fromIndex] = arr[toIndex];
     arr[toIndex] = element;
+}
+
+export class SuggestionRenderer {
+    containerEl: HTMLElement;
+    contentEl: HTMLElement;
+    flairEl: HTMLElement;
+    noteEl: HTMLElement;
+    titleEl: HTMLElement;
+    toHighlightEl: HTMLElement;
+    title: string = "";
+    note: string = "";
+    constructor(containerEl: HTMLElement) {
+        this.containerEl = containerEl;
+        this.contentEl = this.containerEl.createEl("div", { cls: "fz-suggestion-content" });
+        this.titleEl = this.contentEl.createEl("div", { cls: "fz-suggestion-title" });
+        this.noteEl = this.contentEl.createEl("div", {
+            cls: "fz-suggestion-note",
+        });
+        this.toHighlightEl = this.titleEl;
+    }
+    setToHighlightEl(name: "title" | "note") {
+        this.toHighlightEl = this[`${name}El`];
+    }
+    render(matchData: MatchData<any>) {
+        let range = matchData.range,
+            text: string,
+            index = 0;
+        if (this.title == "") this.setTitle(matchData.item.name);
+        if (this.toHighlightEl == this.titleEl) {
+            text = this.title;
+            this.noteEl.innerText = this.note;
+        } else {
+            text = this.note;
+            this.titleEl.innerText = this.title;
+        }
+        if (range) {
+            for (const r of range) {
+                this.toHighlightEl.appendText(text.slice(index, r[0]));
+                this.toHighlightEl.createSpan({
+                    cls: "suggestion-highlight",
+                    text: text.slice(r[0], r[1] + 1),
+                });
+                index = r[1] + 1;
+            }
+        }
+        this.toHighlightEl.appendText(text.slice(index));
+    }
+    setTitle(text: string) {
+        this.title = text;
+    }
+    setNote(text: string) {
+        this.note = text;
+    }
+    addIcon(icon: string) {
+        if (!this.flairEl)
+            this.flairEl = this.containerEl.createEl("span", {
+                cls: "suggestion-flair",
+            });
+        this.flairEl.appendChild(getIcon(icon));
+    }
 }

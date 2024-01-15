@@ -8,7 +8,14 @@ import {
     TFile,
     WorkspaceLeaf,
 } from "obsidian";
-import { PinyinIndex as PI, HistoryMatchDataNode, Pinyin, MatchData, Item } from "./utils";
+import {
+    PinyinIndex as PI,
+    HistoryMatchDataNode,
+    Pinyin,
+    MatchData,
+    Item,
+    SuggestionRenderer,
+} from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
@@ -117,17 +124,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement) {
         el.addClass("fz-item");
-        let range = matchData.range,
-            text = matchData.item.name,
-            index = 0;
-        if (range) {
-            for (const r of range) {
-                el.appendText(text.slice(index, r[0]));
-                el.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
-                index = r[1] + 1;
-            }
-        }
-        el.appendText(text.slice(index));
+        new SuggestionRenderer(el).render(matchData);
     }
     selectSuggestion(matchData: MatchData<Item>): void {
         var context = this.context;

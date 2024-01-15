@@ -1,6 +1,14 @@
-import { App, Editor, EditorPosition, EditorSuggest, EditorSuggestContext, EditorSuggestTriggerInfo, TFile } from "obsidian";
+import {
+    App,
+    Editor,
+    EditorPosition,
+    EditorSuggest,
+    EditorSuggestContext,
+    EditorSuggestTriggerInfo,
+    TFile,
+} from "obsidian";
 import { MatchData, Item } from "./fuzzyFileModal";
-import { PinyinIndex, Pinyin } from "./utils";
+import { PinyinIndex, Pinyin, SuggestionRenderer } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 import { runOnLayoutReady } from "./utils";
 
@@ -16,7 +24,9 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         this.plugin = plugin;
         this.index = this.plugin.fileModal.index;
         runOnLayoutReady(() => {
-            this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
+            this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions({
+                query: "",
+            } as EditorSuggestContext);
         });
         let prompt = [
             {
@@ -106,7 +116,8 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         return this.match(q, this.tempItems);
     }
     match(query: string, items: Item[]) {
-        if (query == "") return items.map((p) => <MatchData>{ item: p, score: -1, range: null, usePath: false });
+        if (query == "")
+            return items.map((p) => <MatchData>{ item: p, score: -1, range: null, usePath: false });
         query = query.toLocaleLowerCase();
         let matchData: MatchData[] = [];
         for (let p of items) {
@@ -137,61 +148,45 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
 
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
         el.addClass("fz-item");
-        let range = matchData.range,
-            text: string,
-            e_content = el.createEl("div", { cls: "fz-suggestion-content" }),
-            e_title = e_content.createEl("div", { cls: "fz-suggestion-title" }),
-            e_note = e_content.createEl("div", { cls: "fz-suggestion-note" }),
-            toHighlightEl: HTMLDivElement;
+        let renderer = new SuggestionRenderer(el);
+        renderer.setTitle(matchData.item.name);
+        renderer.setNote(matchData.item.path);
+        if (matchData.usePath) renderer.setToHighlightEl("note");
+        renderer.render(matchData);
 
-        if (matchData.usePath) {
-            e_title.innerText = matchData.item.name;
-            toHighlightEl = e_note;
-            text = matchData.item.path;
-        } else {
-            e_note.innerText = matchData.score == -1 ? matchData.item.file.basename : matchData.item.path;
-            toHighlightEl = e_title;
-            text = matchData.item.name;
-        }
-
-        let index = 0;
-        if (range) {
-            for (const r of range) {
-                toHighlightEl.appendText(text.slice(index, r[0]));
-                toHighlightEl.createSpan({ cls: "suggestion-highlight", text: text.slice(r[0], r[1] + 1) });
-                index = r[1] + 1;
-            }
-        }
-        toHighlightEl.appendText(text.slice(index));
-
-        if (this.plugin.settings.file.showTags && !(matchData.item.type == "heading")) {
+        if (this.plugin.settings.file.showTags && matchData.item.type != "heading") {
             let tags: string | Array<string> =
                     app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
                     app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
                 tagArray: string[];
             if (tags) {
-                tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
-                let tagEl = e_title.createDiv({ cls: "fz-suggestion-tags" });
+                tagArray = Array.isArray(tags)
+                    ? tags
+                    : String(tags)
+                          .split(/(, ?)| +/)
+                          .filter((p) => p);
+                let tagEl = renderer.titleEl.createDiv({ cls: "fz-suggestion-tags" });
                 tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
         }
 
         if (matchData.item.type == "alias") {
-            let e_flair = el.createEl("span", {
-                cls: "fz-suggestion-flair",
-            });
-            e_flair.innerHTML +=
-                '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-forward"><polyline points="15 17 20 12 15 7"></polyline><path d="M4 18v-2a4 4 0 0 1 4-4h12"></path></svg>';
-            e_flair.style.top = "9px";
-            e_note.style.width = "calc(100% - 30px)";
+            renderer.addIcon("forward");
+            if (!this.plugin.settings.file.showPath) renderer.flairEl.style.top = "9px";
+            if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
         }
     }
     selectSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent): void {
         if (matchData.item.type == "heading") {
-            this.originEditorSuggest.selectSuggestion((<Item & { originData: any }>matchData.item).originData, evt);
+            this.originEditorSuggest.selectSuggestion(
+                (<Item & { originData: any }>matchData.item).originData,
+                evt
+            );
         } else {
             this.originEditorSuggest.context = this.context;
-            this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<EditorSuggestContext>{ query: "" });
+            this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<
+                EditorSuggestContext
+            >{ query: "" });
             this.originEditorSuggestCache.then((matchDatas) => {
                 let matchData_ = matchDatas.find((p) => {
                     if (p.type == matchData.item.type && p.file == matchData.item.file) {

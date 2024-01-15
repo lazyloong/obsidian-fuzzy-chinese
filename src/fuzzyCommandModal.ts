@@ -1,6 +1,6 @@
 import { App, Hotkey, Modifier, Platform, getIcon } from "obsidian";
 import FuzzyModal from "./fuzzyModal";
-import { PinyinIndex as PI, Pinyin, MatchData } from "./utils";
+import { PinyinIndex as PI, Pinyin, MatchData, SuggestionRenderer } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 
 type Item = {
@@ -117,40 +117,25 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
         el.addClass("fz-item");
-        let range = matchData.range,
-            text = matchData.item.name,
-            index = 0,
-            e_content = el.createEl("span", { cls: "fz-suggestion-content" }),
-            e_aux = el.createEl("span", { cls: "fz-suggestion-aux" });
 
+        let renderer = new SuggestionRenderer(el);
+        renderer.render(matchData);
+
+        let auxEl = el.createEl("span", { cls: "fz-suggestion-aux" });
         const customHotkeys = this.app.hotkeyManager.getHotkeys(matchData.item.command.id);
         const defaultHotkeys = this.app.hotkeyManager.getDefaultHotkeys(matchData.item.command.id);
         const hotkeys = customHotkeys || defaultHotkeys || [];
-
-        if (range) {
-            for (const r of range) {
-                e_content.appendText(text.slice(index, r[0]));
-                e_content.createSpan({
-                    cls: "suggestion-highlight",
-                    text: text.slice(r[0], r[1] + 1),
-                });
-                index = r[1] + 1;
-            }
-        }
-        e_content.appendText(text.slice(index));
-
-        hotkeys.forEach((hotkey) => {
-            e_aux.createEl("kbd", {
+        hotkeys.forEach((hotkey: Hotkey) => {
+            auxEl.createEl("kbd", {
                 cls: "suggestion-command",
                 text: generateHotKeyText(hotkey),
             });
         });
 
-        let e_flair = el.createEl("span", {
-            cls: "suggestion-flair",
-        });
-        if (matchData.score == -2) e_flair.appendChild(getIcon("pin"));
-        else if (matchData.score == -1) e_flair.appendChild(getIcon("history"));
+        if (matchData.score == -2) renderer.addIcon("pin");
+        else if (matchData.score == -1) renderer.addIcon("history");
+        if (renderer.flairEl && renderer.flairEl.innerHTML == "")
+            renderer.flairEl.style.marginLeft = "10px";
     }
 }
 class PinyinIndex extends PI<Item> {

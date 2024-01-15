@@ -10,6 +10,7 @@ import {
     KeymapEventHandler,
     View,
     Hotkey,
+    Command,
 } from "obsidian";
 import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "./utils";
 import FuzzyModal from "./fuzzyModal";
@@ -73,12 +74,31 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
                 globalThis.refreshFuzzyChineseIndex = () => {
                     globalThis.FuzzyChineseIndex = {};
                     this.indexManager.load();
+                    this.indexManager.devUnload();
                 };
             } else {
                 this.indexManager.load();
             }
             this.registerFileExplorer();
+            this.addCommands();
         });
+        this.addRibbonIcon("search", "FuzzySearch", () => {
+            let leaf = this.app.workspace.getMostRecentLeaf();
+            if (leaf) {
+                this.fileModal.open();
+                return true;
+            }
+            return false;
+        });
+        this.addSettingTab(new SettingTab(this.app, this));
+        this.api = {
+            suggester: this.suggester,
+            search: (query: string, items: string[] | Item[]) =>
+                fuzzyPinyinSearch(query, items, this),
+            stringArray2Items: stringArray2Items,
+        };
+    }
+    addCommands() {
         this.addCommand({
             id: "open-search",
             name: "Open Search",
@@ -123,21 +143,6 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
                 return true;
             },
         });
-        this.addRibbonIcon("search", "FuzzySearch", () => {
-            let leaf = this.app.workspace.getMostRecentLeaf();
-            if (leaf) {
-                this.fileModal.open();
-                return true;
-            }
-            return false;
-        });
-        this.addSettingTab(new SettingTab(this.app, this));
-        this.api = {
-            suggester: this.suggester,
-            search: (query: string, items: string[] | Item[]) =>
-                fuzzyPinyinSearch(query, items, this),
-            stringArray2Items: stringArray2Items,
-        };
     }
     onunload() {
         this.editorSuggests.forEach((editorSuggest) =>

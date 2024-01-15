@@ -17,7 +17,7 @@ import FuzzyFileModal from "./fuzzyFileModal";
 import FuzzyFolderModal from "./fuzzyFolderModal";
 import FuzzyCommandModal from "./fuzzyCommandModal";
 import FileEditorSuggest from "./fileEditorSuggest";
-import TagEditorSuggest, { addMetadataEditor } from "./tagEditorSuggest";
+import TagEditorSuggest from "./tagEditorSuggest";
 import FuzzySuggestModal from "./fuzzySuggestModal";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
 import SimplifiedDict from "./simplified_dict";
@@ -25,81 +25,7 @@ import TraditionalDict from "./traditional_dict";
 
 import DoublePinyinDict from "./double_pinyin";
 import { fuzzyPinyinSearch, stringArray2Items } from "./search";
-import SettingTab from "./settingTab";
-
-interface FuzyyChinesePinyinSettings {
-    global: {
-        traditionalChineseSupport: boolean;
-        doublePinyin: string;
-        closeWithBackspace: boolean;
-        autoCaseSensitivity: boolean;
-    };
-    file: {
-        showAllFileTypes: boolean;
-        showAttachments: boolean;
-        attachmentExtensions: Array<string>;
-        usePathToSearch: boolean;
-        useFileEditorSuggest: boolean;
-        showPath: boolean;
-        showTags: boolean;
-        historyDisplay: string;
-    };
-    command: {
-        pinnedCommands: Array<string>;
-    };
-    other: {
-        useTagEditorSuggest: boolean;
-        devMode: boolean;
-    };
-}
-
-const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
-    global: {
-        traditionalChineseSupport: false,
-        doublePinyin: "全拼",
-        closeWithBackspace: false,
-        autoCaseSensitivity: true,
-    },
-    file: {
-        showAttachments: false,
-        showAllFileTypes: false,
-        attachmentExtensions: [
-            "bmp",
-            "png",
-            "jpg",
-            "jpeg",
-            "gif",
-            "svg",
-            "webp",
-            "mp3",
-            "wav",
-            "m4a",
-            "3gp",
-            "flac",
-            "ogg",
-            "oga",
-            "opus",
-            "mp4",
-            "webm",
-            "ogv",
-            "mov",
-            "mkv",
-            "pdf",
-        ],
-        usePathToSearch: false,
-        useFileEditorSuggest: true,
-        showPath: true,
-        showTags: false,
-        historyDisplay: "使用完整路径",
-    },
-    command: {
-        pinnedCommands: [],
-    },
-    other: {
-        useTagEditorSuggest: true,
-        devMode: false,
-    },
-};
+import SettingTab, { DEFAULT_SETTINGS, FuzyyChinesePinyinSettings } from "./settingTab";
 
 export default class FuzzyChinesePinyinPlugin extends Plugin {
     settings: FuzyyChinesePinyinSettings;
@@ -293,10 +219,9 @@ class FileExplorerHotkey {
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         this.plugin = plugin;
         this.app = app;
-        this.app.workspace.iterateAllLeaves((leaf) => {
-            if (leaf.view?.tree?.id == "file-explorer") this.leaf = leaf;
-        });
-        if (!this.leaf) return;
+        let leafs = this.app.workspace.getLeavesOfType("file-explorer");
+        if (leafs.length == 0) return;
+        this.leaf = leafs[0];
         this.working = true;
         this.view = this.leaf.view;
     }

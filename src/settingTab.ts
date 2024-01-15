@@ -139,6 +139,16 @@ export default class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
         );
+        new Setting(this.containerEl).setName("附带标签搜索").addToggle((cb) =>
+            cb
+                .setValue(this.plugin.settings.file.searchWithTag)
+                .onChange(async (value: boolean) => {
+                    this.plugin.settings.file.searchWithTag = value;
+                    if (value) this.plugin.fileModal.tagInput.show();
+                    else this.plugin.fileModal.tagInput.hide();
+                    await this.plugin.saveSettings();
+                })
+        );
         new Setting(this.containerEl)
             .setName("附件后缀")
             .setDesc("只显示这些后缀的附件")
@@ -286,3 +296,79 @@ export class CommandSuggest extends TextInputSuggest<MatchData<Item>> {
         this.close();
     }
 }
+
+export interface FuzyyChinesePinyinSettings {
+    global: {
+        traditionalChineseSupport: boolean;
+        doublePinyin: string;
+        closeWithBackspace: boolean;
+        autoCaseSensitivity: boolean;
+    };
+    file: {
+        showAllFileTypes: boolean;
+        showAttachments: boolean;
+        attachmentExtensions: Array<string>;
+        usePathToSearch: boolean;
+        useFileEditorSuggest: boolean;
+        showPath: boolean;
+        showTags: boolean;
+        historyDisplay: string;
+        searchWithTag: boolean;
+    };
+    command: {
+        pinnedCommands: Array<string>;
+    };
+    other: {
+        useTagEditorSuggest: boolean;
+        devMode: boolean;
+    };
+}
+
+export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
+    global: {
+        traditionalChineseSupport: false,
+        doublePinyin: "全拼",
+        closeWithBackspace: false,
+        autoCaseSensitivity: true,
+    },
+    file: {
+        showAttachments: false,
+        showAllFileTypes: false,
+        attachmentExtensions: [
+            "bmp",
+            "png",
+            "jpg",
+            "jpeg",
+            "gif",
+            "svg",
+            "webp",
+            "mp3",
+            "wav",
+            "m4a",
+            "3gp",
+            "flac",
+            "ogg",
+            "oga",
+            "opus",
+            "mp4",
+            "webm",
+            "ogv",
+            "mov",
+            "mkv",
+            "pdf",
+        ],
+        usePathToSearch: false,
+        useFileEditorSuggest: true,
+        showPath: true,
+        showTags: false,
+        historyDisplay: "使用完整路径",
+        searchWithTag: false,
+    },
+    command: {
+        pinnedCommands: [],
+    },
+    other: {
+        useTagEditorSuggest: true,
+        devMode: false,
+    },
+};

@@ -70,6 +70,9 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
         }
         return null;
     }
+    getSuggestionsByString(query: string) {
+        return this.getSuggestions({ query } as EditorSuggestContext);
+    }
     getSuggestions(content: EditorSuggestContext): MatchData<Item>[] {
         this.index.update();
         let query = content.query;

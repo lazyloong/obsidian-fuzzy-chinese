@@ -1,7 +1,22 @@
-import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata, getIcon } from "obsidian";
-import { Pinyin, PinyinIndex as PI, HistoryMatchDataNode } from "./utils";
+import {
+    TFile,
+    App,
+    WorkspaceLeaf,
+    TAbstractFile,
+    CachedMetadata,
+    getIcon,
+    TextComponent,
+} from "obsidian";
+import {
+    Pinyin,
+    PinyinIndex as PI,
+    HistoryMatchDataNode,
+    MatchData as uMatchData,
+    Item as uItem,
+} from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 import FuzzyModal from "./fuzzyModal";
+import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
@@ -23,6 +38,8 @@ export type MatchData = {
 
 export default class FuzzyFileModal extends FuzzyModal<Item> {
     plugin: FuzzyChinesePinyinPlugin;
+    tags: string[] = [];
+    tagInput: TagInput;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.useInput = true;
@@ -55,7 +72,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                 purpose: "创建新文件到其他面板",
             },
         ];
-        if (app.plugins.plugins["obsidian-hover-editor"])
+        if (this.app.plugins.plugins["obsidian-hover-editor"])
             prompt.push({
                 command: "ctrl o",
                 purpose: "打开到新浮窗",
@@ -114,28 +131,60 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                 );
                 newLeaf.openFile(item.item.file);
             });
+
+        let inputContainerEl = this.modalEl.querySelector(
+            ".prompt-input-container"
+        ) as HTMLInputElement;
+        this.tagInput = new TagInput(inputContainerEl, this.plugin);
+        this.tagInput.onChange((value) => {
+            if (value == "") this.tags = [];
+            else this.tags = value.split(",").map((t) => t.trim());
+            this.onInput();
+        });
+        if (this.plugin.settings.file.searchWithTag) this.tagInput.show();
+    }
+    onOpen(): void {
+        super.onOpen();
+        this.tags = [];
+        this.tagInput.setValue("");
     }
     getEmptyInputSuggestions(): MatchData[] {
-        return [];
-    }
-    getSuggestions(query: string): MatchData[] {
-        if (query == "") {
+        let fileHistoryDisplay = this.plugin.settings.file.historyDisplay == "使用完整路径";
+        if (this.tags.length == 0) {
             this.historyMatchData = new HistoryMatchDataNode("\0");
             let items = this.index.items;
-            let fileHistoryDisplay = this.plugin.settings.file.historyDisplay == "使用完整路径";
-            let lastOpenFiles: MatchData[] = app.workspace
+            let lastOpenFiles: MatchData[] = this.app.workspace
                 .getLastOpenFiles()
                 .map((p) => items.find((q) => q.type == "file" && q.path == p))
                 .filter((p) => p)
-                .map((p) => {
-                    return {
-                        item: p,
-                        score: 0,
-                        range: null,
-                        usePath: fileHistoryDisplay,
-                    };
-                });
+                .map((p) => ({
+                    item: p,
+                    score: 0,
+                    range: null,
+                    usePath: fileHistoryDisplay,
+                }));
             return lastOpenFiles;
+        } else {
+            return this.index.items
+                .filter((item) => {
+                    let tags: string | Array<string> =
+                        this.app.metadataCache.getFileCache(item.file)?.frontmatter?.tags ||
+                        this.app.metadataCache.getFileCache(item.file)?.frontmatter?.tag;
+                    if (!tags) return;
+                    let tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
+                    return tagArray.every((tag) => this.tags.some((t) => tag.startsWith(t)));
+                })
+                .map((p) => ({
+                    item: p,
+                    score: 0,
+                    range: null,
+                    usePath: fileHistoryDisplay,
+                }));
+        }
+    }
+    getSuggestions(query: string): MatchData[] {
+        if (query == "") {
+            return this.getEmptyInputSuggestions();
         }
 
         let matchData: MatchData[] = [],
@@ -200,6 +249,16 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             }
             return acc;
         }, []);
+        if (this.plugin.settings.file.searchWithTag && this.tags.length > 0) {
+            result = result.filter((matchData) => {
+                let tags: string | Array<string> =
+                    this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
+                    this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag;
+                if (!tags) return;
+                let tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
+                return tagArray.every((tag) => this.tags.some((t) => tag.startsWith(t)));
+            });
+        }
         return result;
     }
 
@@ -228,8 +287,9 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         if (!matchData.usePath) {
             if (this.plugin.settings.file.showTags) {
                 let tags: string | Array<string> =
-                        app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                        app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
+                        this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter
+                            ?.tags ||
+                        this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
                     tagArray: string[];
                 if (tags) {
                     tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
@@ -445,4 +505,58 @@ function CachedMetadata2Item(
             };
         });
     } else return [];
+}
+
+class TagInput extends TextComponent {
+    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: FuzzyChinesePinyinPlugin) {
+        super(inputEl);
+        this.hide();
+        this.setPlaceholder("标签");
+        this.inputEl.classList.add("prompt-input");
+        this.inputEl.style.width = "30%";
+        this.inputEl.style.borderLeft = "2px solid var(--background-primary)";
+        new TagSuggest(this.inputEl, plugin);
+    }
+    hide() {
+        this.inputEl.style.display = "none";
+    }
+    show() {
+        this.inputEl.style.display = "block";
+    }
+}
+
+class TagSuggest extends TextInputSuggest<uMatchData<uItem>> {
+    plugin: FuzzyChinesePinyinPlugin;
+    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: FuzzyChinesePinyinPlugin) {
+        super(inputEl);
+        this.plugin = plugin;
+    }
+    getSuggestions(inputStr: string): uMatchData<uItem>[] {
+        return this.plugin.tagEditorSuggest.getSuggestionsByString(inputStr);
+    }
+
+    renderSuggestion(matchData: uMatchData<uItem>, el: HTMLElement): void {
+        el.addClass("fz-item");
+        let e_content = el.createEl("div", { cls: "fz-suggestion-content" });
+        let range = matchData.range,
+            text = matchData.item.name,
+            index = 0;
+        if (range) {
+            for (const r of range) {
+                e_content.appendText(text.slice(index, r[0]));
+                e_content.createSpan({
+                    cls: "suggestion-highlight",
+                    text: text.slice(r[0], r[1] + 1),
+                });
+                index = r[1] + 1;
+            }
+        }
+        e_content.appendText(text.slice(index));
+    }
+
+    selectSuggestion(matchData: uMatchData<uItem>): void {
+        this.inputEl.value = matchData.item.name;
+        this.inputEl.trigger("input");
+        this.close();
+    }
 }

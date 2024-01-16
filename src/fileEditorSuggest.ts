@@ -156,8 +156,8 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
 
         if (this.plugin.settings.file.showTags && matchData.item.type != "heading") {
             let tags: string | Array<string> =
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
+                    this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
+                    this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
                 tagArray: string[];
             if (tags) {
                 tagArray = Array.isArray(tags)

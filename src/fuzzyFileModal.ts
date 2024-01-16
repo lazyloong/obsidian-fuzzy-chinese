@@ -1,12 +1,4 @@
-import {
-    TFile,
-    App,
-    WorkspaceLeaf,
-    TAbstractFile,
-    CachedMetadata,
-    getIcon,
-    TextComponent,
-} from "obsidian";
+import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata, TextComponent } from "obsidian";
 import {
     Pinyin,
     PinyinIndex as PI,
@@ -29,6 +21,8 @@ export type Item = {
     path: string;
     pinyinOfPath: Pinyin;
 };
+type FileItem = Item & { type: "file" };
+type AliasItem = Item & { type: "alias" };
 
 export type MatchData = {
     item: Item;
@@ -150,7 +144,6 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         this.tagInput.setValue("");
     }
     getEmptyInputSuggestions(): MatchData[] {
-        let fileHistoryDisplay = this.plugin.settings.file.historyDisplay == "使用完整路径";
         if (this.tags.length == 0) {
             this.historyMatchData = new HistoryMatchDataNode("\0");
             let items = this.index.items;
@@ -162,7 +155,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                     item: p,
                     score: 0,
                     range: null,
-                    usePath: fileHistoryDisplay,
+                    usePath: false,
                 }));
             return lastOpenFiles;
         } else {
@@ -179,7 +172,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                     item: p,
                     score: 0,
                     range: null,
-                    usePath: fileHistoryDisplay,
+                    usePath: false,
                 }));
         }
     }
@@ -374,58 +367,65 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
 };
 
 class PinyinIndex extends PI<Item> {
+    fileItems: FileItem[] = [];
+    aliasItems: AliasItem[] = [];
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.id = "file";
     }
     initIndex() {
-        let files = app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
+        let files = this.app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
 
-        this.items = files.map((file) => TFile2Item(file, this.plugin));
+        this.fileItems = files.map((file) => TFile2Item(file, this.plugin));
 
         for (let file of files) {
             if (file.extension != "md") continue;
-            this.items = this.items.concat(CachedMetadata2Item(file, this.plugin, this.items));
+            this.aliasItems = this.aliasItems.concat(
+                CachedMetadata2Item(file, this.plugin, this.fileItems)
+            );
         }
     }
     initEvent() {
         this.registerEvent(
-            this.metadataCache.on("changed", (file, data, cache) =>
-                this.update("changed", file, { data, cache })
+            this.metadataCache.on("changed", (file, _, cache) =>
+                this.update("changed", file, cache)
             )
         );
         this.registerEvent(
-            this.vault.on("rename", (file, oldPath) => this.update("rename", file, { oldPath }))
+            this.vault.on("rename", (file, oldPath) => this.update("rename", file, oldPath))
         );
         this.registerEvent(this.vault.on("create", (file) => this.update("create", file)));
         this.registerEvent(this.vault.on("delete", (file) => this.update("delete", file)));
     }
-    update(
-        type: string,
-        file: TAbstractFile,
-        keys?: { oldPath?: string; data?: string; cache?: CachedMetadata }
-    ) {
+    update(type: "changed", file: TAbstractFile, cache: CachedMetadata): void;
+    update(type: "create", file: TAbstractFile): void;
+    update(type: "rename", file: TAbstractFile, oldPath: string): void;
+    update(type: "delete", file: TAbstractFile): void;
+    update(type: string, file: TAbstractFile, args?: any) {
         if (!this.isEffectiveFile(file)) return;
         switch (type) {
             case "changed": {
-                this.items = this.items
-                    .filter((item) => !(item.path == file.path && item.type == "alias"))
-                    .concat(CachedMetadata2Item(file, this.plugin, this.items, keys.cache));
+                this.aliasItems = this.aliasItems
+                    .filter((item) => item.path != file.path)
+                    .concat(CachedMetadata2Item(file, this.plugin, this.fileItems, args));
                 break;
             }
             case "create": {
-                this.items.push(TFile2Item(file, this.plugin));
+                this.fileItems.push(TFile2Item(file, this.plugin));
                 break;
             }
             case "rename": {
-                this.items = this.items
-                    .filter((item) => item.path != keys.oldPath)
-                    .concat(CachedMetadata2Item(file, this.plugin, this.items));
-                this.items.push(TFile2Item(file, this.plugin));
+                this.fileItems = this.fileItems.filter((item) => item.path != args);
+                this.fileItems.push(TFile2Item(file, this.plugin));
+                this.aliasItems = this.aliasItems.filter((item) => item.path != args);
+                this.aliasItems = this.aliasItems.concat(
+                    CachedMetadata2Item(file, this.plugin, this.aliasItems)
+                );
                 break;
             }
             case "delete": {
-                this.items = this.items.filter((item) => item.path != file.path);
+                this.fileItems = this.fileItems.filter((item) => item.path != file.path);
+                this.aliasItems = this.aliasItems.filter((item) => item.path != file.path);
                 break;
             }
         }
@@ -445,7 +445,7 @@ class PinyinIndex extends PI<Item> {
     }
 }
 
-function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): Item {
+function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): FileItem {
     let name = file.extension != "md" ? file.name : file.basename;
     let folderIndex = plugin.folderModal.index.items;
     let fileNamePinyin = new Pinyin(name, plugin);
@@ -472,10 +472,10 @@ function CachedMetadata2Item(
     plugin: FuzzyChinesePinyinPlugin,
     items: Item[],
     cache?: CachedMetadata
-): Item[] {
-    cache = cache ?? app.metadataCache.getFileCache(file);
+): AliasItem[] {
+    cache = cache ?? plugin.app.metadataCache.getFileCache(file);
     let alias = cache?.frontmatter?.alias || cache?.frontmatter?.aliases;
-    let item = items.find((item) => item.path == file.path && item.type == "file");
+    let item = items.find((item) => item.path == file.path);
     if (alias) {
         alias = Array.isArray(alias) ? alias.map((p) => String(p)) : String(alias).split(/, ?/);
         return alias.map((p: string) => {
@@ -518,15 +518,25 @@ class TagSuggest extends TextInputSuggest<uMatchData<uItem>> {
     getSuggestions(inputStr: string): uMatchData<uItem>[] {
         return this.plugin.tagEditorSuggest.getSuggestionsByString(inputStr);
     }
-
     renderSuggestion(matchData: uMatchData<uItem>, el: HTMLElement): void {
         el.addClass("fz-item");
         new SuggestionRenderer(el).render(matchData);
     }
-
     selectSuggestion(matchData: uMatchData<uItem>): void {
         this.inputEl.value = matchData.item.name;
         this.inputEl.trigger("input");
         this.close();
     }
 }
+
+Object.defineProperty(PinyinIndex.prototype, "items", {
+    get: function () {
+        return [].concat(this.fileItems).concat(this.aliasItems);
+    },
+    set: function (value: Item[]) {
+        this.fileItems = value.filter((item) => item.type === "file");
+        this.aliasItems = value.filter((item) => item.type === "alias");
+    },
+    enumerable: true,
+    configurable: true,
+});

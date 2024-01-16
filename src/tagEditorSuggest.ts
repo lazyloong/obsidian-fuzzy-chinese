@@ -153,7 +153,7 @@ class PinyinIndex extends PI<Item> {
         this.id = "tag";
     }
     initIndex() {
-        let tags: string[] = Object.keys(app.metadataCache.getTags()).map((p) => p.slice(1));
+        let tags: string[] = Object.keys(this.app.metadataCache.getTags()).map((p) => p.slice(1));
         this.items = tags.map((tag) => {
             let item = {
                 name: tag,
@@ -164,7 +164,7 @@ class PinyinIndex extends PI<Item> {
     }
     initEvent() {}
     update() {
-        let tags: string[] = Object.keys(app.metadataCache.getTags()).map((p) => p.slice(1));
+        let tags: string[] = Object.keys(this.app.metadataCache.getTags()).map((p) => p.slice(1));
         let oldTags = this.items.map((item) => item.name);
         let newTags = tags;
         let addedTags = newTags.filter((tag) => !oldTags.includes(tag));

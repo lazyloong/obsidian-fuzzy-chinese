@@ -127,18 +127,6 @@ export default class SettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
-        new Setting(this.containerEl).setName("历史记录").addDropdown((cb) =>
-            cb
-                .addOptions({
-                    使用完整路径: "使用完整路径",
-                    仅使用文件名: "仅使用文件名",
-                })
-                .setValue(this.plugin.settings.file.historyDisplay)
-                .onChange(async (value: string) => {
-                    this.plugin.settings.file.historyDisplay = value;
-                    await this.plugin.saveSettings();
-                })
-        );
         new Setting(this.containerEl).setName("附带标签搜索").addToggle((cb) =>
             cb
                 .setValue(this.plugin.settings.file.searchWithTag)
@@ -298,7 +286,6 @@ export interface FuzyyChinesePinyinSettings {
         useFileEditorSuggest: boolean;
         showPath: boolean;
         showTags: boolean;
-        historyDisplay: string;
         searchWithTag: boolean;
     };
     command: {
@@ -347,8 +334,7 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
         useFileEditorSuggest: true,
         showPath: true,
         showTags: false,
-        historyDisplay: "使用完整路径",
-        searchWithTag: false,
+        searchWithTag: true,
     },
     command: {
         pinnedCommands: [],

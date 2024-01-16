@@ -106,12 +106,15 @@ class PinyinIndex extends PI<Item> {
     }
     initEvent() {
         this.registerEvent(
-            this.vault.on("rename", (folder, oldPath) => this.update("rename", folder, { oldPath }))
+            this.vault.on("rename", (folder, oldPath) => this.update("rename", folder, oldPath))
         );
         this.registerEvent(this.vault.on("create", (folder) => this.update("create", folder)));
         this.registerEvent(this.vault.on("delete", (folder) => this.update("delete", folder)));
     }
-    update(type: string, f: TAbstractFile, data?: { oldPath: string }) {
+    update(type: "create", f: TAbstractFile);
+    update(type: "delete", f: TAbstractFile);
+    update(type: "rename", f: TAbstractFile, oldPath: string);
+    update(type: string, f: TAbstractFile, oldPath?: string) {
         if (f instanceof TFile) return;
         let folder = f as TFolder;
         switch (type) {
@@ -125,7 +128,7 @@ class PinyinIndex extends PI<Item> {
                 this.items = this.items.filter((item) => item.name == folder.path);
                 break;
             case "rename":
-                this.items = this.items.filter((item) => item.name == data.oldPath);
+                this.items = this.items.filter((item) => item.name == oldPath);
                 this.items.push({
                     name: folder.path,
                     pinyin: new Pinyin(folder.path, this.plugin),

@@ -113,7 +113,7 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
             (p) => p.command.id != matchData.item.command.id
         );
         this.historyCommands.unshift(matchData.item);
-        app.commands.executeCommand(matchData.item.command);
+        this.app.commands.executeCommand(matchData.item.command);
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
         el.addClass("fz-item");
@@ -145,7 +145,7 @@ class PinyinIndex extends PI<Item> {
     }
     initEvent() {}
     initIndex() {
-        let commands = app.commands.listCommands();
+        let commands = this.app.commands.listCommands();
         this.items = commands.map((command) => ({
             name: command.name,
             pinyin: new Pinyin(command.name, this.plugin),
@@ -153,7 +153,7 @@ class PinyinIndex extends PI<Item> {
         }));
     }
     update() {
-        let commands = app.commands.listCommands();
+        let commands = this.app.commands.listCommands();
         let oldCommandsNames = this.items.map((item) => item.name);
         let newCommandsNames = commands.map((command) => command.name);
         let addedCommands = newCommandsNames.filter(

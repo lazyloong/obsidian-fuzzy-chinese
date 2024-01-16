@@ -5,12 +5,8 @@ import {
     Menu,
     TFile,
     TAbstractFile,
-    Scope,
     App,
-    KeymapEventHandler,
     View,
-    Hotkey,
-    Command,
 } from "obsidian";
 import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "./utils";
 import FuzzyModal from "./fuzzyModal";
@@ -231,7 +227,7 @@ class FileExplorerHotkey {
         this.view = this.leaf.view;
     }
     getFiles(): TFile[] {
-        return Array.from(this.view.tree.selectedDoms).map((p) => p.file);
+        return Array.from((this.view as any).tree.selectedDoms).map((p: { file: TFile }) => p.file);
     }
 }
 

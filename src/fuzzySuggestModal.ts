@@ -11,21 +11,23 @@ export default class fuzzySuggestModal extends FuzzyModal<Item> {
         super(app, plugin);
         this.items = items;
         this.index = {
-            items: text_items.map((p) => {
-                return { name: p, pinyin: new Pinyin(p, plugin) };
-            }),
+            items: text_items.map((p) => ({
+                name: p,
+                pinyin: new Pinyin(p, plugin),
+            })),
         };
     }
     getEmptyInputSuggestions(): MatchData<Item>[] {
-        return this.index.items.map((p) => {
-            return { item: p, score: 0, range: null };
-        });
+        return this.index.items.map((p) => ({ item: p, score: 0, range: null }));
     }
     onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent): void {
         let i = this.index.items.indexOf(matchData.item);
         this.resolve(this.items[i]);
     }
-    async openAndGetValue(resolve: (value?: string) => void, reject: (reason?: any) => void): Promise<void> {
+    async openAndGetValue(
+        resolve: (value?: string) => void,
+        reject: (reason?: any) => void
+    ): Promise<void> {
         this.resolve = resolve;
         this.open();
     }

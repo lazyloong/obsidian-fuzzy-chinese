@@ -1,12 +1,18 @@
-import { App, Hotkey, Modifier, Platform, getIcon } from "obsidian";
+import { App, Command, Hotkey, Modifier, Platform } from "obsidian";
 import FuzzyModal from "./fuzzyModal";
-import { PinyinIndex as PI, Pinyin, MatchData, SuggestionRenderer } from "./utils";
+import {
+    PinyinIndex as PI,
+    Pinyin,
+    MatchData,
+    SuggestionRenderer,
+    incrementalUpdate,
+} from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 
 type Item = {
     name: string;
     pinyin: Pinyin;
-    command: any;
+    command: Command;
 };
 
 const BASIC_MODIFIER_ICONS = {
@@ -145,7 +151,7 @@ class PinyinIndex extends PI<Item> {
     }
     initEvent() {}
     initIndex() {
-        let commands = this.app.commands.listCommands();
+        let commands: Command[] = this.app.commands.listCommands();
         this.items = commands.map((command) => ({
             name: command.name,
             pinyin: new Pinyin(command.name, this.plugin),
@@ -153,31 +159,15 @@ class PinyinIndex extends PI<Item> {
         }));
     }
     update() {
-        let commands = this.app.commands.listCommands();
-        let oldCommandsNames = this.items.map((item) => item.name);
-        let newCommandsNames = commands.map((command) => command.name);
-        let addedCommands = newCommandsNames.filter(
-            (command) => !oldCommandsNames.includes(command)
+        let commands: Command[] = this.app.commands.listCommands();
+        this.items = incrementalUpdate(
+            this.items,
+            () => commands.map((command) => command.name),
+            (name) => ({
+                name,
+                pinyin: new Pinyin(name, this.plugin),
+                command: commands.find((p) => p.name == name),
+            })
         );
-        let removedCommands = oldCommandsNames.filter(
-            (command) => !newCommandsNames.includes(command)
-        );
-        if (addedCommands.length > 0) {
-            // 添加新命令
-            this.items.push(
-                ...addedCommands.map((command) => {
-                    let item = {
-                        name: command,
-                        pinyin: new Pinyin(command, this.plugin),
-                        command: commands.find((p) => p.name == command),
-                    };
-                    return item;
-                })
-            );
-        }
-        if (removedCommands.length > 0) {
-            // 删除旧命令
-            this.items = this.items.filter((item) => !removedCommands.includes(item.name));
-        }
     }
 }

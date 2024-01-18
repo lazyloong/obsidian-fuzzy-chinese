@@ -1,4 +1,4 @@
-import { Component, Vault, MetadataCache, App, getIcon } from "obsidian";
+import { Component, Vault, MetadataCache, App, getIcon, TFile } from "obsidian";
 import FuzzyChinesePinyinPlugin from "./main";
 
 export type MatchData<T> = {
@@ -321,4 +321,27 @@ export class SuggestionRenderer {
             });
         this.flairEl.appendChild(getIcon(icon));
     }
+}
+
+export async function createFile(name: string): Promise<TFile> {
+    return await app.vault.create(
+        app.fileManager.getNewFileParent("").path + "/" + name + ".md",
+        ""
+    );
+}
+
+export function incrementalUpdate<T extends Item>(
+    items: T[],
+    getAllItems: () => string[],
+    callback: (name: string) => T
+) {
+    let oldItems = items.map((p) => p.name);
+    let newItems = getAllItems();
+
+    let addItems = newItems.filter((p) => !oldItems.includes(p));
+    let removeItems = oldItems.filter((p) => !newItems.includes(p));
+
+    if (addItems.length > 0) items.push(...addItems.map((p) => callback(p)));
+    if (removeItems.length > 0) items = items.filter((item) => !removeItems.includes(item.name));
+    return items;
 }

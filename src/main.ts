@@ -55,23 +55,16 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         ]);
         this.editorSuggests = [this.fileEditorSuggest, this.tagEditorSuggest];
 
-        if (this.settings.file.useFileEditorSuggest) {
-            this.app.workspace.editorSuggest.suggests.unshift(this.fileEditorSuggest);
-        }
-        if (this.settings.other.useTagEditorSuggest) {
-            this.app.workspace.editorSuggest.suggests.unshift(this.tagEditorSuggest);
-        }
+        if (this.settings.file.useFileEditorSuggest)
+            this.registerEditorSuggest(this.fileEditorSuggest);
+
+        if (this.settings.other.useTagEditorSuggest)
+            this.registerEditorSuggest(this.tagEditorSuggest);
 
         this.registerFileMenu();
-
         runOnLayoutReady(() => {
             if (this.settings.other.devMode) {
                 this.indexManager.devLoad();
-                globalThis.refreshFuzzyChineseIndex = () => {
-                    globalThis.FuzzyChineseIndex = {};
-                    this.indexManager.load();
-                    this.indexManager.devUnload();
-                };
             } else {
                 this.indexManager.load();
             }
@@ -93,6 +86,12 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
                 fuzzyPinyinSearch(query, items, this),
             stringArray2Items: stringArray2Items,
         };
+    }
+    registerEditorSuggest(editorSuggest: EditorSuggest<any>): void {
+        this.app.workspace.editorSuggest.suggests.unshift(editorSuggest),
+            this.register(() => {
+                return this.app.workspace.editorSuggest.removeSuggest(editorSuggest);
+            });
     }
     addCommands() {
         this.addCommand({
@@ -141,9 +140,6 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         });
     }
     onunload() {
-        this.editorSuggests.forEach((editorSuggest) =>
-            this.app.workspace.editorSuggest.removeSuggest(editorSuggest)
-        );
         if (this.settings.other.devMode) {
             this.indexManager.devUnload();
         }
@@ -262,6 +258,11 @@ class IndexManager extends Array<PinyinIndex<any>> {
                 this.load_(index);
             }
         });
+        globalThis.refreshFuzzyChineseIndex = () => {
+            globalThis.FuzzyChineseIndex = {};
+            this.load();
+            this.devUnload();
+        };
     }
     devUnload() {
         globalThis.FuzzyChineseIndex = {};

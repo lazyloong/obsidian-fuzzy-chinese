@@ -15,9 +15,9 @@ import {
     MatchData,
     Item,
     SuggestionRenderer,
+    incrementalUpdate,
 } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
-import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
 export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     plugin: FuzzyChinesePinyinPlugin;
@@ -164,24 +164,13 @@ class PinyinIndex extends PI<Item> {
     }
     initEvent() {}
     update() {
-        let tags: string[] = Object.keys(this.app.metadataCache.getTags()).map((p) => p.slice(1));
-        let oldTags = this.items.map((item) => item.name);
-        let newTags = tags;
-        let addedTags = newTags.filter((tag) => !oldTags.includes(tag));
-        let removedTags = oldTags.filter((tag) => !newTags.includes(tag));
-        if (addedTags.length > 0) {
-            this.items.push(
-                ...addedTags.map((tag) => {
-                    let item = {
-                        name: tag,
-                        pinyin: new Pinyin(tag, this.plugin),
-                    };
-                    return item;
-                })
-            );
-        }
-        if (removedTags.length > 0) {
-            this.items = this.items.filter((item) => !removedTags.includes(item.name));
-        }
+        this.items = incrementalUpdate(
+            this.items,
+            () => Object.keys(this.app.metadataCache.getTags()).map((p) => p.slice(1)),
+            (name) => ({
+                name,
+                pinyin: new Pinyin(name, this.plugin),
+            })
+        );
     }
 }

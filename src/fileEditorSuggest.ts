@@ -149,15 +149,14 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
         el.addClass("fz-item");
         let renderer = new SuggestionRenderer(el);
-        renderer.setTitle(matchData.item.name);
-        renderer.setNote(matchData.item.path);
+        if (matchData.item.file) renderer.setNote(matchData.item.path);
         if (matchData.usePath) renderer.setToHighlightEl("note");
         renderer.render(matchData);
 
-        if (this.plugin.settings.file.showTags && matchData.item.type != "heading") {
+        if (this.plugin.settings.file.showTags && matchData.item.file) {
             let tags: string | Array<string> =
-                    this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                    this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
+                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
+                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
                 tagArray: string[];
             if (tags) {
                 tagArray = Array.isArray(tags)
@@ -174,7 +173,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
             renderer.addIcon("forward");
             if (!this.plugin.settings.file.showPath) renderer.flairEl.style.top = "9px";
             if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
-        }
+        } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
     }
     selectSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent): void {
         if (matchData.item.type == "heading") {
@@ -192,7 +191,13 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
                     if (p.type == matchData.item.type && p.file == matchData.item.file) {
                         if (p.type == "alias") return p.alias == matchData.item.name;
                         else return true;
-                    } else return false;
+                    } else if (
+                        p.type == "linktext" &&
+                        matchData.item.type == "unresolvedLink" &&
+                        p.path == matchData.item.name
+                    )
+                        return true;
+                    else return false;
                 });
                 this.originEditorSuggest.selectSuggestion(matchData_, evt);
             });

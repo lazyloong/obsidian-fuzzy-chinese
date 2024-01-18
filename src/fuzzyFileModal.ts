@@ -6,6 +6,8 @@ import {
     MatchData as uMatchData,
     Item as uItem,
     SuggestionRenderer,
+    createFile,
+    incrementalUpdate,
 } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 import FuzzyModal from "./fuzzyModal";
@@ -13,16 +15,18 @@ import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
-export type Item = {
+export interface Item extends uItem {
     file: TFile;
-    type: "file" | "alias" | "heading";
+    type: "file" | "alias" | "heading" | "unresolvedLink";
     name: string;
     pinyin: Pinyin;
     path: string;
     pinyinOfPath: Pinyin;
-};
+}
+
 type FileItem = Item & { type: "file" };
 type AliasItem = Item & { type: "alias" };
+type UnresolvedLinkItem = Item & { type: "unresolvedLink" };
 
 export type MatchData = {
     item: Item;
@@ -87,28 +91,19 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         this.scope.register(["Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(
-                app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md",
-                ""
-            );
+            let nf = await createFile(this.inputEl.value);
             app.workspace.getMostRecentLeaf().openFile(nf);
         });
         this.scope.register(["Mod", "Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(
-                app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md",
-                ""
-            );
+            let nf = await createFile(this.inputEl.value);
             app.workspace.getLeaf("tab").openFile(nf);
         });
         this.scope.register(["Shift", "Alt"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
             this.close();
-            let nf = await app.vault.create(
-                app.fileManager.getNewFileParent("").path + "/" + this.inputEl.value + ".md",
-                ""
-            );
+            let nf = await createFile(this.inputEl.value);
             getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()).openFile(nf);
         });
         this.scope.register(["Alt"], "Enter", async (e) => {
@@ -259,15 +254,11 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
         el.addClass("fz-item");
         let renderer = new SuggestionRenderer(el);
-        if (matchData.score == -1) {
-            renderer.render(matchData);
-            return;
-        }
-        renderer.setNote(matchData.item.path);
+        if (matchData.item.file) renderer.setNote(matchData.item.path);
         if (matchData.usePath) renderer.setToHighlightEl("note");
         renderer.render(matchData);
 
-        if (this.plugin.settings.file.showTags) {
+        if (this.plugin.settings.file.showTags && matchData.item.file) {
             let tags: string | Array<string> =
                     app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
                     app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
@@ -287,7 +278,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             renderer.addIcon("forward");
             if (!this.plugin.settings.file.showPath) renderer.flairEl.style.top = "9px";
             if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
-        }
+        } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
     }
     async onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent) {
         let file = await this.getChoosenItemFile(matchData);
@@ -310,17 +301,9 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
     }
     async getChoosenItemFile(matchData?: MatchData): Promise<TFile> {
         matchData = matchData ?? this.chooser.values[this.chooser.selectedItem];
-        let file =
-            matchData.score == -1
-                ? await this.app.vault.create(
-                      this.app.fileManager.getNewFileParent("").path +
-                          "/" +
-                          matchData.item.path +
-                          ".md",
-                      ""
-                  )
-                : matchData.item.file;
-        return file;
+        return matchData.score == -1 || matchData.item.type == "unresolvedLink"
+            ? await createFile(matchData.item.path)
+            : matchData.item.file;
     }
 }
 
@@ -369,9 +352,24 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
 class PinyinIndex extends PI<Item> {
     fileItems: FileItem[] = [];
     aliasItems: AliasItem[] = [];
+    unresolvedLinkItems: UnresolvedLinkItem[] = [];
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
         this.id = "file";
+    }
+    //@ts-ignore
+    get items() {
+        let items: Item[] = [];
+        if (this.plugin.settings.file.showUnresolvedLink)
+            items = items.concat(this.unresolvedLinkItems);
+        return items.concat(this.fileItems).concat(this.aliasItems);
+    }
+    set items(value: Item[]) {
+        this.fileItems = value.filter((item) => item.type === "file") as FileItem[];
+        this.aliasItems = value.filter((item) => item.type === "alias") as AliasItem[];
+        this.unresolvedLinkItems = value.filter(
+            (item) => item.type === "unresolvedLink"
+        ) as UnresolvedLinkItem[];
     }
     initIndex() {
         let files = this.app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
@@ -384,12 +382,17 @@ class PinyinIndex extends PI<Item> {
                 CachedMetadata2Item(file, this.plugin, this.fileItems)
             );
         }
+
+        this.updateUnresolvedLinkItems();
     }
     initEvent() {
         this.registerEvent(
             this.metadataCache.on("changed", (file, _, cache) =>
                 this.update("changed", file, cache)
             )
+        );
+        this.registerEvent(
+            this.metadataCache.on("resolved", () => this.updateUnresolvedLinkItems())
         );
         this.registerEvent(
             this.vault.on("rename", (file, oldPath) => this.update("rename", file, oldPath))
@@ -429,6 +432,28 @@ class PinyinIndex extends PI<Item> {
                 break;
             }
         }
+    }
+    updateUnresolvedLinkItems() {
+        this.unresolvedLinkItems = incrementalUpdate(
+            this.unresolvedLinkItems ?? [],
+            () => {
+                let unresolvedLinks = new Set<string>();
+                Object.values(this.metadataCache.unresolvedLinks)
+                    .map((p) => Object.keys(p))
+                    .filter((p) => p.length > 0)
+                    .forEach((p) => p.forEach((q) => unresolvedLinks.add(q)));
+                return Array.from(unresolvedLinks);
+            },
+            (name) =>
+                <UnresolvedLinkItem>{
+                    type: "unresolvedLink",
+                    name,
+                    pinyin: new Pinyin(name, this.plugin),
+                    path: null,
+                    pinyinOfPath: null,
+                    file: null,
+                }
+        );
     }
 
     isEffectiveFile(file: TAbstractFile): file is TFile {
@@ -528,15 +553,3 @@ class TagSuggest extends TextInputSuggest<uMatchData<uItem>> {
         this.close();
     }
 }
-
-Object.defineProperty(PinyinIndex.prototype, "items", {
-    get: function () {
-        return [].concat(this.fileItems).concat(this.aliasItems);
-    },
-    set: function (value: Item[]) {
-        this.fileItems = value.filter((item) => item.type === "file");
-        this.aliasItems = value.filter((item) => item.type === "alias");
-    },
-    enumerable: true,
-    configurable: true,
-});

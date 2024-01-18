@@ -86,6 +86,12 @@ export default class SettingTab extends PluginSettingTab {
                 await this.plugin.saveSettings();
             })
         );
+        new Setting(this.containerEl).setName("显示未完成链接").addToggle((cb) =>
+            cb.setValue(this.plugin.settings.file.showUnresolvedLink).onChange(async (value) => {
+                this.plugin.settings.file.showUnresolvedLink = value;
+                await this.plugin.saveSettings();
+            })
+        );
         new Setting(this.containerEl)
             .setName("使用路径搜索")
             .setDesc("当搜索结果少于10个时搜索路径")
@@ -281,6 +287,7 @@ export interface FuzyyChinesePinyinSettings {
     file: {
         showAllFileTypes: boolean;
         showAttachments: boolean;
+        showUnresolvedLink: boolean;
         attachmentExtensions: Array<string>;
         usePathToSearch: boolean;
         useFileEditorSuggest: boolean;
@@ -307,6 +314,7 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
     file: {
         showAttachments: false,
         showAllFileTypes: false,
+        showUnresolvedLink: false,
         attachmentExtensions: [
             "bmp",
             "png",

@@ -1,7 +1,14 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import DoublePinyinDict from "./double_pinyin";
 import FuzzyChinesePinyinPlugin from "./main";
-import { Item, MatchData, SuggestionRenderer, arraymove, fullPinyin2doublePinyin } from "./utils";
+import {
+    Item,
+    MatchData,
+    PinyinSuggest,
+    SuggestionRenderer,
+    arraymove,
+    fullPinyin2doublePinyin,
+} from "./utils";
 import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
 export default class SettingTab extends PluginSettingTab {
@@ -166,7 +173,9 @@ export default class SettingTab extends PluginSettingTab {
             .setName("新的置顶命令")
             .setDesc("在你未进行检索时，置顶命令将优先出现在命令面板的顶端。")
             .addSearch((cb) => {
-                new CommandSuggest(cb.inputEl, this.plugin);
+                let commandSuggest = new PinyinSuggest(cb.inputEl, this.plugin);
+                commandSuggest.getItemFunction = (query) =>
+                    this.plugin.commandModal.getSuggestions(query);
                 cb.setPlaceholder("输入命令……").onChange(async (value) => {
                     let commands = this.app.commands.listCommands().map((p) => p.name);
                     if (!commands.includes(value)) return;
@@ -252,28 +261,6 @@ export default class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
-    }
-}
-
-export class CommandSuggest extends TextInputSuggest<MatchData<Item>> {
-    plugin: FuzzyChinesePinyinPlugin;
-    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: FuzzyChinesePinyinPlugin) {
-        super(inputEl);
-        this.plugin = plugin;
-    }
-    getSuggestions(inputStr: string): MatchData<Item>[] {
-        return this.plugin.commandModal.getSuggestions(inputStr);
-    }
-
-    renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
-        el.addClass("fz-item");
-        new SuggestionRenderer(el).render(matchData);
-    }
-
-    selectSuggestion(matchData: MatchData<Item>): void {
-        this.inputEl.value = matchData.item.name;
-        this.inputEl.trigger("input");
-        this.close();
     }
 }
 

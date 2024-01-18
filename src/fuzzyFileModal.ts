@@ -8,6 +8,7 @@ import {
     SuggestionRenderer,
     createFile,
     incrementalUpdate,
+    PinyinSuggest,
 } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 import FuzzyModal from "./fuzzyModal";
@@ -28,12 +29,12 @@ type FileItem = Item & { type: "file" };
 type AliasItem = Item & { type: "alias" };
 type UnresolvedLinkItem = Item & { type: "unresolvedLink" };
 
-export type MatchData = {
+export interface MatchData extends uMatchData<Item> {
     item: Item;
     score: number;
     range: Array<[number, number]>;
     usePath?: boolean;
-};
+}
 
 export default class FuzzyFileModal extends FuzzyModal<Item> {
     plugin: FuzzyChinesePinyinPlugin;
@@ -156,12 +157,16 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         } else {
             return this.index.items
                 .filter((item) => {
+                    if (!item.file) return;
                     let tags: string | Array<string> =
                         this.app.metadataCache.getFileCache(item.file)?.frontmatter?.tags ||
                         this.app.metadataCache.getFileCache(item.file)?.frontmatter?.tag;
                     if (!tags) return;
                     let tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
-                    return tagArray.every((tag) => this.tags.some((t) => tag.startsWith(t)));
+                    return (
+                        tagArray.length != 0 &&
+                        tagArray.every((tag) => this.tags.some((t) => tag.startsWith(t)))
+                    );
                 })
                 .map((p) => ({
                     item: p,
@@ -240,6 +245,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         }, []);
         if (this.plugin.settings.file.searchWithTag && this.tags.length > 0) {
             result = result.filter((matchData) => {
+                if (!matchData.item.file) return;
                 let tags: string | Array<string> =
                     this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
                     this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag;
@@ -524,32 +530,14 @@ class TagInput extends TextComponent {
         this.inputEl.classList.add("prompt-input");
         this.inputEl.style.width = "30%";
         this.inputEl.style.borderLeft = "2px solid var(--background-primary)";
-        new TagSuggest(this.inputEl, plugin);
+        let tagSuggest = new PinyinSuggest(this.inputEl, plugin);
+        tagSuggest.getItemFunction = (query) =>
+            plugin.tagEditorSuggest.getSuggestionsByString(query);
     }
     hide() {
         this.inputEl.style.display = "none";
     }
     show() {
         this.inputEl.style.display = "block";
-    }
-}
-
-class TagSuggest extends TextInputSuggest<uMatchData<uItem>> {
-    plugin: FuzzyChinesePinyinPlugin;
-    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: FuzzyChinesePinyinPlugin) {
-        super(inputEl);
-        this.plugin = plugin;
-    }
-    getSuggestions(inputStr: string): uMatchData<uItem>[] {
-        return this.plugin.tagEditorSuggest.getSuggestionsByString(inputStr);
-    }
-    renderSuggestion(matchData: uMatchData<uItem>, el: HTMLElement): void {
-        el.addClass("fz-item");
-        new SuggestionRenderer(el).render(matchData);
-    }
-    selectSuggestion(matchData: uMatchData<uItem>): void {
-        this.inputEl.value = matchData.item.name;
-        this.inputEl.trigger("input");
-        this.close();
     }
 }

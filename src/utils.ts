@@ -1,5 +1,6 @@
 import { Component, Vault, MetadataCache, App, getIcon, TFile } from "obsidian";
 import FuzzyChinesePinyinPlugin from "./main";
+import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
 export type MatchData<T> = {
     item: T;
@@ -344,4 +345,26 @@ export function incrementalUpdate<T extends Item>(
     if (addItems.length > 0) items.push(...addItems.map((p) => callback(p)));
     if (removeItems.length > 0) items = items.filter((item) => !removeItems.includes(item.name));
     return items;
+}
+
+export class PinyinSuggest extends TextInputSuggest<MatchData<Item>> {
+    getItemFunction: (query: string) => MatchData<Item>[];
+    plugin: FuzzyChinesePinyinPlugin;
+    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: FuzzyChinesePinyinPlugin) {
+        super(inputEl);
+        this.plugin = plugin;
+    }
+    getSuggestions(inputStr: string): MatchData<Item>[] {
+        if (this.getItemFunction === undefined) return [];
+        return this.getItemFunction(inputStr);
+    }
+    renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
+        el.addClass("fz-item");
+        new SuggestionRenderer(el).render(matchData);
+    }
+    selectSuggestion(matchData: MatchData<Item>): void {
+        this.inputEl.value = matchData.item.name;
+        this.inputEl.trigger("input");
+        this.close();
+    }
 }

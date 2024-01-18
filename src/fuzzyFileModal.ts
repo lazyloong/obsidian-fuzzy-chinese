@@ -12,7 +12,6 @@ import {
 } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 import FuzzyModal from "./fuzzyModal";
-import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
@@ -207,7 +206,10 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
         for (let p of toMatchData) {
             let d = p.pinyin.match(query, p, smathCase);
-            if (d) matchData1.push(d);
+
+            if (!d) continue;
+            if (d.item.type == "unresolvedLink") d.score -= 15;
+            matchData1.push(d);
         }
 
         if (this.plugin.settings.file.usePathToSearch && matchData1.length <= 10) {
@@ -287,15 +289,19 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
     }
     async onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent) {
+        if (this.resolve) {
+            this.resolve(matchData.item);
+            return;
+        }
         let file = await this.getChoosenItemFile(matchData);
         if (evt.ctrlKey) {
-            let nl = app.workspace.getLeaf("tab");
+            let nl = this.app.workspace.getLeaf("tab");
             nl.openFile(file);
         } else if (evt.altKey) {
-            let nl = getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf());
+            let nl = getNewOrAdjacentLeaf(this.app.workspace.getMostRecentLeaf());
             nl.openFile(file);
         } else {
-            app.workspace.getMostRecentLeaf().openFile(file);
+            this.app.workspace.getMostRecentLeaf().openFile(file);
         }
     }
     onNoSuggestion(): void {

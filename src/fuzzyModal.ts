@@ -9,6 +9,8 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     plugin: FuzzyChinesePinyinPlugin;
     useInput: boolean;
     onInput: any;
+    resolve: (value?: Item) => void;
+    isPromiseCall: boolean = false;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.useInput = false;
@@ -120,5 +122,15 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     }
     getChoosenItem() {
         return this.chooser.values[this.chooser.selectedItem];
+    }
+    async openAndGetValue(): Promise<Item> {
+        return await new Promise((resolve, reject) => {
+            this.resolve = resolve;
+            this.isPromiseCall = true;
+            this.open();
+        }).then((v: Item) => {
+            this.isPromiseCall = false;
+            return v;
+        });
     }
 }

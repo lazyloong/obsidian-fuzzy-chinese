@@ -6,7 +6,6 @@ import FuzzyChinesePinyinPlugin from "./main";
 export default class fuzzySuggestModal extends FuzzyModal<Item> {
     index: any;
     items: any[];
-    resolve: (value?: string) => void;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin, text_items: string[], items: string[]) {
         super(app, plugin);
         this.items = items;
@@ -23,12 +22,5 @@ export default class fuzzySuggestModal extends FuzzyModal<Item> {
     onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent): void {
         let i = this.index.items.indexOf(matchData.item);
         this.resolve(this.items[i]);
-    }
-    async openAndGetValue(
-        resolve: (value?: string) => void,
-        reject: (reason?: any) => void
-    ): Promise<void> {
-        this.resolve = resolve;
-        this.open();
     }
 }

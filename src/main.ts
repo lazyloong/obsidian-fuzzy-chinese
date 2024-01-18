@@ -23,6 +23,11 @@ import TraditionalDict from "./traditional_dict";
 import DoublePinyinDict from "./double_pinyin";
 import { fuzzyPinyinSearch, stringArray2Items } from "./search";
 import SettingTab, { DEFAULT_SETTINGS, FuzyyChinesePinyinSettings } from "./settingTab";
+import {
+    hijackingCanvasView,
+    hijackingEmptyView,
+    hijackingTagForMarkdownView,
+} from "./viewEventHijacking";
 
 export default class FuzzyChinesePinyinPlugin extends Plugin {
     settings: FuzyyChinesePinyinSettings;
@@ -62,6 +67,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             this.registerEditorSuggest(this.tagEditorSuggest);
 
         this.registerFileMenu();
+        this.registerHijackingEvents();
         runOnLayoutReady(() => {
             if (this.settings.other.devMode) {
                 this.indexManager.devLoad();
@@ -86,6 +92,11 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
                 fuzzyPinyinSearch(query, items, this),
             stringArray2Items: stringArray2Items,
         };
+    }
+    registerHijackingEvents() {
+        hijackingCanvasView(this);
+        hijackingEmptyView(this);
+        hijackingTagForMarkdownView(this);
     }
     registerEditorSuggest(editorSuggest: EditorSuggest<any>): void {
         this.app.workspace.editorSuggest.suggests.unshift(editorSuggest),
@@ -171,11 +182,9 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         this.pinyinDict = { keys: PinyinKeys, values: PinyinValues, originalKeys: PinyinKeys_ };
     }
     async suggester(text_items: string[], items: any[]): Promise<string> {
-        let modal = new FuzzySuggestModal(app, this, text_items, items);
-        const promise: Promise<string> = new Promise((resolve: (value?: string) => void, reject) =>
-            modal.openAndGetValue(resolve, reject)
-        );
-        return await promise;
+        let modal = new FuzzySuggestModal(this.app, this, text_items, items);
+        let item = await modal.openAndGetValue();
+        return item.name;
     }
     registerFileMenu() {
         this.registerEvent(

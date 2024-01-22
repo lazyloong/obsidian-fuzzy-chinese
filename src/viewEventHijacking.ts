@@ -115,7 +115,12 @@ export function hijackingTagForMarkdownView(plugin: FuzzyChinesePinyinPlugin) {
                 tagSuggest.getItemFunction = (query) =>
                     plugin.tagEditorSuggest
                         .getSuggestionsByString(query ?? "")
-                        .filter((p) => !rendered.entry.value.includes(p.item.name));
+                        .filter(
+                            (p) =>
+                                !rendered.entry.value ||
+                                (rendered.entry.value &&
+                                    !rendered.entry.value.includes(p.item.name))
+                        );
                 tagSuggest.selectSuggestion = function (matchData: MatchData<Item>) {
                     rendered["_children"][0].multiselect.addElement(matchData.item.name);
                 }.bind(tagSuggest);

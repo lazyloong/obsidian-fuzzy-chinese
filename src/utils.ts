@@ -185,7 +185,7 @@ type PinyinChild = {
     pinyin: string[];
 };
 
-export abstract class PinyinIndex<T> extends Component {
+export abstract class PinyinIndex<T extends Item> extends Component {
     vault: Vault;
     metadataCache: MetadataCache;
     items: Array<T>;
@@ -206,6 +206,9 @@ export abstract class PinyinIndex<T> extends Component {
     abstract initIndex(): void;
     abstract initEvent(): void;
     abstract update(...args: any[]): void;
+    has(query: string): boolean {
+        return Boolean(this.items.find((p) => p.name == query));
+    }
 }
 
 // 将一个有序的数字数组转换为一个由连续数字区间组成的数组

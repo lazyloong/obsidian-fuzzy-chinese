@@ -48,32 +48,52 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
                     line: lineIndex,
                     ch: a,
                 },
-                end: {
-                    line: lineIndex,
-                    ch: cursor.ch,
-                },
+                end: cursor,
                 query: s,
             };
         }
         let frontmatterPosition = (app.metadataCache.getFileCache(file) as any)
-            ?.frontmatterPosition;
-        if (
-            sub.match(/tags?: /) &&
-            frontmatterPosition &&
-            lineIndex > frontmatterPosition.start.line &&
-            lineIndex < frontmatterPosition.end.line
-        ) {
+                ?.frontmatterPosition,
+            start = frontmatterPosition?.start.line || 0,
+            end = frontmatterPosition?.end.line || 0;
+
+        if (frontmatterPosition && lineIndex > start && lineIndex < end) {
             this.isYaml = true;
-            let match = sub.match(/(\S+)$/)?.first() ?? "";
-            if (this.index.items.map((p) => p.name).includes(match)) return null;
-            return {
-                end: cursor,
-                start: {
-                    ch: sub.lastIndexOf(match),
-                    line: cursor.line,
-                },
-                query: match,
-            };
+
+            if (sub.match(/^tags?: /)) {
+                let match = sub.match(/(\S+)$/)?.[1] ?? "";
+                if (this.index.has(match)) return null;
+                return {
+                    end: cursor,
+                    start: {
+                        ch: sub.lastIndexOf(match),
+                        line: cursor.line,
+                    },
+                    query: match,
+                };
+            }
+
+            let content = editor
+                .getValue()
+                .split("\n")
+                .slice(start + 1, end);
+            let yaml = [];
+            content.forEach((p, i) => {
+                if (p.match(/^\w+:/)) yaml.push([i + 1 + start, p.split(":")[0]]);
+            });
+
+            if (sub.match(/^ *- /) && yaml.find((p) => lineIndex > p[0])?.[1]?.match(/^tags?/)) {
+                let match = sub.match(/^ *- (\S+)$/)?.[1] ?? "";
+                if (this.index.has(match)) return null;
+                return {
+                    end: cursor,
+                    start: {
+                        ch: sub.lastIndexOf(match),
+                        line: lineIndex,
+                    },
+                    query: match,
+                };
+            }
         }
         return null;
     }

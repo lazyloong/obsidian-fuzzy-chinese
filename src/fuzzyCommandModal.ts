@@ -6,6 +6,7 @@ import {
     MatchData,
     SuggestionRenderer,
     incrementalUpdate,
+    copy,
 } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 
@@ -66,14 +67,32 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
         this.historyCommands = [];
         this.emptyStateText = "未发现命令。";
         this.setPlaceholder("输入命令……");
+        this.scope.register(["Alt"], "N", async (e) => {
+            let command = this.getChoosenItem().command;
+            copy(command.name);
+        });
+        this.scope.register(["Alt"], "I", async (e) => {
+            let command = this.getChoosenItem().command;
+            copy(command.id);
+        });
+        this.scope.register(["Mod"], "O", async (e) => {
+            app.setting.open();
+            let settingTab = app.setting.openTabById("hotkeys");
+            let command = this.getChoosenItem().command;
+            settingTab.setQuery(command.name);
+        });
         let prompt = [
             {
-                command: "↵",
-                purpose: "使用",
+                command: "alt n",
+                purpose: "复制名字",
             },
             {
-                command: "esc",
-                purpose: "退出",
+                command: "alt i",
+                purpose: "复制 ID",
+            },
+            {
+                command: "ctrl o",
+                purpose: "打开快捷键设置",
             },
         ];
         this.setInstructions(prompt);
@@ -140,10 +159,11 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
 
         if (matchData.score == -2) renderer.addIcon("pin");
         else if (matchData.score == -1) renderer.addIcon("history");
-        if (renderer.flairEl && renderer.flairEl.innerHTML == "")
+        if (renderer.flairEl && renderer.flairEl.innerHTML != "")
             renderer.flairEl.style.marginLeft = "10px";
     }
 }
+
 class PinyinIndex extends PI<Item> {
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);

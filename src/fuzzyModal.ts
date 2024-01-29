@@ -4,7 +4,14 @@ import { HistoryMatchDataNode, PinyinIndex, MatchData, Item, SuggestionRenderer 
 
 export default abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<T>> {
     historyMatchData: HistoryMatchDataNode<T>;
-    chooser: any;
+    chooser: {
+        setSuggestions(arg0: MatchData<T>[]): void;
+        addMessage(emptyStateText: string): unknown;
+        suggestions: HTMLElement;
+        values: MatchData<T>[];
+        selectedItem: number;
+        setSelectedItem(index: number): void;
+    };
     index: PinyinIndex<T>;
     plugin: FuzzyChinesePinyinPlugin;
     useInput: boolean;
@@ -120,8 +127,11 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     onClose() {
         this.contentEl.empty();
     }
-    getChoosenItem() {
+    getChoosenMatchData(): MatchData<T> {
         return this.chooser.values[this.chooser.selectedItem];
+    }
+    getChoosenItem(): T {
+        return this.chooser.values[this.chooser.selectedItem].item;
     }
     async openAndGetValue(): Promise<Item> {
         return await new Promise((resolve, reject) => {

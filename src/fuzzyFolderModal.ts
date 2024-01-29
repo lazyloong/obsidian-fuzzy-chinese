@@ -33,7 +33,7 @@ export default class FuzzyFolderModal extends FuzzyModal<Item> {
         this.scope.register(["Shift"], "Enter", async (e) => {
             app.vault.createFolder(this.getChoosenItem().name);
             let file = app.workspace.getActiveFile();
-            app.vault.rename(file, this.getChoosenItem().item.name + "/" + file.name);
+            app.vault.rename(file, this.getChoosenItem().name + "/" + file.name);
         });
         this.toMoveFiles = null;
     }

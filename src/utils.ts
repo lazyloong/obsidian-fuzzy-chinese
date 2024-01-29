@@ -1,4 +1,4 @@
-import { Component, Vault, MetadataCache, App, getIcon, TFile } from "obsidian";
+import { Component, Vault, MetadataCache, App, getIcon, TFile, Notice } from "obsidian";
 import FuzzyChinesePinyinPlugin from "./main";
 import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
 
@@ -231,12 +231,12 @@ function toRanges(arr: Array<number>): Array<[number, number]> {
     return result;
 }
 
-export function runOnLayoutReady(fun: Function) {
+export function runOnLayoutReady(calback: Function) {
     if (app.workspace.layoutReady) {
-        fun();
+        calback();
     } else {
         app.workspace.onLayoutReady(async () => {
-            fun();
+            calback();
         });
     }
 }
@@ -337,7 +337,7 @@ export async function createFile(name: string): Promise<TFile> {
 export function incrementalUpdate<T extends Item>(
     items: T[],
     getAllItems: () => string[],
-    callback: (name: string) => T
+    text2Item: (name: string) => T
 ) {
     let oldItems = items.map((p) => p.name);
     let newItems = getAllItems();
@@ -345,7 +345,7 @@ export function incrementalUpdate<T extends Item>(
     let addItems = newItems.filter((p) => !oldItems.includes(p));
     let removeItems = oldItems.filter((p) => !newItems.includes(p));
 
-    if (addItems.length > 0) items.push(...addItems.map((p) => callback(p)));
+    if (addItems.length > 0) items.push(...addItems.map((p) => text2Item(p)));
     if (removeItems.length > 0) items = items.filter((item) => !removeItems.includes(item.name));
     return items;
 }
@@ -370,4 +370,11 @@ export class PinyinSuggest extends TextInputSuggest<MatchData<Item>> {
         this.inputEl.trigger("input");
         this.close();
     }
+}
+
+export function copy(text: string) {
+    navigator.clipboard.writeText(text).then(
+        () => new Notice("已复制到剪贴板：" + text),
+        () => new Notice("复制失败：" + text)
+    );
 }

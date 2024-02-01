@@ -276,6 +276,7 @@ export class SuggestionRenderer {
     toHighlightEl: HTMLElement;
     title: string = "";
     note: string = "";
+    hasIcon: boolean = false;
     constructor(containerEl: HTMLElement) {
         this.containerEl = containerEl;
         this.contentEl = this.containerEl.createEl("div", { cls: "fz-suggestion-content" });
@@ -324,6 +325,7 @@ export class SuggestionRenderer {
                 cls: "suggestion-flair",
             });
         this.flairEl.appendChild(getIcon(icon));
+        this.hasIcon = true;
     }
 }
 

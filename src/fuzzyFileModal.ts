@@ -15,24 +15,22 @@ import FuzzyModal from "./fuzzyModal";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
-export interface Item extends uItem {
+type ItemType = "file" | "alias" | "unresolvedLink" | "link";
+interface Item_<T extends ItemType> extends uItem {
     file: TFile;
-    type: "file" | "alias" | "heading" | "unresolvedLink" | "link";
-    name: string;
-    pinyin: Pinyin;
+    type: T;
     path: string;
     pinyinOfPath: Pinyin;
 }
+interface FileItem extends Item_<"file"> {}
+interface AliasItem extends Item_<"alias"> {}
+interface UnresolvedLinkItem extends Item_<"unresolvedLink"> {}
+interface LinkItem extends Item_<"link"> {
+    link: string;
+}
+export type Item = FileItem | AliasItem | UnresolvedLinkItem | LinkItem;
 
-type FileItem = Item & { type: "file" };
-type AliasItem = Item & { type: "alias" };
-type UnresolvedLinkItem = Item & { type: "unresolvedLink" };
-type LinkItem = Item & { type: "link"; link: string };
-
-export interface MatchData extends uMatchData<Item> {
-    item: Item;
-    score: number;
-    range: Array<[number, number]>;
+export interface MatchData<T = Item> extends uMatchData<T> {
     usePath?: boolean;
 }
 
@@ -46,6 +44,27 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
         this.emptyStateText = "未发现该笔记，按下回车创建。";
         this.setPlaceholder("输入以切换或创建文件……");
+        this.scope.register(null, "Enter", async (e) => {
+            const modKey = e.ctrlKey || e.metaKey;
+            const altKey = e.altKey;
+            const shiftKey = e.shiftKey;
+            if (shiftKey && this.inputEl.value == "") return;
+            this.close();
+
+            let leaf: WorkspaceLeaf;
+            if (modKey && altKey) leaf = app.workspace.getLeaf("split");
+            else if (modKey) leaf = app.workspace.getLeaf("tab");
+            else if (altKey) leaf = getNewOrAdjacentLeaf();
+            else leaf = app.workspace.getMostRecentLeaf();
+
+            if (shiftKey) {
+                let newFile = await createFile(this.inputEl.value);
+                leaf.openFile(newFile);
+            } else {
+                let item = this.getChoosenItem();
+                openItem(leaf, item);
+            }
+        });
         let prompt = [
             {
                 command: "ctrl ↵",
@@ -72,47 +91,11 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                 purpose: "创建新文件到其他面板",
             },
         ];
-        if (this.app.plugins.plugins["obsidian-hover-editor"])
+        if (app.plugins.plugins["obsidian-hover-editor"]) {
             prompt.push({
                 command: "ctrl o",
                 purpose: "打开到新浮窗",
             });
-
-        this.setInstructions(prompt);
-        this.scope.register(["Mod"], "Enter", async (e) => {
-            this.close();
-            let item = this.getChoosenItem();
-            openItem(app.workspace.getLeaf("tab"), item);
-        });
-        this.scope.register(["Mod", "Alt"], "Enter", async (e) => {
-            this.close();
-            let item = this.getChoosenItem();
-            openItem(app.workspace.getLeaf("split"), item);
-        });
-        this.scope.register(["Shift"], "Enter", async (e) => {
-            if (this.inputEl.value == "") return;
-            this.close();
-            let nf = await createFile(this.inputEl.value);
-            app.workspace.getMostRecentLeaf().openFile(nf);
-        });
-        this.scope.register(["Mod", "Shift"], "Enter", async (e) => {
-            if (this.inputEl.value == "") return;
-            this.close();
-            let nf = await createFile(this.inputEl.value);
-            app.workspace.getLeaf("tab").openFile(nf);
-        });
-        this.scope.register(["Shift", "Alt"], "Enter", async (e) => {
-            if (this.inputEl.value == "") return;
-            this.close();
-            let nf = await createFile(this.inputEl.value);
-            getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()).openFile(nf);
-        });
-        this.scope.register(["Alt"], "Enter", async (e) => {
-            this.close();
-            let item = this.getChoosenItem();
-            openItem(getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()), item);
-        });
-        if (app.plugins.plugins["obsidian-hover-editor"])
             this.scope.register(["Mod"], "o", (event: KeyboardEvent) => {
                 this.close();
                 let item = this.getChoosenItem();
@@ -122,6 +105,8 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                 );
                 openItem(newLeaf, item);
             });
+        }
+        this.setInstructions(prompt);
 
         let inputContainerEl = this.modalEl.querySelector(
             ".prompt-input-container"
@@ -158,12 +143,9 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             return this.index.items
                 .filter((item) => {
                     if (!item.file) return;
-                    let tags: string | Array<string> =
-                        this.app.metadataCache.getFileCache(item.file)?.frontmatter?.tags ||
-                        this.app.metadataCache.getFileCache(item.file)?.frontmatter?.tag;
-                    if (!tags) return;
-                    let tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
+                    let tagArray = getFileTagArray(item.file);
                     return (
+                        tagArray &&
                         tagArray.length != 0 &&
                         tagArray.every((tag) => this.tags.some((t) => tag.startsWith(t)))
                     );
@@ -249,12 +231,8 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         if (this.plugin.settings.file.searchWithTag && this.tags.length > 0) {
             result = result.filter((matchData) => {
                 if (!matchData.item.file) return;
-                let tags: string | Array<string> =
-                    this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                    this.app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag;
-                if (!tags) return;
-                let tagArray = Array.isArray(tags) ? tags : String(tags).split(/, ?/);
-                return tagArray.every((tag) => this.tags.some((t) => tag.startsWith(t)));
+                let tagArray = getFileTagArray(matchData.item.file);
+                return tagArray?.every((tag) => this.tags.some((t) => tag.startsWith(t)));
             });
         }
         return result;
@@ -268,16 +246,8 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         renderer.render(matchData);
 
         if (this.plugin.settings.file.showTags && matchData.item.file) {
-            let tags: string | Array<string> =
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
-                tagArray: string[];
-            if (tags) {
-                tagArray = Array.isArray(tags)
-                    ? tags
-                    : String(tags)
-                          .split(/(, ?)| +/)
-                          .filter((p) => p);
+            let tagArray = getFileTagArray(matchData.item.file);
+            if (tagArray) {
                 let tagEl = renderer.titleEl.createDiv({ cls: "fz-suggestion-tags" });
                 tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
@@ -294,16 +264,12 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             this.resolve(matchData.item);
             return;
         }
-        let item = this.getChoosenItem();
-        if (evt.ctrlKey) {
-            let nl = this.app.workspace.getLeaf("tab");
-            openItem(nl, item);
-        } else if (evt.altKey) {
-            let nl = getNewOrAdjacentLeaf(this.app.workspace.getMostRecentLeaf());
-            openItem(nl, item);
-        } else {
-            openItem(this.app.workspace.getMostRecentLeaf(), item);
-        }
+        let leaf: WorkspaceLeaf;
+        if (evt.ctrlKey && evt.altKey) leaf = this.app.workspace.getLeaf("split");
+        else if (evt.ctrlKey) leaf = this.app.workspace.getLeaf("tab");
+        else if (evt.altKey) leaf = getNewOrAdjacentLeaf();
+        else leaf = this.app.workspace.getMostRecentLeaf();
+        openItem(leaf, matchData.item);
     }
     onNoSuggestion(): void {
         super.onNoSuggestion(<MatchData>{
@@ -325,7 +291,9 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
 // It means returning another leaf but don't create a new split.
 // This code is based on the work of zsviczian (https://github.com/zsviczian).
 // Original code: https://github.com/zsviczian/obsidian-excalidraw-plugin.
-const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
+const getNewOrAdjacentLeaf = (
+    leaf: WorkspaceLeaf = app.workspace.getMostRecentLeaf()
+): WorkspaceLeaf => {
     const layout = app.workspace.getLayout();
     const getLeaves = (l: any) =>
         l.children
@@ -383,16 +351,16 @@ class PinyinIndex extends PI<Item> {
         for (const item of value) {
             switch (item.type) {
                 case "file":
-                    this.fileItems.push(item as FileItem);
+                    this.fileItems.push(item);
                     break;
                 case "alias":
-                    this.aliasItems.push(item as AliasItem);
+                    this.aliasItems.push(item);
                     break;
                 case "unresolvedLink":
-                    this.unresolvedLinkItems.push(item as UnresolvedLinkItem);
+                    this.unresolvedLinkItems.push(item);
                     break;
                 case "link":
-                    this.linkItems.push(item as LinkItem);
+                    this.linkItems.push(item);
                     break;
             }
         }
@@ -588,11 +556,22 @@ class TagInput extends TextComponent {
 }
 
 function openItem(leaf: WorkspaceLeaf, item: Item) {
-    if (isLinkItem(item)) {
+    if (item.type == "link") {
         leaf.openLinkText(item.file.path + "#" + item.link, "");
     } else leaf.openFile(item.file);
 }
 
-function isLinkItem(item: Item): item is LinkItem {
-    return item.type == "link";
+function getFileTagArray(file: TFile): string[] {
+    let tags: string | Array<string> =
+            app.metadataCache.getFileCache(file)?.frontmatter?.tags ||
+            app.metadataCache.getFileCache(file)?.frontmatter?.tag,
+        tagArray: string[];
+    if (tags) {
+        tagArray = Array.isArray(tags)
+            ? tags
+            : String(tags)
+                  .split(/(, ?)| +/)
+                  .filter((p) => p);
+    }
+    return tagArray;
 }

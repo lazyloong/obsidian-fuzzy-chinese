@@ -15,7 +15,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     index: PinyinIndex<T>;
     plugin: FuzzyChinesePinyinPlugin;
     useInput: boolean;
-    onInput: any;
+    onInput: () => void;
     resolve: (value?: Item) => void;
     isPromiseCall: boolean = false;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
@@ -109,16 +109,14 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         el.addClass("fz-item");
         new SuggestionRenderer(el).render(matchData);
     }
-    onNoSuggestion(value?: any): void {
+    onNoSuggestion(value?: MatchData<T>): void {
         this.chooser.setSuggestions(null);
         if (this.useInput) {
-            value =
-                value ??
-                <MatchData<Item>>{
-                    item: { name: this.inputEl.value, pinyin: null },
-                    score: -1,
-                    range: null,
-                };
+            value = value ?? {
+                item: { name: this.inputEl.value, pinyin: null } as T,
+                score: -1,
+                range: null,
+            };
             this.chooser.setSuggestions([value]);
         }
         this.chooser.addMessage(this.emptyStateText);

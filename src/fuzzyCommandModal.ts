@@ -159,8 +159,7 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
 
         if (matchData.score == -2) renderer.addIcon("pin");
         else if (matchData.score == -1) renderer.addIcon("history");
-        if (renderer.flairEl && renderer.flairEl.innerHTML != "")
-            renderer.flairEl.style.marginLeft = "10px";
+        if (renderer.hasIcon) renderer.flairEl.style.marginLeft = "10px";
     }
 }
 

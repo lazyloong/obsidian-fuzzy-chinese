@@ -7,27 +7,49 @@ import {
     EditorSuggestTriggerInfo,
     TFile,
 } from "obsidian";
-import { MatchData, Item } from "./fuzzyFileModal";
-import { PinyinIndex, Pinyin, SuggestionRenderer } from "./utils";
+import { MatchData as fMatchData, Item as fItem } from "./fuzzyFileModal";
+import { PinyinIndex, Pinyin } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
-import { runOnLayoutReady } from "./utils";
+
+type ResultType = "alias" | "file" | "linktext" | "heading";
+type Result<T extends ResultType> = {
+    matches: [number, number][];
+    path: string;
+    score: number;
+    type: T;
+};
+interface AliasResult extends Result<"alias"> {
+    alias: string;
+    file: TFile;
+}
+interface FileResult extends Result<"file"> {
+    file: TFile;
+}
+interface LinktextResult extends Result<"linktext"> {}
+interface HeadingResult extends Result<"heading"> {
+    subpath: "#";
+    heading: string;
+    level: number;
+    file: TFile;
+}
+type OriginEditorSuggestResult = AliasResult | FileResult | LinktextResult | HeadingResult;
+
+type Item = Omit<fItem, "type"> & {
+    type: fItem["type"] | "heading";
+};
+
+type MatchData = fMatchData<Item>;
 
 export default class FileEditorSuggest extends EditorSuggest<MatchData> {
     plugin: FuzzyChinesePinyinPlugin;
-    index: PinyinIndex<Item>;
+    index: PinyinIndex<fItem>;
     tempItems: Item[] = [];
-    originEditorSuggest: EditorSuggest<any>;
-    originEditorSuggestCache: any;
+    originEditorSuggest: EditorSuggest<OriginEditorSuggestResult>;
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.originEditorSuggest = app.workspace.editorSuggest.suggests[0];
         this.plugin = plugin;
         this.index = this.plugin.fileModal.index;
-        runOnLayoutReady(() => {
-            this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions({
-                query: "",
-            } as EditorSuggestContext);
-        });
         let prompt = [
             {
                 command: "输入 #",
@@ -67,11 +89,11 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
             return null;
         }
     }
-    getSuggestions(context: EditorSuggestContext): MatchData[] | Promise<MatchData[]> {
+    async getSuggestions(context: EditorSuggestContext): Promise<MatchData[]> {
         this.context = context;
         let e = this.originEditorSuggest;
         let query = context.query,
-            matchData: MatchData[] | Promise<MatchData[]>;
+            matchData: MatchData[];
         switch (this.findLastChar(query)) {
             case "|": {
                 matchData = this.getFileAliases(query);
@@ -79,9 +101,8 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
             }
             case "#": {
                 e.context = context;
-                matchData = (e.getSuggestions(context) as any).then((items) => {
-                    return this.getHeadings(query, items);
-                });
+                let result = (await e.getSuggestions(context)) as HeadingResult[];
+                matchData = this.getHeadings(query, result);
                 break;
             }
             case "^": {
@@ -99,25 +120,23 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         let items = this.index.items.filter((p) => p.type == "alias" && p.file.basename == name);
         return this.match(q, items);
     }
-    getHeadings(query: string, items: Item[] | any) {
+    getHeadings(query: string, items: HeadingResult[]) {
         let [_, q] = query.split("#");
-        if (q == "")
-            this.tempItems = items.map(
-                (p) =>
-                    <Item & { originData: any }>{
-                        file: p.file,
-                        type: "heading",
-                        name: p.heading,
-                        pinyin: new Pinyin(p.heading, this.plugin),
-                        path: p.file.basename,
-                        originData: p,
-                    }
-            );
+        if (q == "") {
+            this.tempItems = items.map((p) => ({
+                type: "heading",
+                file: p.file,
+                name: p.heading,
+                pinyin: new Pinyin(p.heading, this.plugin),
+                path: p.file.basename,
+                pinyinOfPath: null,
+            }));
+        }
         return this.match(q, this.tempItems);
     }
     match(query: string, items: Item[]) {
         if (query == "")
-            return items.map((p) => <MatchData>{ item: p, score: -1, range: null, usePath: false });
+            return items.map((p) => ({ item: p, score: -1, range: null, usePath: false }));
         query = query.toLocaleLowerCase();
         let matchData: MatchData[] = [];
         for (let p of items) {
@@ -127,7 +146,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         matchData = matchData.sort((a, b) => b.score - a.score);
         return matchData;
     }
-    findLastChar(str: string) {
+    findLastChar(str: string): "" | "#" | "|" | "^" {
         let index1 = str.lastIndexOf("#");
         let index2 = str.lastIndexOf("|");
         let index3 = str.lastIndexOf("^");
@@ -145,62 +164,55 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
                 return "^";
         }
     }
-
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
-        el.addClass("fz-item");
-        let renderer = new SuggestionRenderer(el);
-        if (matchData.item.file) renderer.setNote(matchData.item.path);
-        if (matchData.usePath) renderer.setToHighlightEl("note");
-        renderer.render(matchData);
-
-        if (this.plugin.settings.file.showTags && matchData.item.file) {
-            let tags: string | Array<string> =
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tags ||
-                    app.metadataCache.getFileCache(matchData.item.file)?.frontmatter?.tag,
-                tagArray: string[];
-            if (tags) {
-                tagArray = Array.isArray(tags)
-                    ? tags
-                    : String(tags)
-                          .split(/(, ?)| +/)
-                          .filter((p) => p);
-                let tagEl = renderer.titleEl.createDiv({ cls: "fz-suggestion-tags" });
-                tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
-            }
-        }
-
-        if (matchData.item.type == "alias") {
-            renderer.addIcon("forward");
-            if (!this.plugin.settings.file.showPath) renderer.flairEl.style.top = "9px";
-            if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
-        } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
+        this.plugin.fileModal.renderSuggestion(matchData as fMatchData, el);
     }
     selectSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent): void {
-        if (matchData.item.type == "heading") {
-            this.originEditorSuggest.selectSuggestion(
-                (<Item & { originData: any }>matchData.item).originData,
-                evt
-            );
-        } else {
-            this.originEditorSuggest.context = this.context;
-            this.originEditorSuggestCache = this.originEditorSuggest.getSuggestions(<
-                EditorSuggestContext
-            >{ query: "" });
-            this.originEditorSuggestCache.then((matchDatas) => {
-                let matchData_ = matchDatas.find((p) => {
-                    if (p.type == matchData.item.type && p.file == matchData.item.file) {
-                        if (p.type == "alias") return p.alias == matchData.item.name;
-                        else return true;
-                    } else if (
-                        p.type == "linktext" &&
-                        matchData.item.type == "unresolvedLink" &&
-                        p.path == matchData.item.name
-                    )
-                        return true;
-                    else return false;
-                });
-                this.originEditorSuggest.selectSuggestion(matchData_, evt);
-            });
+        let item = matchData.item;
+        let result: OriginEditorSuggestResult;
+        switch (item.type) {
+            case "heading":
+            case "link":
+                result = {
+                    heading: item.name,
+                    type: "heading",
+                    path: item.file.basename,
+                    file: item.file,
+                    subpath: "#",
+                    level: 1,
+                    matches: null,
+                    score: 0,
+                };
+                break;
+            case "alias":
+                result = {
+                    type: "alias",
+                    alias: item.name,
+                    path: item.path,
+                    file: item.file,
+                    matches: null,
+                    score: 0,
+                };
+                break;
+            case "file":
+                result = {
+                    type: "file",
+                    path: item.path,
+                    file: item.file,
+                    matches: null,
+                    score: 0,
+                };
+                break;
+            case "unresolvedLink":
+                result = {
+                    type: "linktext",
+                    path: item.name,
+                    matches: null,
+                    score: 0,
+                };
+                break;
         }
+        this.originEditorSuggest.context = this.context;
+        this.originEditorSuggest.selectSuggestion(result, evt);
     }
 }

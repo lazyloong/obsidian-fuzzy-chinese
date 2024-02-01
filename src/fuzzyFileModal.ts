@@ -17,7 +17,7 @@ const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
 export interface Item extends uItem {
     file: TFile;
-    type: "file" | "alias" | "heading" | "unresolvedLink";
+    type: "file" | "alias" | "heading" | "unresolvedLink" | "link";
     name: string;
     pinyin: Pinyin;
     path: string;
@@ -27,6 +27,7 @@ export interface Item extends uItem {
 type FileItem = Item & { type: "file" };
 type AliasItem = Item & { type: "alias" };
 type UnresolvedLinkItem = Item & { type: "unresolvedLink" };
+type LinkItem = Item & { type: "link"; link: string };
 
 export interface MatchData extends uMatchData<Item> {
     item: Item;
@@ -80,13 +81,13 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         this.setInstructions(prompt);
         this.scope.register(["Mod"], "Enter", async (e) => {
             this.close();
-            let file = await this.getChoosenItemFile();
-            app.workspace.getLeaf("tab").openFile(file);
+            let item = this.getChoosenItem();
+            openItem(app.workspace.getLeaf("tab"), item);
         });
         this.scope.register(["Mod", "Alt"], "Enter", async (e) => {
             this.close();
-            let file = await this.getChoosenItemFile();
-            app.workspace.getLeaf("split").openFile(file);
+            let item = this.getChoosenItem();
+            openItem(app.workspace.getLeaf("split"), item);
         });
         this.scope.register(["Shift"], "Enter", async (e) => {
             if (this.inputEl.value == "") return;
@@ -108,18 +109,18 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         });
         this.scope.register(["Alt"], "Enter", async (e) => {
             this.close();
-            let file = await this.getChoosenItemFile();
-            getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()).openFile(file);
+            let item = this.getChoosenItem();
+            openItem(getNewOrAdjacentLeaf(app.workspace.getMostRecentLeaf()), item);
         });
         if (app.plugins.plugins["obsidian-hover-editor"])
             this.scope.register(["Mod"], "o", (event: KeyboardEvent) => {
                 this.close();
-                let item = this.chooser.values[this.chooser.selectedItem];
+                let item = this.getChoosenItem();
                 const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(
                     undefined,
                     () => this.app.workspace.setActiveLeaf(newLeaf)
                 );
-                newLeaf.openFile(item.item.file);
+                openItem(newLeaf, item);
             });
 
         let inputContainerEl = this.modalEl.querySelector(
@@ -281,9 +282,9 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                 tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
         }
-
-        if (matchData.item.type == "alias") {
-            renderer.addIcon("forward");
+        let icon = { alias: "forward", link: "heading" };
+        if (icon[matchData.item.type]) {
+            renderer.addIcon(icon[matchData.item.type]);
             if (!this.plugin.settings.file.showPath) renderer.flairEl.style.top = "9px";
             if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
         } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
@@ -293,15 +294,15 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             this.resolve(matchData.item);
             return;
         }
-        let file = await this.getChoosenItemFile(matchData);
+        let item = this.getChoosenItem();
         if (evt.ctrlKey) {
             let nl = this.app.workspace.getLeaf("tab");
-            nl.openFile(file);
+            openItem(nl, item);
         } else if (evt.altKey) {
             let nl = getNewOrAdjacentLeaf(this.app.workspace.getMostRecentLeaf());
-            nl.openFile(file);
+            openItem(nl, item);
         } else {
-            this.app.workspace.getMostRecentLeaf().openFile(file);
+            openItem(this.app.workspace.getMostRecentLeaf(), item);
         }
     }
     onNoSuggestion(): void {
@@ -364,6 +365,7 @@ const getNewOrAdjacentLeaf = (leaf: WorkspaceLeaf): WorkspaceLeaf => {
 class PinyinIndex extends PI<Item> {
     fileItems: FileItem[] = [];
     aliasItems: AliasItem[] = [];
+    linkItems: LinkItem[] = [];
     unresolvedLinkItems: UnresolvedLinkItem[] = [];
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app, plugin);
@@ -374,14 +376,26 @@ class PinyinIndex extends PI<Item> {
         let items: Item[] = [];
         if (this.plugin.settings.file.showUnresolvedLink)
             items = items.concat(this.unresolvedLinkItems);
+        if (true) items = items.concat(this.linkItems);
         return items.concat(this.fileItems).concat(this.aliasItems);
     }
     set items(value: Item[]) {
-        this.fileItems = value.filter((item) => item.type === "file") as FileItem[];
-        this.aliasItems = value.filter((item) => item.type === "alias") as AliasItem[];
-        this.unresolvedLinkItems = value.filter(
-            (item) => item.type === "unresolvedLink"
-        ) as UnresolvedLinkItem[];
+        for (const item of value) {
+            switch (item.type) {
+                case "file":
+                    this.fileItems.push(item as FileItem);
+                    break;
+                case "alias":
+                    this.aliasItems.push(item as AliasItem);
+                    break;
+                case "unresolvedLink":
+                    this.unresolvedLinkItems.push(item as UnresolvedLinkItem);
+                    break;
+                case "link":
+                    this.linkItems.push(item as LinkItem);
+                    break;
+            }
+        }
     }
     initIndex() {
         let files = this.app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
@@ -390,9 +404,9 @@ class PinyinIndex extends PI<Item> {
 
         for (let file of files) {
             if (file.extension != "md") continue;
-            this.aliasItems = this.aliasItems.concat(
-                CachedMetadata2Item(file, this.plugin, this.fileItems)
-            );
+            let [a, b] = CachedMetadata2Item(file, this.plugin, this.fileItems);
+            this.aliasItems = this.aliasItems.concat(a);
+            this.linkItems = this.linkItems.concat(b);
         }
 
         this.updateUnresolvedLinkItems();
@@ -420,9 +434,11 @@ class PinyinIndex extends PI<Item> {
         if (!this.isEffectiveFile(file)) return;
         switch (type) {
             case "changed": {
+                let [a, b] = CachedMetadata2Item(file, this.plugin, this.fileItems, args);
                 this.aliasItems = this.aliasItems
                     .filter((item) => item.path != file.path)
-                    .concat(CachedMetadata2Item(file, this.plugin, this.fileItems, args));
+                    .concat(a);
+                this.linkItems = this.linkItems.filter((item) => item.path != file.path).concat(b);
                 break;
             }
             case "create": {
@@ -432,10 +448,9 @@ class PinyinIndex extends PI<Item> {
             case "rename": {
                 this.fileItems = this.fileItems.filter((item) => item.path != args);
                 this.fileItems.push(TFile2Item(file, this.plugin));
-                this.aliasItems = this.aliasItems.filter((item) => item.path != args);
-                this.aliasItems = this.aliasItems.concat(
-                    CachedMetadata2Item(file, this.plugin, this.aliasItems)
-                );
+                let [a, b] = CachedMetadata2Item(file, this.plugin, this.aliasItems);
+                this.aliasItems = this.aliasItems.filter((item) => item.path != args).concat(a);
+                this.linkItems = this.linkItems.filter((item) => item.path != args).concat(b);
                 break;
             }
             case "delete": {
@@ -491,8 +506,10 @@ function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): FileItem {
     if (file.parent.path == "/") {
         pathPinyin = fileNamePinyin;
     } else {
-        folderPathPinyin = folderIndex.find((folder) => folder.name == file.parent.path).pinyin;
-        pathPinyin = folderPathPinyin.concat(new Pinyin("/", plugin)).concat(fileNamePinyin);
+        folderPathPinyin = folderIndex.find((folder) => folder.name == file.parent.path)?.pinyin;
+        if (folderPathPinyin)
+            pathPinyin = folderPathPinyin.concat(new Pinyin("/", plugin)).concat(fileNamePinyin);
+        else pathPinyin = new Pinyin(file.parent.path + "/" + name, plugin);
     }
     return {
         type: "file",
@@ -509,23 +526,45 @@ function CachedMetadata2Item(
     plugin: FuzzyChinesePinyinPlugin,
     items: Item[],
     cache?: CachedMetadata
-): AliasItem[] {
+): [AliasItem[], LinkItem[]] {
     cache = cache ?? plugin.app.metadataCache.getFileCache(file);
     let alias = cache?.frontmatter?.alias || cache?.frontmatter?.aliases;
+    let linkText = cache?.frontmatter?.linkText;
     let item = items.find((item) => item.path == file.path);
+    let pinyinOfPath = item?.pinyinOfPath ?? new Pinyin(file.path, plugin);
+    let aliasItems: AliasItem[] = [],
+        linkItems: LinkItem[] = [];
     if (alias) {
         alias = Array.isArray(alias) ? alias.map((p) => String(p)) : String(alias).split(/, ?/);
-        return alias.map((p: string) => {
+        aliasItems = alias.map((p: string) => ({
+            type: "alias",
+            name: p,
+            pinyin: new Pinyin(p, plugin),
+            path: file.path,
+            pinyinOfPath: pinyinOfPath,
+            file: file,
+        }));
+    }
+    if (linkText) {
+        let link = Array.isArray(linkText)
+            ? linkText.map((p) => String(p))
+            : String(linkText).split(/, ?/);
+        linkItems = link.map((p: string) => {
+            let [link, name] = p.split("|");
+            name = name || link;
+            // if (name[0] != "#") name = "#" + name;
             return {
-                type: "alias",
-                name: p,
-                pinyin: new Pinyin(p, plugin),
+                type: "link",
+                name,
+                pinyin: new Pinyin(name, plugin),
                 path: file.path,
-                pinyinOfPath: item.pinyinOfPath,
+                pinyinOfPath: pinyinOfPath,
                 file: file,
+                link,
             };
         });
-    } else return [];
+    }
+    return [aliasItems, linkItems];
 }
 
 class TagInput extends TextComponent {
@@ -546,4 +585,14 @@ class TagInput extends TextComponent {
     show() {
         this.inputEl.style.display = "block";
     }
+}
+
+function openItem(leaf: WorkspaceLeaf, item: Item) {
+    if (isLinkItem(item)) {
+        leaf.openLinkText(item.file.path + "#" + item.link, "");
+    } else leaf.openFile(item.file);
+}
+
+function isLinkItem(item: Item): item is LinkItem {
+    return item.type == "link";
 }

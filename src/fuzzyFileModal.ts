@@ -25,7 +25,7 @@ interface Item_<T extends ItemType> extends uItem {
 interface FileItem extends Item_<"file"> {}
 interface AliasItem extends Item_<"alias"> {}
 interface UnresolvedLinkItem extends Item_<"unresolvedLink"> {}
-interface LinkItem extends Item_<"link"> {
+export interface LinkItem extends Item_<"link"> {
     link: string;
 }
 export type Item = FileItem | AliasItem | UnresolvedLinkItem | LinkItem;

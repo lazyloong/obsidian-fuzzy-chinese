@@ -10,7 +10,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         suggestions: HTMLElement;
         values: MatchData<T>[];
         selectedItem: number;
-        setSelectedItem(index: number): void;
+        setSelectedItem(index: number, e: KeyboardEvent): void;
     };
     index: PinyinIndex<T>;
     plugin: FuzzyChinesePinyinPlugin;
@@ -30,34 +30,14 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
             }
         });
         this.scope.register(["Mod"], "N", async (e) => {
-            if (this.chooser.selectedItem != this.chooser.values.length - 1) {
-                this.chooser.setSelectedItem(this.chooser.selectedItem + 1);
-                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({
-                    block: "center",
-                    behavior: "smooth",
-                });
-            } else {
-                this.chooser.setSelectedItem(0);
-                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({
-                    block: "center",
-                    behavior: "smooth",
-                });
-            }
+            if (this.chooser.selectedItem != this.chooser.values.length - 1)
+                this.chooser.setSelectedItem(this.chooser.selectedItem + 1, e);
+            else this.chooser.setSelectedItem(0, e);
         });
         this.scope.register(["Mod"], "P", async (e) => {
             if (this.chooser.selectedItem != 0) {
-                this.chooser.setSelectedItem(this.chooser.selectedItem - 1);
-                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({
-                    block: "center",
-                    behavior: "smooth",
-                });
-            } else {
-                this.chooser.setSelectedItem(this.chooser.values.length - 1);
-                this.chooser.suggestions[this.chooser.selectedItem].scrollIntoView({
-                    block: "center",
-                    behavior: "smooth",
-                });
-            }
+                this.chooser.setSelectedItem(this.chooser.selectedItem - 1, e);
+            } else this.chooser.setSelectedItem(this.chooser.values.length - 1, e);
         });
     }
     onOpen() {

@@ -130,6 +130,14 @@ export function hijackingTagForMarkdownView(plugin: FuzzyChinesePinyinPlugin) {
                 newInputEl.addEventListener("input", async (e) => {
                     tagSuggest.onInputChanged();
                 });
+                newInputEl.addEventListener("keydown", async (e) => {
+                    if (!e.isComposing)
+                        if ("Enter" === e.key && newInputEl.innerText.length > 0) {
+                            e.preventDefault();
+                            rendered["_children"][0].multiselect.addElement(newInputEl.innerText);
+                            newInputEl.innerText = "";
+                        }
+                });
             });
         })
     );

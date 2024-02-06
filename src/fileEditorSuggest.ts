@@ -7,7 +7,7 @@ import {
     EditorSuggestTriggerInfo,
     TFile,
 } from "obsidian";
-import { MatchData as fMatchData, Item as fItem } from "./fuzzyFileModal";
+import { MatchData as fMatchData, Item as fItem, LinkItem } from "./fuzzyFileModal";
 import { PinyinIndex, Pinyin } from "./utils";
 import FuzzyChinesePinyinPlugin from "./main";
 
@@ -170,13 +170,14 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
     selectSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent): void {
         let item = matchData.item;
         let result: OriginEditorSuggestResult;
+        let file = app.workspace.getActiveFile();
         switch (item.type) {
             case "heading":
             case "link":
                 result = {
-                    heading: item.name,
+                    heading: isLinkItem(item) ? item.link : item.name,
                     type: "heading",
-                    path: item.file.basename,
+                    path: item.file == file ? "" : item.file.basename,
                     file: item.file,
                     subpath: "#",
                     level: 1,
@@ -215,4 +216,8 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         this.originEditorSuggest.context = this.context;
         this.originEditorSuggest.selectSuggestion(result, evt);
     }
+}
+
+function isLinkItem(item: Item): item is LinkItem {
+    return item.type === "link";
 }

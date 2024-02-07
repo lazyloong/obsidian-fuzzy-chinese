@@ -264,6 +264,8 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             this.resolve(matchData.item);
             return;
         }
+        if (matchData.score == -1 || matchData.item.type == "unresolvedLink")
+            matchData.item.file = await this.getChoosenItemFile(matchData);
         let leaf: WorkspaceLeaf;
         if (evt.ctrlKey && evt.altKey) leaf = this.app.workspace.getLeaf("split");
         else if (evt.ctrlKey) leaf = this.app.workspace.getLeaf("tab");
@@ -281,7 +283,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
     async getChoosenItemFile(matchData?: MatchData): Promise<TFile> {
         matchData = matchData ?? this.chooser.values[this.chooser.selectedItem];
         return matchData.score == -1 || matchData.item.type == "unresolvedLink"
-            ? await createFile(matchData.item.path)
+            ? await createFile(matchData.item.name)
             : matchData.item.file;
     }
 }

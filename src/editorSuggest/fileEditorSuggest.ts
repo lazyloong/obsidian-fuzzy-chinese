@@ -73,6 +73,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         const openBracketIndex = lineText.lastIndexOf("[[");
         const closeBracketIndex = lineText.lastIndexOf("]]");
 
+        if (lineText.slice(-1) == "^") return;
         if (openBracketIndex !== -1 && closeBracketIndex < openBracketIndex) {
             return {
                 start: {

@@ -125,10 +125,10 @@ class PinyinIndex extends PI<Item> {
                 });
                 break;
             case "delete":
-                this.items = this.items.filter((item) => item.name == folder.path);
+                this.items = this.items.filter((item) => item.name != folder.path);
                 break;
             case "rename":
-                this.items = this.items.filter((item) => item.name == oldPath);
+                this.items = this.items.filter((item) => item.name != oldPath);
                 this.items.push({
                     name: folder.path,
                     pinyin: new Pinyin(folder.path, this.plugin),

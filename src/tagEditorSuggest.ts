@@ -82,13 +82,19 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
                 if (p.match(/^\w+:/)) yaml.push([i + 1 + start, p.split(":")[0]]);
             });
 
-            if (sub.match(/^ *- /) && yaml.find((p) => lineIndex > p[0])?.[1]?.match(/^tags?/)) {
-                let match = sub.match(/^ *- (\S+)$/)?.[1] ?? "";
+            if (
+                lineContent.match(/^ *- /) &&
+                yaml[yaml.findLastIndex((p) => lineIndex > p[0])]?.[1]?.match(/^tags?/)
+            ) {
+                let match = lineContent.match(/^ *- (.+)$/)?.[1] ?? "";
                 if (this.index.has(match)) return null;
                 return {
-                    end: cursor,
+                    end: {
+                        ch: lineContent.length,
+                        line: lineIndex,
+                    },
                     start: {
-                        ch: sub.lastIndexOf(match),
+                        ch: lineContent.lastIndexOf(match),
                         line: lineIndex,
                     },
                     query: match,

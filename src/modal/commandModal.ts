@@ -141,8 +141,6 @@ export default class FuzzyCommandModal extends FuzzyModal<Item> {
         this.app.commands.executeCommand(matchData.item.command);
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
-        el.addClass("fz-item");
-
         let renderer = new SuggestionRenderer(el);
         renderer.render(matchData);
 

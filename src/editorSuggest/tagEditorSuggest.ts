@@ -148,7 +148,6 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
         return matchData;
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement) {
-        el.addClass("fz-item");
         new SuggestionRenderer(el).render(matchData);
     }
     selectSuggestion(matchData: MatchData<Item>): void {

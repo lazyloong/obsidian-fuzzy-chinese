@@ -278,6 +278,7 @@ export class SuggestionRenderer {
     note: string = "";
     hasIcon: boolean = false;
     constructor(containerEl: HTMLElement) {
+        containerEl.addClass("fz-item");
         this.containerEl = containerEl;
         this.contentEl = this.containerEl.createEl("div", { cls: "fz-suggestion-content" });
         this.titleEl = this.contentEl.createEl("div", { cls: "fz-suggestion-title" });

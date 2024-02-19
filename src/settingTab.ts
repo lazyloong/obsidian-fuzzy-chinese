@@ -14,6 +14,7 @@ export default class SettingTab extends PluginSettingTab {
         this.containerEl.createEl("h1", { text: "设置" });
         this.addGlobalSetting();
         this.addFileSetting();
+        this.addHeadingSetting();
         this.addCommandSettings();
         this.addOtherSetting();
     }
@@ -158,6 +159,23 @@ export default class SettingTab extends PluginSettingTab {
                 );
             });
     }
+    addHeadingSetting() {
+        this.containerEl.createEl("h2", { text: "标题搜索" });
+        new Setting(this.containerEl).setName("显示第一级标题").addToggle((cb) =>
+            cb
+                .setValue(this.plugin.settings.heading.showFirstLevelHeading)
+                .onChange(async (value) => {
+                    this.plugin.settings.heading.showFirstLevelHeading = value;
+                    await this.plugin.saveSettings();
+                })
+        );
+        new Setting(this.containerEl).setName("搜索结果缩进").addToggle((cb) =>
+            cb.setValue(this.plugin.settings.heading.headingIndent).onChange(async (value) => {
+                this.plugin.settings.heading.headingIndent = value;
+                await this.plugin.saveSettings();
+            })
+        );
+    }
     addCommandSettings() {
         this.containerEl.createEl("h2", { text: "命令" });
         this.addPinnedCommands();
@@ -178,7 +196,12 @@ export default class SettingTab extends PluginSettingTab {
             });
     }
     addPinnedCommands() {
-        this.plugin.settings.command.pinnedCommands.forEach((command, index) => {
+        const { pinnedCommands } = this.plugin.settings.command;
+        if (pinnedCommands.length === 0) {
+            new Setting(this.containerEl).setName("没有置顶命令");
+            return;
+        }
+        pinnedCommands.forEach((command, index) => {
             new Setting(this.containerEl)
                 .setName(command)
                 .addExtraButton((cb) =>
@@ -274,6 +297,10 @@ export interface FuzyyChinesePinyinSettings {
         showTags: boolean;
         searchWithTag: boolean;
     };
+    heading: {
+        showFirstLevelHeading: boolean;
+        headingIndent: boolean;
+    };
     command: {
         pinnedCommands: Array<string>;
     };
@@ -322,6 +349,10 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
         showPath: true,
         showTags: false,
         searchWithTag: true,
+    },
+    heading: {
+        showFirstLevelHeading: true,
+        headingIndent: true,
     },
     command: {
         pinnedCommands: [],

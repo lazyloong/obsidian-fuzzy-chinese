@@ -86,7 +86,6 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     }
 
     renderSuggestion(matchData: MatchData<T>, el: HTMLElement) {
-        el.addClass("fz-item");
         new SuggestionRenderer(el).render(matchData);
     }
     onNoSuggestion(value?: MatchData<T>): void {

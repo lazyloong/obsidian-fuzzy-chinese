@@ -14,6 +14,7 @@ import FuzzyFileModal from "@/modal/fileModal";
 import FuzzyFolderModal from "@/modal/folderModal";
 import FuzzyCommandModal from "@/modal/commandModal";
 import FuzzySuggestModal from "@/modal/suggestModal";
+import FuzzyHeadingModal from "@/modal/headingModal";
 import FileEditorSuggest from "@/editorSuggest/fileEditorSuggest";
 import TagEditorSuggest from "@/editorSuggest/tagEditorSuggest";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
@@ -36,6 +37,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
     fileModal: FuzzyFileModal;
     folderModal: FuzzyFolderModal;
     commandModal: FuzzyCommandModal;
+    headingModal: FuzzyHeadingModal;
     fileEditorSuggest: FileEditorSuggest;
     tagEditorSuggest: TagEditorSuggest;
     indexManager: IndexManager;
@@ -49,6 +51,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         this.fileModal = new FuzzyFileModal(this.app, this);
         this.folderModal = new FuzzyFolderModal(this.app, this);
         this.commandModal = new FuzzyCommandModal(this.app, this);
+        this.headingModal = new FuzzyHeadingModal(this.app, this);
         this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
         this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
 
@@ -145,6 +148,18 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             checkCallback: (checking: boolean) => {
                 if (!checking) {
                     this.commandModal.open();
+                }
+                return true;
+            },
+        });
+        this.addCommand({
+            id: "search-heading",
+            name: "Search Heading",
+            checkCallback: (checking: boolean) => {
+                if (!checking) {
+                    const file = this.app.workspace.getActiveFile();
+                    this.headingModal.setFile(file);
+                    this.headingModal.open();
                 }
                 return true;
             },

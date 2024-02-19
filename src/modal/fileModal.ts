@@ -239,7 +239,6 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
     }
 
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
-        el.addClass("fz-item");
         let renderer = new SuggestionRenderer(el);
         if (matchData.item.file) renderer.setNote(matchData.item.path);
         if (matchData.usePath) renderer.setToHighlightEl("note");

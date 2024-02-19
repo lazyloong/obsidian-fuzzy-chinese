@@ -8,21 +8,21 @@ import {
     App,
     View,
 } from "obsidian";
-import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "./utils";
-import FuzzyModal from "./fuzzyModal";
-import FuzzyFileModal from "./fuzzyFileModal";
-import FuzzyFolderModal from "./fuzzyFolderModal";
-import FuzzyCommandModal from "./fuzzyCommandModal";
-import FileEditorSuggest from "./fileEditorSuggest";
-import TagEditorSuggest from "./tagEditorSuggest";
-import FuzzySuggestModal from "./fuzzySuggestModal";
+import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "@/utils";
+import FuzzyModal from "@/modal/modal";
+import FuzzyFileModal from "@/modal/fileModal";
+import FuzzyFolderModal from "@/modal/folderModal";
+import FuzzyCommandModal from "@/modal/commandModal";
+import FuzzySuggestModal from "@/modal/suggestModal";
+import FileEditorSuggest from "@/editorSuggest/fileEditorSuggest";
+import TagEditorSuggest from "@/editorSuggest/tagEditorSuggest";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
-import SimplifiedDict from "./simplified_dict";
-import TraditionalDict from "./traditional_dict";
+import SimplifiedDict from "@/dict/simplified_dict";
+import TraditionalDict from "@/dict/traditional_dict";
 
-import DoublePinyinDict from "./double_pinyin";
-import { fuzzyPinyinSearch, stringArray2Items } from "./search";
-import SettingTab, { DEFAULT_SETTINGS, FuzyyChinesePinyinSettings } from "./settingTab";
+import DoublePinyinDict from "@/double_pinyin";
+import { fuzzyPinyinSearch, stringArray2Items } from "@/search";
+import SettingTab, { DEFAULT_SETTINGS, FuzyyChinesePinyinSettings } from "@/settingTab";
 import {
     hijackingCanvasView,
     hijackingEmptyView,

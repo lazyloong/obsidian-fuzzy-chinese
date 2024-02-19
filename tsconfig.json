@@ -1,12 +1,16 @@
 {
-  "compilerOptions": {
-    "target": "es2019",
-    "module": "commonjs",
-    "composite": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "moduleResolution": "node",
-    "forceConsistentCasingInFileNames": true
-  },
-  "include": ["src/**/*.ts", "types.d.ts"]
+    "compilerOptions": {
+        "target": "es2019",
+        "module": "commonjs",
+        "composite": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "moduleResolution": "node",
+        "forceConsistentCasingInFileNames": true,
+        "baseUrl": "./src/",
+        "paths": {
+            "@/*": ["./*"]
+        }
+    },
+    "include": ["src/**/*.ts", "types.d.ts"]
 }

@@ -9,9 +9,9 @@ import {
     createFile,
     incrementalUpdate,
     PinyinSuggest,
-} from "./utils";
-import FuzzyChinesePinyinPlugin from "./main";
-import FuzzyModal from "./fuzzyModal";
+} from "@/utils";
+import FuzzyChinesePinyinPlugin from "@/main";
+import FuzzyModal from "./modal";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 

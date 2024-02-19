@@ -7,9 +7,9 @@ import {
     EditorSuggestTriggerInfo,
     TFile,
 } from "obsidian";
-import { MatchData as fMatchData, Item as fItem, LinkItem } from "./fuzzyFileModal";
-import { PinyinIndex, Pinyin } from "./utils";
-import FuzzyChinesePinyinPlugin from "./main";
+import { MatchData as fMatchData, Item as fItem, LinkItem } from "../modal/fileModal";
+import { PinyinIndex, Pinyin } from "../utils";
+import FuzzyChinesePinyinPlugin from "../main";
 
 type ResultType = "alias" | "file" | "linktext" | "heading";
 type Result<T extends ResultType> = {

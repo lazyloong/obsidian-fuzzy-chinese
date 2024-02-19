@@ -1,6 +1,6 @@
 import { SuggestModal, App } from "obsidian";
-import FuzzyChinesePinyinPlugin from "./main";
-import { HistoryMatchDataNode, PinyinIndex, MatchData, Item, SuggestionRenderer } from "./utils";
+import FuzzyChinesePinyinPlugin from "@/main";
+import { HistoryMatchDataNode, PinyinIndex, MatchData, Item, SuggestionRenderer } from "@/utils";
 
 export default abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<T>> {
     historyMatchData: HistoryMatchDataNode<T>;

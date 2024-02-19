@@ -6,7 +6,6 @@ import {
     EditorSuggestContext,
     EditorSuggestTriggerInfo,
     TFile,
-    WorkspaceLeaf,
 } from "obsidian";
 import {
     PinyinIndex as PI,
@@ -16,8 +15,8 @@ import {
     Item,
     SuggestionRenderer,
     incrementalUpdate,
-} from "./utils";
-import FuzzyChinesePinyinPlugin from "./main";
+} from "@/utils";
+import FuzzyChinesePinyinPlugin from "@/main";
 
 export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
     plugin: FuzzyChinesePinyinPlugin;

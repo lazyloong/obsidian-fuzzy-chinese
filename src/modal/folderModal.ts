@@ -1,7 +1,7 @@
 import { TFile, App, TAbstractFile, TFolder } from "obsidian";
-import FuzzyModal from "./fuzzyModal";
-import { PinyinIndex as PI, Item, MatchData, Pinyin } from "./utils";
-import FuzzyChinesePinyinPlugin from "./main";
+import { PinyinIndex as PI, Item, MatchData, Pinyin } from "@/utils";
+import FuzzyChinesePinyinPlugin from "@/main";
+import FuzzyModal from "./modal";
 
 export default class FuzzyFolderModal extends FuzzyModal<Item> {
     toMoveFiles: TAbstractFile | TFile[];

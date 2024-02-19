@@ -1,7 +1,11 @@
-import FuzzyChinesePinyinPlugin from "./main";
-import { Pinyin, Item, MatchData } from "./utils";
+import FuzzyChinesePinyinPlugin from "@/main";
+import { Pinyin, Item, MatchData } from "@/utils";
 
-export function fuzzyPinyinSearch(query: string, items: string[] | Item[], plugin: FuzzyChinesePinyinPlugin): MatchData<Item>[] {
+export function fuzzyPinyinSearch(
+    query: string,
+    items: string[] | Item[],
+    plugin: FuzzyChinesePinyinPlugin
+): MatchData<Item>[] {
     if (items.length == 0) return null;
     if (isStringArray(items)) {
         items = stringArray2Items(items, plugin);

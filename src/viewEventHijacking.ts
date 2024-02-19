@@ -1,7 +1,7 @@
-import { App, TFile, View } from "obsidian";
-import FuzzyChinesePinyinPlugin from "./main";
-import { Item as fItem } from "./fuzzyFileModal";
-import { MatchData, Item, PinyinSuggest } from "./utils";
+import { TFile, View } from "obsidian";
+import FuzzyChinesePinyinPlugin from "@/main";
+import { Item as fItem } from "@/modal/fileModal";
+import { MatchData, Item, PinyinSuggest } from "@/utils";
 
 interface MarkdownView extends View {
     file: TFile;

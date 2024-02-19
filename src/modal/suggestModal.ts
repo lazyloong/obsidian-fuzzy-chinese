@@ -1,7 +1,7 @@
 import { App } from "obsidian";
-import FuzzyModal from "./fuzzyModal";
-import { Item, MatchData, Pinyin } from "./utils";
-import FuzzyChinesePinyinPlugin from "./main";
+import { Item, MatchData, Pinyin } from "@/utils";
+import FuzzyChinesePinyinPlugin from "@/main";
+import FuzzyModal from "./modal";
 
 export default class fuzzySuggestModal extends FuzzyModal<Item> {
     index: any;

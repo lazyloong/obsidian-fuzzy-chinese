@@ -1,15 +1,7 @@
 import { App, Notice, PluginSettingTab, Setting } from "obsidian";
-import DoublePinyinDict from "./double_pinyin";
-import FuzzyChinesePinyinPlugin from "./main";
-import {
-    Item,
-    MatchData,
-    PinyinSuggest,
-    SuggestionRenderer,
-    arraymove,
-    fullPinyin2doublePinyin,
-} from "./utils";
-import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
+import DoublePinyinDict from "@/double_pinyin";
+import FuzzyChinesePinyinPlugin from "@/main";
+import { PinyinSuggest, arraymove, fullPinyin2doublePinyin } from "@/utils";
 
 export default class SettingTab extends PluginSettingTab {
     plugin: FuzzyChinesePinyinPlugin;

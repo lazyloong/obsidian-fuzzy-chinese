@@ -1,5 +1,5 @@
 import { App, Command, Hotkey, Modifier, Platform } from "obsidian";
-import FuzzyModal from "./fuzzyModal";
+import FuzzyChinesePinyinPlugin from "@/main";
 import {
     PinyinIndex as PI,
     Pinyin,
@@ -7,8 +7,8 @@ import {
     SuggestionRenderer,
     incrementalUpdate,
     copy,
-} from "./utils";
-import FuzzyChinesePinyinPlugin from "./main";
+} from "@/utils";
+import FuzzyModal from "./modal";
 
 type Item = {
     name: string;

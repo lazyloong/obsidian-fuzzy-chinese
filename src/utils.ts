@@ -1,6 +1,6 @@
 import { Component, Vault, MetadataCache, App, getIcon, TFile, Notice } from "obsidian";
-import FuzzyChinesePinyinPlugin from "./main";
 import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
+import FuzzyChinesePinyinPlugin from "@/main";
 
 export type MatchData<T> = {
     item: T;

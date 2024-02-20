@@ -73,7 +73,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         const openBracketIndex = lineText.lastIndexOf("[[");
         const closeBracketIndex = lineText.lastIndexOf("]]");
 
-        if (lineText.slice(-1) == "^") return;
+        if (this.findLastSymbol(lineText.slice(openBracketIndex)) == "^") return;
         if (openBracketIndex !== -1 && closeBracketIndex < openBracketIndex) {
             return {
                 start: {
@@ -95,7 +95,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         let e = this.originEditorSuggest;
         let query = context.query,
             matchData: MatchData[];
-        switch (this.findLastChar(query)) {
+        switch (this.findLastSymbol(query)) {
             case "|": {
                 matchData = this.getFileAliases(query);
                 break;
@@ -147,7 +147,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         matchData = matchData.sort((a, b) => b.score - a.score);
         return matchData;
     }
-    findLastChar(str: string): "" | "#" | "|" | "^" {
+    findLastSymbol(str: string): "" | "#" | "|" | "^" {
         let index1 = str.lastIndexOf("#");
         let index2 = str.lastIndexOf("|");
         let index3 = str.lastIndexOf("^");

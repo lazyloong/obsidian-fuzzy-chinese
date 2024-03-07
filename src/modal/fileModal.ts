@@ -425,6 +425,7 @@ class PinyinIndex extends PI<Item> {
             case "delete": {
                 this.fileItems = this.fileItems.filter((item) => item.path != file.path);
                 this.aliasItems = this.aliasItems.filter((item) => item.path != file.path);
+                this.linkItems = this.linkItems.filter((item) => item.path != file.path);
                 break;
             }
         }

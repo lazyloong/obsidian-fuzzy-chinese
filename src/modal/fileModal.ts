@@ -203,7 +203,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             for (let p of toMatchData.filter(
                 (p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path)
             )) {
-                let d = <MatchData>p.pinyinOfPath.match(query, p, smathCase);
+                let d = p.pinyinOfPath.match(query, p, smathCase) as MatchData;
                 if (d) {
                     d.usePath = true;
                     matchData2.push(d);

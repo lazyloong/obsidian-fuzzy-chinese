@@ -102,24 +102,17 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         hijackingTagForMarkdownView(this);
     }
     registerEditorSuggest(editorSuggest: EditorSuggest<any>): void {
-        this.app.workspace.editorSuggest.suggests.unshift(editorSuggest),
-            this.register(() => {
-                return this.app.workspace.editorSuggest.removeSuggest(editorSuggest);
-            });
+        this.app.workspace.editorSuggest.suggests.unshift(editorSuggest);
+        this.register(() => {
+            return this.app.workspace.editorSuggest.removeSuggest(editorSuggest);
+        });
     }
     addCommands() {
         this.addCommand({
             id: "open-search",
             name: "Open Search",
-            checkCallback: (checking: boolean) => {
-                let leaf = this.app.workspace.getMostRecentLeaf();
-                if (leaf) {
-                    if (!checking) {
-                        this.fileModal.open();
-                    }
-                    return true;
-                }
-                return false;
+            callback: () => {
+                this.fileModal.open();
             },
         });
         this.addCommand({
@@ -128,40 +121,27 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             checkCallback: (checking: boolean) => {
                 let files = this.fileExplorerHotkey.getFiles();
                 let file = this.app.workspace.getActiveFile();
-                if (this.fileExplorerHotkey.working && files.length > 0) {
-                    if (!checking) {
-                        this.folderModal.openWithFiles(files);
-                    }
-                    return true;
-                } else if (file) {
-                    if (!checking) {
-                        this.folderModal.open();
-                    }
-                    return true;
-                }
-                return false;
+                if (checking) return Boolean(file) || files.length > 0;
+                if (this.fileExplorerHotkey.working && files.length > 0)
+                    this.folderModal.openWithFiles(files);
+                else if (file) this.folderModal.open();
             },
         });
         this.addCommand({
             id: "execute-command",
             name: "Execute Command",
-            checkCallback: (checking: boolean) => {
-                if (!checking) {
-                    this.commandModal.open();
-                }
-                return true;
+            callback: () => {
+                this.commandModal.open();
             },
         });
         this.addCommand({
             id: "search-heading",
             name: "Search Heading",
             checkCallback: (checking: boolean) => {
-                if (!checking) {
-                    const file = this.app.workspace.getActiveFile();
-                    this.headingModal.setFile(file);
-                    this.headingModal.open();
-                }
-                return true;
+                const file = this.app.workspace.getActiveFile();
+                if (checking) return Boolean(file);
+                this.headingModal.setFile(file);
+                this.headingModal.open();
             },
         });
     }

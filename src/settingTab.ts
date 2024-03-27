@@ -2,6 +2,7 @@ import { App, Notice, PluginSettingTab, Setting } from "obsidian";
 import DoublePinyinDict from "@/double_pinyin";
 import FuzzyChinesePinyinPlugin from "@/main";
 import { PinyinSuggest, arraymove, fullPinyin2doublePinyin } from "@/utils";
+import { openFileKeyMap } from "./modal/fileModal";
 
 export default class SettingTab extends PluginSettingTab {
     plugin: FuzzyChinesePinyinPlugin;
@@ -158,6 +159,42 @@ export default class SettingTab extends PluginSettingTab {
                     }
                 );
             });
+
+        this.containerEl.createEl("h3", { text: "快捷键功能" });
+        const keys = ["keyEnter", "keyCtrlEnter", "keyAltEnter", "keyCtrlAltEnter"];
+        const g = Object.keys(openFileKeyMap);
+        keys.forEach((key) => {
+            new Setting(this.containerEl)
+                .setName(
+                    `${key
+                        .slice(3)
+                        .replace(/([A-Z])/g, " $1")
+                        .trim()} 功能`
+                )
+                .addDropdown((cb) =>
+                    cb
+                        .addOptions(
+                            g.reduce((a, c) => {
+                                a[c] = c;
+                                return a;
+                            }, {})
+                        )
+                        .setValue(this.plugin.settings.file[key])
+                        .onChange(async (value) => {
+                            this.plugin.settings.file[key] = value;
+                            await this.plugin.saveSettings();
+                        })
+                );
+        });
+        new Setting(this.containerEl).setName("重置快捷键功能").addButton((cb) =>
+            cb.setIcon("refresh-ccw").onClick(async () => {
+                keys.forEach((key, i) => {
+                    this.plugin.settings.file[key] = g[i];
+                });
+                await this.plugin.saveSettings();
+                this.display();
+            })
+        );
     }
     addHeadingSetting() {
         this.containerEl.createEl("h2", { text: "标题搜索" });
@@ -296,6 +333,10 @@ export interface FuzyyChinesePinyinSettings {
         showPath: boolean;
         showTags: boolean;
         searchWithTag: boolean;
+        keyEnter: keyof typeof openFileKeyMap;
+        keyCtrlEnter: keyof typeof openFileKeyMap;
+        keyAltEnter: keyof typeof openFileKeyMap;
+        keyCtrlAltEnter: keyof typeof openFileKeyMap;
     };
     heading: {
         showFirstLevelHeading: boolean;
@@ -349,6 +390,10 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
         showPath: true,
         showTags: false,
         searchWithTag: true,
+        keyEnter: "打开",
+        keyCtrlEnter: "打开到新标签页",
+        keyAltEnter: "打开到其他面板",
+        keyCtrlAltEnter: "打开到新面板",
     },
     heading: {
         showFirstLevelHeading: true,

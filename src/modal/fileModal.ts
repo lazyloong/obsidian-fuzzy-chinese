@@ -44,39 +44,47 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
         this.emptyStateText = "未发现该笔记，按下回车创建。";
         this.setPlaceholder("输入以切换或创建文件……");
-        this.scope.register(null, "Enter", async (e) => {
-            const modKey = e.ctrlKey || e.metaKey;
-            const altKey = e.altKey;
-            const shiftKey = e.shiftKey;
-            if (shiftKey && this.inputEl.value == "") return;
-            this.close();
 
-            let leaf: WorkspaceLeaf;
-            if (modKey && altKey) leaf = app.workspace.getLeaf("split");
-            else if (modKey) leaf = app.workspace.getLeaf("tab");
-            else if (altKey) leaf = getNewOrAdjacentLeaf();
-            else leaf = app.workspace.getMostRecentLeaf();
+        var i = {
+            scope: this.scope,
+            modifiers: null,
+            key: "Enter",
+            func: async (e: KeyboardEvent) => {
+                const modKey = e.ctrlKey || e.metaKey;
+                const altKey = e.altKey;
+                const shiftKey = e.shiftKey;
+                if (shiftKey && this.inputEl.value == "") return;
+                this.close();
 
-            if (shiftKey) {
-                let newFile = await createFile(this.inputEl.value);
-                leaf.openFile(newFile);
-            } else {
-                let item = this.getChoosenItem();
-                openItem(leaf, item);
-            }
-        });
+                let leaf: WorkspaceLeaf;
+                let getKey = (key: keyof typeof openFileKeyMap) =>
+                    openFileKeyMap[this.plugin.settings.file[key]];
+                if (modKey && altKey) leaf = getKey("keyCtrlAltEnter")();
+                else if (modKey) leaf = getKey("keyCtrlEnter")();
+                else if (altKey) leaf = getKey("keyAltEnter")();
+                else leaf = getKey("keyEnter")();
+                if (shiftKey) {
+                    let newFile = await createFile(this.inputEl.value);
+                    leaf.openFile(newFile);
+                } else {
+                    let item = this.getChoosenItem();
+                    openItem(leaf, item);
+                }
+            },
+        };
+        this.scope.keys.unshift(i);
         let prompt = [
             {
                 command: "ctrl ↵",
-                purpose: "打开到新标签页",
+                purpose: this.plugin.settings.file["keyCtrlEnter"],
             },
             {
                 command: "ctrl alt ↵",
-                purpose: "打开到新面板",
+                purpose: this.plugin.settings.file["keyCtrlAltEnter"],
             },
             {
                 command: "alt ↵",
-                purpose: "打开到其他面板",
+                purpose: this.plugin.settings.file["keyAltEnter"],
             },
             {
                 command: "shift ↵",
@@ -258,18 +266,23 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
         } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
     }
-    async onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent) {
+    async onChooseSuggestion(matchData: MatchData, e: MouseEvent | KeyboardEvent) {
         if (this.resolve) {
             this.resolve(matchData.item);
             return;
         }
         if (matchData.score == -1 || matchData.item.type == "unresolvedLink")
             matchData.item.file = await this.getChoosenItemFile(matchData);
+
+        const modKey = e.ctrlKey || e.metaKey;
+        const altKey = e.altKey;
         let leaf: WorkspaceLeaf;
-        if (evt.ctrlKey && evt.altKey) leaf = this.app.workspace.getLeaf("split");
-        else if (evt.ctrlKey) leaf = this.app.workspace.getLeaf("tab");
-        else if (evt.altKey) leaf = getNewOrAdjacentLeaf();
-        else leaf = this.app.workspace.getMostRecentLeaf();
+        let getKey = (key: keyof typeof openFileKeyMap) =>
+            openFileKeyMap[this.plugin.settings.file[key]];
+        if (modKey && altKey) leaf = getKey("keyCtrlAltEnter")();
+        else if (modKey) leaf = getKey("keyCtrlEnter")();
+        else if (altKey) leaf = getKey("keyAltEnter")();
+        else leaf = getKey("keyEnter")();
         openItem(leaf, matchData.item);
     }
     onNoSuggestion(): void {
@@ -577,3 +590,11 @@ function getFileTagArray(file: TFile): string[] {
     }
     return tagArray;
 }
+
+export const openFileKeyMap: Record<string, () => WorkspaceLeaf> = {
+    打开: () => app.workspace.getMostRecentLeaf(),
+    打开到新标签页: () => app.workspace.getLeaf("tab"),
+    打开到其他面板: () => getNewOrAdjacentLeaf(),
+    打开到新面板: () => app.workspace.getLeaf("split"),
+    打开到新窗口: () => app.workspace.getLeaf("window"),
+};

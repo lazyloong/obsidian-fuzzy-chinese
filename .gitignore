@@ -2,6 +2,7 @@ node_modules
 .env
 *-error.log
 package-lock.json
+pnpm-lock.yaml
 yarn.lock
 .npmrc
 dist

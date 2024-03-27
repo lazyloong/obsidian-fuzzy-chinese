@@ -48,7 +48,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
     constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
         super(app);
         this.originEditorSuggest = app.workspace.editorSuggest.suggests.find(
-            (p) => p?.suggestManager?.mode == "file"
+            (p: any) => p?.suggestManager?.mode == "file"
         );
         this.plugin = plugin;
         this.index = this.plugin.fileModal.index;

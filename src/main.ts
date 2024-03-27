@@ -8,6 +8,7 @@ import {
     App,
     View,
 } from "obsidian";
+import { merge } from "lodash";
 import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "@/utils";
 import FuzzyModal from "@/modal/modal";
 import FuzzyFileModal from "@/modal/fileModal";
@@ -151,7 +152,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         }
     }
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        this.settings = merge({}, DEFAULT_SETTINGS, await this.loadData());
     }
     async saveSettings() {
         await this.saveData(this.settings);

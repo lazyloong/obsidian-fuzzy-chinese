@@ -511,7 +511,11 @@ function CachedMetadata2Item(
     cache?: CachedMetadata
 ): [AliasItem[], LinkItem[]] {
     cache = cache ?? plugin.app.metadataCache.getFileCache(file);
-    let alias = cache?.frontmatter?.alias || cache?.frontmatter?.aliases;
+    let alias =
+        cache?.frontmatter?.alias ||
+        cache?.frontmatter?.aliases ||
+        cache?.frontmatter?.Alias ||
+        cache?.frontmatter?.Aliases;
     let linkText = cache?.frontmatter?.linkText;
     let item = items.find((item) => item.path == file.path);
     let pinyinOfPath = item?.pinyinOfPath ?? new Pinyin(file.path, plugin);

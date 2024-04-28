@@ -12,6 +12,7 @@ import {
 } from "@/utils";
 import FuzzyChinesePinyinPlugin from "@/main";
 import FuzzyModal from "./modal";
+import { max, min } from "lodash";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
@@ -168,8 +169,22 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         }
     }
     getSuggestions(query: string): MatchData[] {
-        if (query == "") {
-            return this.getEmptyInputSuggestions();
+        if (query == "") return this.getEmptyInputSuggestions();
+        if (query[0] == " " && this.plugin.settings.file.quicklySelectHistoryFiles) {
+            let items = this.getEmptyInputSuggestions();
+            this.selectSuggestion;
+            switch (query.length) {
+                case 1:
+                    return items;
+                case 2:
+                    let index = max([
+                        "asdfghjkl;".indexOf(query[1]),
+                        "1234567890".indexOf(query[1]),
+                    ]);
+                    index = min([index, items.length - 1]);
+                    if (index == -1) break;
+                    this.selectSuggestion(items[index], new MouseEvent("click"));
+            }
         }
 
         let matchData: MatchData[] = [],

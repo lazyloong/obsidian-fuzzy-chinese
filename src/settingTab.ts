@@ -145,6 +145,17 @@ export default class SettingTab extends PluginSettingTab {
                 })
         );
         new Setting(this.containerEl)
+            .setName("快速选择历史文件")
+            .setDesc("输入栏为空时，空格加 asdfgh... 或 12345... 快速选择历史文件")
+            .addToggle((cb) => {
+                cb.setValue(this.plugin.settings.file.quicklySelectHistoryFiles).onChange(
+                    async (value) => {
+                        this.plugin.settings.file.quicklySelectHistoryFiles = value;
+                        await this.plugin.saveSettings();
+                    }
+                );
+            });
+        new Setting(this.containerEl)
             .setName("附件后缀")
             .setDesc("只显示这些后缀的附件")
             .addTextArea((cb) => {
@@ -333,6 +344,7 @@ export interface FuzyyChinesePinyinSettings {
         showPath: boolean;
         showTags: boolean;
         searchWithTag: boolean;
+        quicklySelectHistoryFiles: boolean;
         keyEnter: keyof typeof openFileKeyMap;
         keyCtrlEnter: keyof typeof openFileKeyMap;
         keyAltEnter: keyof typeof openFileKeyMap;
@@ -362,6 +374,7 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
         showAttachments: false,
         showAllFileTypes: false,
         showUnresolvedLink: false,
+        quicklySelectHistoryFiles: false,
         attachmentExtensions: [
             "bmp",
             "png",

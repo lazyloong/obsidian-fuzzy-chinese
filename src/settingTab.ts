@@ -146,14 +146,27 @@ export default class SettingTab extends PluginSettingTab {
         );
         new Setting(this.containerEl)
             .setName("快速选择历史文件")
-            .setDesc("输入栏为空时，空格加 asdfgh... 或 12345... 快速选择历史文件")
+            .setDesc("输入栏为空时，空格加 asdf... 或 1234... 快速选择历史文件")
             .addToggle((cb) => {
                 cb.setValue(this.plugin.settings.file.quicklySelectHistoryFiles).onChange(
                     async (value) => {
                         this.plugin.settings.file.quicklySelectHistoryFiles = value;
                         await this.plugin.saveSettings();
+                        this.display();
                     }
                 );
+            });
+        if (this.plugin.settings.file.quicklySelectHistoryFiles)
+            new Setting(this.containerEl).setName("快速选择历史文件提示").addDropdown((cb) => {
+                cb.addOptions({
+                    asdfjklgh: "asdfjklgh",
+                    "1234567890": "1234567890",
+                })
+                    .setValue(this.plugin.settings.file.quicklySelectHistoryFilesHint)
+                    .onChange(async (value) => {
+                        this.plugin.settings.file.quicklySelectHistoryFilesHint = value;
+                        await this.plugin.saveSettings();
+                    });
             });
         new Setting(this.containerEl)
             .setName("附件后缀")
@@ -345,6 +358,7 @@ export interface FuzyyChinesePinyinSettings {
         showTags: boolean;
         searchWithTag: boolean;
         quicklySelectHistoryFiles: boolean;
+        quicklySelectHistoryFilesHint: string;
         keyEnter: keyof typeof openFileKeyMap;
         keyCtrlEnter: keyof typeof openFileKeyMap;
         keyAltEnter: keyof typeof openFileKeyMap;
@@ -375,6 +389,7 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
         showAllFileTypes: false,
         showUnresolvedLink: false,
         quicklySelectHistoryFiles: false,
+        quicklySelectHistoryFilesHint: "asdfjklgh",
         attachmentExtensions: [
             "bmp",
             "png",

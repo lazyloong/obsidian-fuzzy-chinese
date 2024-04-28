@@ -34,6 +34,7 @@ export type Item = FileItem | AliasItem | UnresolvedLinkItem | LinkItem;
 export interface MatchData<T = Item> extends uMatchData<T> {
     usePath?: boolean;
     ignore?: boolean;
+    history?: boolean;
 }
 
 export default class FuzzyFileModal extends FuzzyModal<Item> {
@@ -147,6 +148,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                     score: 0,
                     range: null,
                     usePath: false,
+                    history: true,
                 }));
             return lastOpenFiles;
         } else {
@@ -178,7 +180,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                     return items;
                 case 2:
                     let index = max([
-                        "asdfghjkl;".indexOf(query[1]),
+                        "asdfjklgh".indexOf(query[1]),
                         "1234567890".indexOf(query[1]),
                     ]);
                     index = min([index, items.length - 1]);
@@ -277,6 +279,17 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         if (matchData.item.file) renderer.setNote(matchData.item.path);
         if (matchData.usePath) renderer.setToHighlightEl("note");
         if (matchData.ignore) renderer.setIgnore();
+        if (matchData.history && this.plugin.settings.file.quicklySelectHistoryFiles) {
+            let auxEl = el.createEl("span", { cls: "fz-suggestion-aux" });
+            auxEl.createEl("kbd", {
+                cls: "suggestion-command",
+                text: this.plugin.settings.file.quicklySelectHistoryFilesHint[
+                    this.getEmptyInputSuggestions().findIndex(
+                        (p) => p.item.path == matchData.item.path
+                    )
+                ],
+            });
+        }
         renderer.render(matchData);
 
         if (this.plugin.settings.file.showTags && matchData.item.file) {

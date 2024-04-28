@@ -68,10 +68,10 @@ export class Pinyin extends Array<PinyinChild> {
         score += 30 / range.length; // 分割越少分越高
         return score;
     }
-    match<T extends Item>(query: string, item: T, smathCase = false): MatchData<T> | false {
+    match<T extends Item>(query: string, item: T, smathCase = false): MatchData<T> {
         let range = this.match_(query, smathCase);
         range = range ? toRanges(range) : false;
-        if (!range) return false;
+        if (!range) return;
         let data: MatchData<T> = {
             item: item,
             score: this.getScore(range),
@@ -289,6 +289,9 @@ export class SuggestionRenderer {
     }
     setToHighlightEl(name: "title" | "note") {
         this.toHighlightEl = this[`${name}El`];
+    }
+    setIgnore() {
+        this.containerEl.addClass("mod-downranked");
     }
     render(matchData: MatchData<any>) {
         let range = matchData.range,

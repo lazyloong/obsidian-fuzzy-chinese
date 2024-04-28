@@ -32,6 +32,7 @@ export type Item = FileItem | AliasItem | UnresolvedLinkItem | LinkItem;
 
 export interface MatchData<T = Item> extends uMatchData<T> {
     usePath?: boolean;
+    ignore?: boolean;
 }
 
 export default class FuzzyFileModal extends FuzzyModal<Item> {
@@ -196,10 +197,14 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             indexNode = this.historyMatchData.index(index - 1),
             toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
         for (let p of toMatchData) {
-            let d = p.pinyin.match(query, p, smathCase);
+            let d = p.pinyin.match(query, p, smathCase) as MatchData;
 
             if (!d) continue;
             if (d.item.type == "unresolvedLink") d.score -= 15;
+            if (app.metadataCache.userIgnoreFilterCache[p.path]) {
+                d.score -= 1000;
+                d.ignore = true;
+            }
             matchData1.push(d);
         }
 
@@ -208,14 +213,20 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
                 indexNode.itemIndexByPath.length == 0
                     ? this.index.items
                     : indexNode.itemIndexByPath;
-            for (let p of toMatchData.filter(
+            toMatchData = toMatchData.filter(
                 (p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path)
-            )) {
+            );
+
+            for (let p of toMatchData) {
                 let d = p.pinyinOfPath.match(query, p, smathCase) as MatchData;
-                if (d) {
-                    d.usePath = true;
-                    matchData2.push(d);
+
+                if (!d) continue;
+                if (app.metadataCache.userIgnoreFilterCache[p.path]) {
+                    d.score -= 1000;
+                    d.ignore = true;
                 }
+                d.usePath = true;
+                matchData2.push(d);
             }
         }
         matchData = matchData1.concat(matchData2);
@@ -250,6 +261,7 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         let renderer = new SuggestionRenderer(el);
         if (matchData.item.file) renderer.setNote(matchData.item.path);
         if (matchData.usePath) renderer.setToHighlightEl("note");
+        if (matchData.ignore) renderer.setIgnore();
         renderer.render(matchData);
 
         if (this.plugin.settings.file.showTags && matchData.item.file) {

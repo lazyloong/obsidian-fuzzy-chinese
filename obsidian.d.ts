@@ -3,15 +3,26 @@ import { EditorSuggest } from "obsidian";
 declare module "obsidian" {
     interface App {
         hotkeyManager: {
-            printHotkeyForCommand(command: string): string;
+            printHotkeyForCommand(command_id: string): string;
+            getHotkeys(command_id: string);
+            getDefaultHotkeys(command_id: string);
         };
         dom: any;
         plugins: {
             plugins: Plugin[];
         };
         commands: {
+            executeCommand(command: Command);
             listCommands(): Command[];
         };
+        setting: {
+            open(): void;
+            openTabById(id: string): { setQuery(query: string): void };
+        };
+    }
+    interface MetadataCache {
+        getTags(): { [k: `#${string}`]: number };
+        userIgnoreFilterCache: { [k: string]: boolean };
     }
     interface Workspace {
         editorSuggest: {

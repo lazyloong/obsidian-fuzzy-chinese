@@ -1,6 +1,27 @@
-import { EditorSuggest } from "obsidian";
+import NavboxManager from "./src/manager";
 
 declare module "obsidian" {
+    interface MarkdownView {
+        navboxManager: NavboxManager;
+    }
+    interface WorkspaceLeaf {
+        openLinkText: (link: string, currentPath: string, unknown = undefined) => void;
+        parent: WorkspaceParent;
+    }
+    interface Workspace {
+        handleLinkContextMenu: (
+            menu: Menu,
+            path: string,
+            currentPath: string,
+            unknown = undefined
+        ) => void;
+        editorSuggest: {
+            currentSuggest: EditorSuggest<any> | null;
+            suggests: EditorSuggest<any>[];
+            removeSuggest(suggest: EditorSuggest<any>): void;
+        };
+        createLeafInTabGroup(root: WorkspaceParent): WorkspaceLeaf;
+    }
     interface App {
         hotkeyManager: {
             printHotkeyForCommand(command_id: string): string;
@@ -12,6 +33,7 @@ declare module "obsidian" {
             plugins: Plugin[];
         };
         commands: {
+            registerCommand(command: string, callback: () => void): void;
             executeCommand(command: Command);
             listCommands(): Command[];
         };
@@ -20,21 +42,16 @@ declare module "obsidian" {
             openTabById(id: string): { setQuery(query: string): void };
         };
     }
+    interface DataAdapter {
+        getBasePath: () => string;
+    }
+    interface Menu {
+        addSections: (sections: string[]) => this;
+        setParentElement: (element: HTMLElement) => this;
+    }
     interface MetadataCache {
         getTags(): { [k: `#${string}`]: number };
         userIgnoreFilterCache: { [k: string]: boolean };
-    }
-    interface Workspace {
-        editorSuggest: {
-            currentSuggest: EditorSuggest<any> | null;
-            suggests: EditorSuggest<any>[];
-            removeSuggest(suggest: EditorSuggest<any>): void;
-        };
-        createLeafInTabGroup(root: WorkspaceParent): WorkspaceLeaf;
-    }
-    interface WorkspaceLeaf {
-        parent: WorkspaceParent;
-        openLinkText(linktext: string, source: string): void;
     }
     interface WorkspaceParent {
         id: string;

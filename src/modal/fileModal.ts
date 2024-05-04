@@ -1,4 +1,12 @@
-import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata, TextComponent } from "obsidian";
+import {
+    TFile,
+    App,
+    WorkspaceLeaf,
+    TAbstractFile,
+    CachedMetadata,
+    TextComponent,
+    Menu,
+} from "obsidian";
 import {
     Pinyin,
     PinyinIndex as PI,
@@ -48,11 +56,12 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
         this.emptyStateText = "未发现该笔记，按下回车创建。";
         this.setPlaceholder("输入以切换或创建文件……");
 
-        var i = {
+        let i = {
             scope: this.scope,
             modifiers: null,
             key: "Enter",
             func: async (e: KeyboardEvent) => {
+                e.preventDefault();
                 const modKey = e.ctrlKey || e.metaKey;
                 const altKey = e.altKey;
                 const shiftKey = e.shiftKey;
@@ -76,6 +85,34 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             },
         };
         this.scope.keys.unshift(i);
+        this.scope.register([], "ContextMenu", async (event: KeyboardEvent) => {
+            event.preventDefault();
+            event.stopPropagation();
+            console.log(this);
+            let item = this.getChoosenItem();
+            if (item.type == "unresolvedLink") return;
+            let menu = new Menu().addSections([
+                "title",
+                "correction",
+                "spellcheck",
+                "open",
+                "selection-link",
+                "selection",
+                "insert",
+                "clipboard",
+                "action",
+                "view",
+                "info",
+                "",
+                "danger",
+            ]);
+            this.plugin.app.workspace.handleLinkContextMenu(menu, item.file.path, "");
+            let element = this.chooser.suggestions[this.chooser.selectedItem];
+            menu.setParentElement(element).showAtPosition({
+                x: element.offsetLeft,
+                y: element.offsetTop + element.offsetHeight,
+            });
+        });
         let prompt = [
             {
                 command: "ctrl ↵",

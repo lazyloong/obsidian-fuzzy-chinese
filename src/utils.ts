@@ -241,27 +241,26 @@ export function runOnLayoutReady(calback: Function) {
     }
 }
 
-export function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict): string {
-    let doublePinyin = "";
-    let findKeys = (obj, condition) => {
-        return Object.keys(obj).find((key) => condition(obj[key]));
+type PinyinDict = Record<string, string[]>;
+
+export function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict: PinyinDict): string {
+    let doublePinyin: string;
+    let [shengmu, yunmu] = splitPinyin(fullPinyin);
+    let findKeys = (pinyin: string, dict: PinyinDict) => {
+        return Object.keys(dict).find((key) => dict[key].includes(pinyin));
     };
-    if (["sh", "ch", "zh"].some((p) => fullPinyin.startsWith(p))) {
-        doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin.slice(0, 2)));
-        fullPinyin = fullPinyin.slice(2);
-    } else {
-        doublePinyin += fullPinyin[0];
-        fullPinyin = fullPinyin.slice(1);
-    }
-    if (fullPinyin.length != 0)
-        doublePinyin += findKeys(doublePinyinDict, (p) => p.includes(fullPinyin));
+    if (shengmu != "") shengmu = findKeys(shengmu, doublePinyinDict);
+    if (yunmu != "") yunmu = findKeys(yunmu, doublePinyinDict);
+    doublePinyin = shengmu + yunmu;
+
+    // 小鹤双拼的字典里没有 er，会拆成 e 和 r
+    if (!yunmu && fullPinyin == "er") doublePinyin = "er";
+
     return doublePinyin;
 }
 
 export function arraymove<T>(arr: T[], fromIndex: number, toIndex: number): void {
-    if (toIndex < 0 || toIndex === arr.length) {
-        return;
-    }
+    if (toIndex < 0 || toIndex === arr.length) return;
     const element = arr[fromIndex];
     arr[fromIndex] = arr[toIndex];
     arr[toIndex] = element;
@@ -383,4 +382,38 @@ export function copy(text: string) {
         () => new Notice("已复制到剪贴板：" + text),
         () => new Notice("复制失败：" + text)
     );
+}
+
+const shengmu: string[] = [
+    "b",
+    "p",
+    "m",
+    "f",
+    "d",
+    "t",
+    "n",
+    "l",
+    "g",
+    "k",
+    "h",
+    "j",
+    "q",
+    "x",
+    "zh",
+    "ch",
+    "sh",
+    "r",
+    "z",
+    "c",
+    "s",
+    "y",
+    "w",
+];
+
+export function splitPinyin(pinyin: string): [string, string] {
+    const matchedShengmu = shengmu.find((sm) => pinyin.startsWith(sm));
+
+    // 如果没有找到匹配的声母，可能意味着是零声母的韵母，或者输入不正确
+    if (matchedShengmu) return [matchedShengmu, pinyin.slice(matchedShengmu.length)];
+    else return ["", pinyin];
 }

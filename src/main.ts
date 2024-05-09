@@ -158,12 +158,11 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         await this.saveData(this.settings);
     }
     loadPinyinDict() {
-        let PinyinKeys_ = this.settings.global.traditionalChineseSupport
-            ? Object.keys(TraditionalDict)
-            : Object.keys(SimplifiedDict);
-        let PinyinValues = this.settings.global.traditionalChineseSupport
-            ? Object.values(TraditionalDict)
-            : Object.values(SimplifiedDict);
+        let pinyinDict = this.settings.global.traditionalChineseSupport
+            ? TraditionalDict
+            : SimplifiedDict;
+        let PinyinKeys_ = Object.keys(pinyinDict);
+        let PinyinValues = Object.values(pinyinDict);
         let PinyinKeys =
             this.settings.global.doublePinyin == "全拼"
                 ? PinyinKeys_

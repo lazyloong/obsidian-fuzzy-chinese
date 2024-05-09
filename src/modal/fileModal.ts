@@ -439,6 +439,10 @@ class PinyinIndex extends PI<Item> {
         return items.concat(this.fileItems).concat(this.aliasItems);
     }
     set items(value: Item[]) {
+        this.fileItems = [];
+        this.aliasItems = [];
+        this.linkItems = [];
+        this.unresolvedLinkItems = [];
         for (const item of value) {
             switch (item.type) {
                 case "file":
@@ -460,12 +464,15 @@ class PinyinIndex extends PI<Item> {
         let files = this.app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
 
         this.fileItems = files.map((file) => TFile2Item(file, this.plugin));
+        this.aliasItems = [];
+        this.linkItems = [];
+        this.unresolvedLinkItems = [];
 
         for (let file of files) {
             if (file.extension != "md") continue;
             let [a, b] = CachedMetadata2Item(file, this.plugin, this.fileItems);
-            this.aliasItems = this.aliasItems.concat(a);
-            this.linkItems = this.linkItems.concat(b);
+            this.aliasItems.push(...a);
+            this.linkItems.push(...b);
         }
 
         this.updateUnresolvedLinkItems();
@@ -522,7 +529,7 @@ class PinyinIndex extends PI<Item> {
     }
     updateUnresolvedLinkItems() {
         this.unresolvedLinkItems = incrementalUpdate(
-            this.unresolvedLinkItems ?? [],
+            this.unresolvedLinkItems,
             () => {
                 let unresolvedLinks = new Set<string>();
                 Object.values(this.metadataCache.unresolvedLinks)
@@ -531,15 +538,14 @@ class PinyinIndex extends PI<Item> {
                     .forEach((p) => p.forEach((q) => unresolvedLinks.add(q)));
                 return Array.from(unresolvedLinks);
             },
-            (name) =>
-                <UnresolvedLinkItem>{
-                    type: "unresolvedLink",
-                    name,
-                    pinyin: new Pinyin(name, this.plugin),
-                    path: null,
-                    pinyinOfPath: null,
-                    file: null,
-                }
+            (name) => ({
+                type: "unresolvedLink",
+                name,
+                pinyin: new Pinyin(name, this.plugin),
+                path: null,
+                pinyinOfPath: null,
+                file: null,
+            })
         );
     }
 

@@ -52,10 +52,16 @@ export class Pinyin extends Array<PinyinChild> {
             let index = pinyinDict.values
                 .map((q, i) => (q.includes(p) ? i : null))
                 .filter((p) => p);
+            let pinyin =
+                index.length == 0 ? [p] : pinyinDict.keys.filter((_, i) => index.includes(i));
+            if (plugin.settings.global.fuzzyPinyin) {
+                let fuzzyPinyin = fullPinyin2fuzzyPinyin(pinyin[0], plugin);
+                if (typeof fuzzyPinyin === "string") pinyin.push(fuzzyPinyin);
+                else if (Array.isArray(fuzzyPinyin)) pinyin.push(...fuzzyPinyin);
+            }
             this.push({
                 character: p,
-                pinyin:
-                    index.length == 0 ? [p] : pinyinDict.keys.filter((_, i) => index.includes(i)),
+                pinyin,
             });
         });
     }
@@ -241,12 +247,15 @@ export function runOnLayoutReady(calback: Function) {
     }
 }
 
-type PinyinDict = Record<string, string[]>;
+type DoublePinyinDict = Record<string, string[]>;
 
-export function fullPinyin2doublePinyin(fullPinyin: string, doublePinyinDict: PinyinDict): string {
+export function fullPinyin2doublePinyin(
+    fullPinyin: string,
+    doublePinyinDict: DoublePinyinDict
+): string {
     let doublePinyin: string;
     let [shengmu, yunmu] = splitPinyin(fullPinyin);
-    let findKeys = (pinyin: string, dict: PinyinDict) => {
+    let findKeys = (pinyin: string, dict: DoublePinyinDict) => {
         return Object.keys(dict).find((key) => dict[key].includes(pinyin));
     };
     if (shengmu != "") shengmu = findKeys(shengmu, doublePinyinDict);
@@ -416,4 +425,37 @@ export function splitPinyin(pinyin: string): [string, string] {
     // 如果没有找到匹配的声母，可能意味着是零声母的韵母，或者输入不正确
     if (matchedShengmu) return [matchedShengmu, pinyin.slice(matchedShengmu.length)];
     else return ["", pinyin];
+}
+
+//模糊音
+export const FuzzyPinyinDict = {
+    zh: "z",
+    ch: "c",
+    sh: "s",
+    n: "l",
+    h: "f",
+    l: "r",
+    ang: "an",
+    eng: "en",
+    ing: "in",
+    iang: "ian",
+    uang: "uan",
+};
+
+export function fullPinyin2fuzzyPinyin(
+    pinyin: string,
+    plugin: FuzzyChinesePinyinPlugin
+): string | string[] {
+    const { fuzzyPinyinSetting } = plugin.settings.global;
+    const dict = fuzzyPinyinSetting.reduce((acc, key) => {
+        acc[key] = FuzzyPinyinDict[key];
+        return acc;
+    }, {});
+    const [shengmu, yunmu] = splitPinyin(pinyin);
+    let fuzzyShengmu = dict[shengmu];
+    let fuzzyYunmu = dict[yunmu];
+    if (fuzzyShengmu && fuzzyYunmu)
+        return [shengmu + fuzzyYunmu, fuzzyShengmu + yunmu, fuzzyShengmu + fuzzyYunmu];
+    else if (fuzzyShengmu) return fuzzyShengmu + yunmu;
+    else if (fuzzyYunmu) return shengmu + fuzzyYunmu;
 }

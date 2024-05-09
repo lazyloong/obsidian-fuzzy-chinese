@@ -1,8 +1,9 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
-import DoublePinyinDict from "@/double_pinyin";
+import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
+import DoubleDict from "@/double_pinyin";
 import FuzzyChinesePinyinPlugin from "@/main";
-import { PinyinSuggest, arraymove, fullPinyin2doublePinyin } from "@/utils";
+import { FuzzyPinyinDict, PinyinSuggest, arraymove, fullPinyin2doublePinyin } from "@/utils";
 import { openFileKeyMap } from "./modal/fileModal";
+import { set, xor } from "lodash";
 
 export default class SettingTab extends PluginSettingTab {
     plugin: FuzzyChinesePinyinPlugin;
@@ -50,25 +51,52 @@ export default class SettingTab extends PluginSettingTab {
                     微软双拼: "微软双拼",
                 })
                 .setValue(this.plugin.settings.global.doublePinyin)
-                .onChange(async (value: string) => {
+                .onChange(async (value: keyof typeof DoubleDict | "全拼") => {
+                    if (this.plugin.settings.global.doublePinyin == value) return;
+                    if (this.plugin.settings.global.fuzzyPinyin && value != "全拼") {
+                        new Notice("模糊音搜索已开启，无法切换双拼方案");
+                        cb.setValue("全拼");
+                        return;
+                    }
                     this.plugin.settings.global.doublePinyin = value;
                     this.plugin.pinyinDict.keys =
                         value == "全拼"
                             ? this.plugin.pinyinDict.originalKeys
                             : this.plugin.pinyinDict.originalKeys.map((p) =>
-                                  fullPinyin2doublePinyin(p, DoublePinyinDict[value])
+                                  fullPinyin2doublePinyin(p, DoubleDict[value])
                               );
-                    this.plugin.fileModal.index.initIndex();
+                    this.plugin.indexManager.load();
                     new Notice("双拼方案切换为：" + value, 4000);
                     await this.plugin.saveSettings();
                 })
         );
-        new Setting(this.containerEl).setName("自动大小写敏感").addToggle((cb) => {
+        new Setting(this.containerEl).setName("模糊音").addToggle((cb) =>
+            cb.setValue(this.plugin.settings.global.fuzzyPinyin).onChange(async (value) => {
+                if (this.plugin.settings.global.fuzzyPinyin == value) return;
+                if (this.plugin.settings.global.doublePinyin != "全拼" && value) {
+                    new Notice("双拼方案不支持模糊音，无法开启模糊音搜索");
+                    cb.setValue(false);
+                    return;
+                }
+                this.plugin.settings.global.fuzzyPinyin = value;
+                await this.plugin.saveSettings();
+                if (this.plugin.settings.global.fuzzyPinyinSetting.length != 0)
+                    this.plugin.indexManager.load();
+                this.display();
+            })
+        );
+        if (this.plugin.settings.global.fuzzyPinyin)
+            new Setting(this.containerEl).setName("模糊音设置").addButton((cb) =>
+                cb.setIcon("settings").onClick(() => {
+                    new FuzzyPinyinSettingModal(this.plugin).open();
+                })
+            );
+        new Setting(this.containerEl).setName("自动大小写敏感").addToggle((cb) =>
             cb.setValue(this.plugin.settings.global.autoCaseSensitivity).onChange(async (value) => {
                 this.plugin.settings.global.autoCaseSensitivity = value;
                 await this.plugin.saveSettings();
-            });
-        });
+            })
+        );
     }
     addFileSetting() {
         this.containerEl.createEl("h2", { text: "文件搜索" });
@@ -343,7 +371,9 @@ export default class SettingTab extends PluginSettingTab {
 export interface FuzyyChinesePinyinSettings {
     global: {
         traditionalChineseSupport: boolean;
-        doublePinyin: string;
+        doublePinyin: keyof typeof DoubleDict | "全拼";
+        fuzzyPinyin: boolean;
+        fuzzyPinyinSetting: string[];
         closeWithBackspace: boolean;
         autoCaseSensitivity: boolean;
     };
@@ -381,6 +411,8 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
     global: {
         traditionalChineseSupport: false,
         doublePinyin: "全拼",
+        fuzzyPinyin: false,
+        fuzzyPinyinSetting: [],
         closeWithBackspace: false,
         autoCaseSensitivity: true,
     },
@@ -435,3 +467,35 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
         devMode: false,
     },
 };
+
+class FuzzyPinyinSettingModal extends Modal {
+    tempSetting: string[] = [];
+    constructor(public plugin: FuzzyChinesePinyinPlugin) {
+        super(plugin.app);
+        this.tempSetting = [...this.plugin.settings.global.fuzzyPinyinSetting];
+    }
+    onOpen() {
+        this.display();
+    }
+    display() {
+        const { contentEl } = this;
+        let { fuzzyPinyinSetting } = this.plugin.settings.global;
+        contentEl.empty();
+        contentEl.createEl("h1", { text: "模糊音设置" });
+        Object.entries(FuzzyPinyinDict).forEach(([key, value]) => {
+            new Setting(contentEl).setName(`${value} => ${key}`).addToggle((cb) =>
+                cb.setValue(fuzzyPinyinSetting.includes(key)).onChange(async (value) => {
+                    if (value) {
+                        if (!fuzzyPinyinSetting.includes(key)) fuzzyPinyinSetting.push(key);
+                    } else fuzzyPinyinSetting = fuzzyPinyinSetting.filter((x) => x != key);
+                    this.plugin.settings.global.fuzzyPinyinSetting = fuzzyPinyinSetting;
+                    await this.plugin.saveSettings();
+                })
+            );
+        });
+    }
+    onClose(): void {
+        if (xor(this.tempSetting, this.plugin.settings.global.fuzzyPinyinSetting).length != 0)
+            this.plugin.indexManager.load();
+    }
+}

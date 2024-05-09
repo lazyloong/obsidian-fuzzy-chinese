@@ -7,6 +7,7 @@ import {
     TAbstractFile,
     App,
     View,
+    Notice,
 } from "obsidian";
 import { merge } from "lodash";
 import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "@/utils";
@@ -22,7 +23,7 @@ import TagEditorSuggest from "@/editorSuggest/tagEditorSuggest";
 import SimplifiedDict from "@/dict/simplified_dict";
 import TraditionalDict from "@/dict/traditional_dict";
 
-import DoublePinyinDict from "@/double_pinyin";
+import DoubleDict from "@/double_pinyin";
 import { fuzzyPinyinSearch, stringArray2Items } from "@/search";
 import SettingTab, { DEFAULT_SETTINGS, FuzyyChinesePinyinSettings } from "@/settingTab";
 import {
@@ -167,10 +168,7 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
             this.settings.global.doublePinyin == "全拼"
                 ? PinyinKeys_
                 : PinyinKeys_.map((p) =>
-                      fullPinyin2doublePinyin(
-                          p,
-                          DoublePinyinDict[this.settings.global.doublePinyin]
-                      )
+                      fullPinyin2doublePinyin(p, DoubleDict[this.settings.global.doublePinyin])
                   );
 
         // originalKeys 永远是全拼的拼音，keys 是转换后的拼音（可能也是全拼或双拼）
@@ -242,7 +240,12 @@ class IndexManager extends Array<PinyinIndex<any>> {
         this.plugin = plugin;
     }
     load() {
-        this.forEach((index) => this.load_(index));
+        let notice = new Notice("正在刷新索引中");
+        setTimeout(() => {
+            this.forEach((index) => this.load_(index));
+            notice.hide();
+            new Notice("索引刷新完成", 4000);
+        }, 100);
     }
     load_(index: PinyinIndex<any>) {
         let startTime = Date.now();

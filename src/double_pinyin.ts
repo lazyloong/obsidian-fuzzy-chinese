@@ -1,4 +1,4 @@
-let DoublePinyinDict = {
+const DoubleDict = {
     智能ABC: {
         q: ["q", "ei"],
         w: ["w", "ian"],
@@ -86,4 +86,4 @@ let DoublePinyinDict = {
     },
 };
 
-export default DoublePinyinDict;
+export default DoubleDict;

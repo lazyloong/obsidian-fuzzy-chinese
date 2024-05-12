@@ -1,5 +1,5 @@
 import { TFile, View } from "obsidian";
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 import { Item as fItem } from "@/modal/fileModal";
 import { MatchData, Item, PinyinSuggest } from "@/utils";
 
@@ -34,7 +34,7 @@ interface EmptyView extends View {
     actionListEl: HTMLElement;
 }
 
-export function hijackingCanvasView(plugin: FuzzyChinesePinyinPlugin) {
+export function hijackingCanvasView(plugin: ThePlugin) {
     let app = plugin.app;
     plugin.registerEvent(
         app.workspace.on("active-leaf-change", (leaf) => {
@@ -44,7 +44,7 @@ export function hijackingCanvasView(plugin: FuzzyChinesePinyinPlugin) {
             const newBtnElement = openBtl.cloneNode(true) as HTMLElement;
             openBtl.replaceWith(newBtnElement);
             plugin.registerDomEvent(newBtnElement, "click", async (e) => {
-                let item = (await plugin.fileModal.openAndGetValue()) as fItem;
+                let item = await plugin.fileModal.openAndGetValue();
                 canvas.createFileNode({
                     pos: canvas.posCenter(),
                     file: item.file,
@@ -65,7 +65,7 @@ export function hijackingCanvasView(plugin: FuzzyChinesePinyinPlugin) {
     );
 }
 
-export function hijackingEmptyView(plugin: FuzzyChinesePinyinPlugin) {
+export function hijackingEmptyView(plugin: ThePlugin) {
     let app = plugin.app;
     plugin.registerEvent(
         app.workspace.on("active-leaf-change", (leaf) => {
@@ -89,7 +89,7 @@ export function hijackingEmptyView(plugin: FuzzyChinesePinyinPlugin) {
     );
 }
 
-export function hijackingTagForMarkdownView(plugin: FuzzyChinesePinyinPlugin) {
+export function hijackingTagForMarkdownView(plugin: ThePlugin) {
     let app = plugin.app;
     plugin.registerEvent(
         app.workspace.on("active-leaf-change", (leaf) => {
@@ -156,7 +156,7 @@ function isEmptyView(view: View): view is EmptyView {
 }
 
 class metadataEditorSuggest extends PinyinSuggest {
-    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: ThePlugin) {
         super(inputEl, plugin);
         this.suggestEl.style.minWidth = "160px";
     }

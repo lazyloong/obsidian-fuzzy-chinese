@@ -1,12 +1,5 @@
-import {
-    TFile,
-    App,
-    WorkspaceLeaf,
-    TAbstractFile,
-    CachedMetadata,
-    TextComponent,
-    Menu,
-} from "obsidian";
+import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata, TextComponent } from "obsidian";
+import { max, min } from "lodash";
 import {
     Pinyin,
     PinyinIndex as PI,
@@ -18,9 +11,8 @@ import {
     incrementalUpdate,
     PinyinSuggest,
 } from "@/utils";
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 import FuzzyModal from "./modal";
-import { max, min } from "lodash";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
@@ -45,11 +37,11 @@ export interface MatchData<T = Item> extends uMatchData<T> {
     history?: boolean;
 }
 
-export default class FuzzyFileModal extends FuzzyModal<Item> {
-    plugin: FuzzyChinesePinyinPlugin;
+export default class FileModal extends FuzzyModal<Item> {
+    plugin: ThePlugin;
     tags: string[] = [];
     tagInput: TagInput;
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.useInput = true;
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
@@ -85,34 +77,6 @@ export default class FuzzyFileModal extends FuzzyModal<Item> {
             },
         };
         this.scope.keys.unshift(i);
-        this.scope.register([], "ContextMenu", async (event: KeyboardEvent) => {
-            event.preventDefault();
-            event.stopPropagation();
-            console.log(this);
-            let item = this.getChoosenItem();
-            if (item.type == "unresolvedLink") return;
-            let menu = new Menu().addSections([
-                "title",
-                "correction",
-                "spellcheck",
-                "open",
-                "selection-link",
-                "selection",
-                "insert",
-                "clipboard",
-                "action",
-                "view",
-                "info",
-                "",
-                "danger",
-            ]);
-            this.plugin.app.workspace.handleLinkContextMenu(menu, item.file.path, "");
-            let element = this.chooser.suggestions[this.chooser.selectedItem];
-            menu.setParentElement(element).showAtPosition({
-                x: element.offsetLeft,
-                y: element.offsetTop + element.offsetHeight,
-            });
-        });
         let prompt = [
             {
                 command: "ctrl ↵",
@@ -426,7 +390,7 @@ class PinyinIndex extends PI<Item> {
     aliasItems: AliasItem[] = [];
     linkItems: LinkItem[] = [];
     unresolvedLinkItems: UnresolvedLinkItem[] = [];
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.id = "file";
     }
@@ -563,7 +527,7 @@ class PinyinIndex extends PI<Item> {
     }
 }
 
-function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): FileItem {
+function TFile2Item(file: TFile, plugin: ThePlugin): FileItem {
     let name = file.extension != "md" ? file.name : file.basename;
     let folderIndex = plugin.folderModal.index.items;
     let fileNamePinyin = new Pinyin(name, plugin);
@@ -589,7 +553,7 @@ function TFile2Item(file: TFile, plugin: FuzzyChinesePinyinPlugin): FileItem {
 
 function CachedMetadata2Item(
     file: TFile,
-    plugin: FuzzyChinesePinyinPlugin,
+    plugin: ThePlugin,
     items: Item[],
     cache?: CachedMetadata
 ): [AliasItem[], LinkItem[]] {
@@ -638,7 +602,7 @@ function CachedMetadata2Item(
 }
 
 class TagInput extends TextComponent {
-    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: ThePlugin) {
         super(inputEl);
         this.hide();
         this.setPlaceholder("标签");

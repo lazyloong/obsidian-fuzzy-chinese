@@ -1,12 +1,12 @@
 import { App } from "obsidian";
 import { Item, MatchData, Pinyin } from "@/utils";
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 import FuzzyModal from "./modal";
 
-export default class fuzzySuggestModal extends FuzzyModal<Item> {
+export default class SuggestModal extends FuzzyModal<Item> {
     index: any;
     items: any[];
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin, text_items: string[], items: string[]) {
+    constructor(app: App, plugin: ThePlugin, text_items: string[], items: string[]) {
         super(app, plugin);
         this.items = items;
         this.index = {

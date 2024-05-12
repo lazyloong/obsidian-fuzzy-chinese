@@ -1,10 +1,10 @@
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 import { Pinyin, Item, MatchData } from "@/utils";
 
-export function fuzzyPinyinSearch(
+export function pinyinSearch(
     query: string,
     items: string[] | Item[],
-    plugin: FuzzyChinesePinyinPlugin
+    plugin: ThePlugin
 ): MatchData<Item>[] {
     if (items.length == 0) return null;
     if (isStringArray(items)) {
@@ -14,7 +14,7 @@ export function fuzzyPinyinSearch(
 }
 
 function isStringArray(arr: string[] | Item[]): arr is string[] {
-    return typeof arr[0] == "string";
+    return Array.isArray(arr) && arr.every((item) => typeof item === "string");
 }
 
 function search(query: string, items: Item[], autoCaseSensitivity = true): MatchData<Item>[] {
@@ -37,7 +37,7 @@ function search(query: string, items: Item[], autoCaseSensitivity = true): Match
     return matchData;
 }
 
-export function stringArray2Items(items: string[], plugin: FuzzyChinesePinyinPlugin): Item[] {
+export function stringArray2Items(items: string[], plugin: ThePlugin): Item[] {
     return items.map((item) => ({
         name: item,
         pinyin: new Pinyin(item, plugin),

@@ -7,7 +7,7 @@ import {
     HistoryMatchDataNode,
     SuggestionRenderer,
 } from "@/utils";
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 import FuzzyModal from "./modal";
 
 interface Item extends uItem {
@@ -17,9 +17,9 @@ interface Item extends uItem {
 
 type MatchData = uMatchData<Item>;
 
-export default class FuzzyFolderModal extends FuzzyModal<Item> {
+export default class FolderModal extends FuzzyModal<Item> {
     toMoveFiles: TAbstractFile | TFile[];
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.useInput = true;
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
@@ -166,7 +166,7 @@ export default class FuzzyFolderModal extends FuzzyModal<Item> {
 }
 
 class PinyinIndex extends PI<Item> {
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.id = "folder";
     }

@@ -7,9 +7,9 @@ import {
     EditorSuggestTriggerInfo,
     TFile,
 } from "obsidian";
-import { MatchData as fMatchData, Item as fItem, LinkItem } from "../modal/fileModal";
-import { PinyinIndex, Pinyin } from "../utils";
-import FuzzyChinesePinyinPlugin from "../main";
+import { MatchData as fMatchData, Item as fItem, LinkItem } from "@/modal/fileModal";
+import { PinyinIndex, Pinyin } from "@/utils";
+import ThePlugin from "@/main";
 
 type ResultType = "alias" | "file" | "linktext" | "heading";
 type Result<T extends ResultType> = {
@@ -41,11 +41,11 @@ type Item = Omit<fItem, "type"> & {
 type MatchData = fMatchData<Item>;
 
 export default class FileEditorSuggest extends EditorSuggest<MatchData> {
-    plugin: FuzzyChinesePinyinPlugin;
+    plugin: ThePlugin;
     index: PinyinIndex<fItem>;
     tempItems: Item[] = [];
     originEditorSuggest: EditorSuggest<OriginEditorSuggestResult>;
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app);
         this.originEditorSuggest = app.workspace.editorSuggest.suggests.find(
             (p: any) => p?.suggestManager?.mode == "file"

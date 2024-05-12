@@ -1,5 +1,5 @@
 import { App, TFile } from "obsidian";
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 import { MatchData, Pinyin, SuggestionRenderer, Item as uItem } from "@/utils";
 import FuzzyModal from "./modal";
 
@@ -7,9 +7,9 @@ interface Item extends uItem {
     level: number;
 }
 
-export default class FuzzyHeadingModal extends FuzzyModal<Item> {
+export default class HeadingModal extends FuzzyModal<Item> {
     file: TFile;
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.index = {} as any;
     }

@@ -1,6 +1,6 @@
 import { Component, Vault, MetadataCache, App, getIcon, TFile, Notice } from "obsidian";
 import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 
 export type MatchData<T> = {
     item: T;
@@ -44,7 +44,7 @@ export class HistoryMatchDataNode<T> {
 
 export class Pinyin extends Array<PinyinChild> {
     text: string;
-    constructor(query: string, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(query: string, plugin: ThePlugin) {
         super();
         let pinyinDict = plugin?.pinyinDict;
         this.text = query;
@@ -196,9 +196,9 @@ export abstract class PinyinIndex<T extends Item> extends Component {
     metadataCache: MetadataCache;
     items: Array<T>;
     id: string;
-    plugin: FuzzyChinesePinyinPlugin;
+    plugin: ThePlugin;
     app: App;
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super();
         this.app = app;
         this.plugin = plugin;
@@ -366,8 +366,8 @@ export function incrementalUpdate<T extends Item>(
 
 export class PinyinSuggest extends TextInputSuggest<MatchData<Item>> {
     getItemFunction: (query: string) => MatchData<Item>[];
-    plugin: FuzzyChinesePinyinPlugin;
-    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: FuzzyChinesePinyinPlugin) {
+    plugin: ThePlugin;
+    constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: ThePlugin) {
         super(inputEl);
         this.plugin = plugin;
     }
@@ -442,10 +442,7 @@ export const FuzzyPinyinDict = {
     uang: "uan",
 };
 
-export function fullPinyin2fuzzyPinyin(
-    pinyin: string,
-    plugin: FuzzyChinesePinyinPlugin
-): string | string[] {
+export function fullPinyin2fuzzyPinyin(pinyin: string, plugin: ThePlugin): string | string[] {
     const { fuzzyPinyinSetting } = plugin.settings.global;
     const dict = fuzzyPinyinSetting.reduce((acc, key) => {
         acc[key] = FuzzyPinyinDict[key];

@@ -1,13 +1,13 @@
 import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
-import DoubleDict from "@/double_pinyin";
-import FuzzyChinesePinyinPlugin from "@/main";
+import { xor } from "lodash";
+import DoubleDict from "@/dict/double_pinyin";
+import ThePlugin from "@/main";
 import { FuzzyPinyinDict, PinyinSuggest, arraymove, fullPinyin2doublePinyin } from "@/utils";
 import { openFileKeyMap } from "./modal/fileModal";
-import { set, xor } from "lodash";
 
 export default class SettingTab extends PluginSettingTab {
-    plugin: FuzzyChinesePinyinPlugin;
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    plugin: ThePlugin;
+    constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }
@@ -368,7 +368,7 @@ export default class SettingTab extends PluginSettingTab {
     }
 }
 
-export interface FuzyyChinesePinyinSettings {
+export interface TheSettings {
     global: {
         traditionalChineseSupport: boolean;
         doublePinyin: keyof typeof DoubleDict | "全拼";
@@ -407,7 +407,7 @@ export interface FuzyyChinesePinyinSettings {
     };
 }
 
-export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
+export const DEFAULT_SETTINGS: TheSettings = {
     global: {
         traditionalChineseSupport: false,
         doublePinyin: "全拼",
@@ -470,7 +470,7 @@ export const DEFAULT_SETTINGS: FuzyyChinesePinyinSettings = {
 
 class FuzzyPinyinSettingModal extends Modal {
     tempSetting: string[] = [];
-    constructor(public plugin: FuzzyChinesePinyinPlugin) {
+    constructor(public plugin: ThePlugin) {
         super(plugin.app);
         this.tempSetting = [...this.plugin.settings.global.fuzzyPinyinSetting];
     }

@@ -1,5 +1,5 @@
 import { SuggestModal, App } from "obsidian";
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 import { HistoryMatchDataNode, PinyinIndex, MatchData, Item, SuggestionRenderer } from "@/utils";
 
 export default abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<T>> {
@@ -13,12 +13,12 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         setSelectedItem(index: number, e: KeyboardEvent): void;
     };
     index: PinyinIndex<T>;
-    plugin: FuzzyChinesePinyinPlugin;
+    plugin: ThePlugin;
     useInput: boolean;
     onInput: () => void;
     resolve: (value?: Item) => void;
     isPromiseCall: boolean = false;
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app);
         this.useInput = false;
         this.plugin = plugin;
@@ -110,12 +110,12 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     getChoosenItem(): T {
         return this.chooser.values[this.chooser.selectedItem].item;
     }
-    async openAndGetValue(): Promise<Item> {
+    async openAndGetValue(): Promise<T> {
         return await new Promise((resolve, reject) => {
             this.resolve = resolve;
             this.isPromiseCall = true;
             this.open();
-        }).then((v: Item) => {
+        }).then((v: T) => {
             this.isPromiseCall = false;
             return v;
         });

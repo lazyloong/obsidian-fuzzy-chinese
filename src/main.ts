@@ -12,34 +12,34 @@ import {
 import { merge } from "lodash";
 import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "@/utils";
 import FuzzyModal from "@/modal/modal";
-import FuzzyFileModal from "@/modal/fileModal";
-import FuzzyFolderModal from "@/modal/folderModal";
-import FuzzyCommandModal from "@/modal/commandModal";
+import FileModal from "@/modal/fileModal";
+import FolderModal from "@/modal/folderModal";
+import CommandModal from "@/modal/commandModal";
 import FuzzySuggestModal from "@/modal/suggestModal";
-import FuzzyHeadingModal from "@/modal/headingModal";
+import HeadingModal from "@/modal/headingModal";
 import FileEditorSuggest from "@/editorSuggest/fileEditorSuggest";
 import TagEditorSuggest from "@/editorSuggest/tagEditorSuggest";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
 import SimplifiedDict from "@/dict/simplified_dict";
 import TraditionalDict from "@/dict/traditional_dict";
 
-import DoubleDict from "@/double_pinyin";
-import { fuzzyPinyinSearch, stringArray2Items } from "@/search";
-import SettingTab, { DEFAULT_SETTINGS, FuzyyChinesePinyinSettings } from "@/settingTab";
+import DoubleDict from "@/dict/double_pinyin";
+import { pinyinSearch, stringArray2Items } from "@/search";
+import SettingTab, { DEFAULT_SETTINGS, TheSettings } from "@/settingTab";
 import {
     hijackingCanvasView,
     hijackingEmptyView,
     hijackingTagForMarkdownView,
 } from "./viewEventHijacking";
 
-export default class FuzzyChinesePinyinPlugin extends Plugin {
-    settings: FuzyyChinesePinyinSettings;
+export default class ThePlugin extends Plugin {
+    settings: TheSettings;
     pinyinDict: { originalKeys: any; keys: string[]; values: string[] };
     api: any;
-    fileModal: FuzzyFileModal;
-    folderModal: FuzzyFolderModal;
-    commandModal: FuzzyCommandModal;
-    headingModal: FuzzyHeadingModal;
+    fileModal: FileModal;
+    folderModal: FolderModal;
+    commandModal: CommandModal;
+    headingModal: HeadingModal;
     fileEditorSuggest: FileEditorSuggest;
     tagEditorSuggest: TagEditorSuggest;
     indexManager: IndexManager;
@@ -50,10 +50,10 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         await this.loadSettings();
 
         this.loadPinyinDict();
-        this.fileModal = new FuzzyFileModal(this.app, this);
-        this.folderModal = new FuzzyFolderModal(this.app, this);
-        this.commandModal = new FuzzyCommandModal(this.app, this);
-        this.headingModal = new FuzzyHeadingModal(this.app, this);
+        this.fileModal = new FileModal(this.app, this);
+        this.folderModal = new FolderModal(this.app, this);
+        this.commandModal = new CommandModal(this.app, this);
+        this.headingModal = new HeadingModal(this.app, this);
         this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
         this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
 
@@ -93,15 +93,14 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
         this.addSettingTab(new SettingTab(this.app, this));
         this.api = {
             suggester: this.suggester,
-            search: (query: string, items: string[] | Item[]) =>
-                fuzzyPinyinSearch(query, items, this),
+            search: (query: string, items: string[] | Item[]) => pinyinSearch(query, items, this),
             stringArray2Items: stringArray2Items,
         };
     }
     registerHijackingEvents() {
         hijackingCanvasView(this);
         hijackingEmptyView(this);
-        hijackingTagForMarkdownView(this);
+        // hijackingTagForMarkdownView(this); // 有问题，暂时不用
     }
     registerEditorSuggest(editorSuggest: EditorSuggest<any>): void {
         this.app.workspace.editorSuggest.suggests.unshift(editorSuggest);
@@ -210,12 +209,12 @@ export default class FuzzyChinesePinyinPlugin extends Plugin {
 }
 
 class FileExplorerHotkey {
-    plugin: FuzzyChinesePinyinPlugin;
+    plugin: ThePlugin;
     app: App;
     leaf: WorkspaceLeaf;
     view: View;
     working = false;
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         this.plugin = plugin;
         this.app = app;
         let leafs = this.app.workspace.getLeavesOfType("file-explorer");
@@ -230,11 +229,8 @@ class FileExplorerHotkey {
 }
 
 class IndexManager extends Array<PinyinIndex<any>> {
-    plugin: FuzzyChinesePinyinPlugin;
-    constructor(
-        plugin: FuzzyChinesePinyinPlugin,
-        component: Array<FuzzyModal<any> | EditorSuggest<any>>
-    ) {
+    plugin: ThePlugin;
+    constructor(plugin: ThePlugin, component: Array<FuzzyModal<any> | EditorSuggest<any>>) {
         super();
         component.forEach((p: any) => this.push(p.index));
         this.plugin = plugin;

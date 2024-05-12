@@ -5,7 +5,11 @@ declare module "obsidian" {
         navboxManager: NavboxManager;
     }
     interface WorkspaceLeaf {
-        openLinkText: (link: string, currentPath: string, unknown = undefined) => void;
+        openLinkText(
+            linktext: string,
+            sourcePath: string,
+            openViewState?: OpenViewState
+        ): Promise<void>;
         parent: WorkspaceParent;
     }
     interface Workspace {

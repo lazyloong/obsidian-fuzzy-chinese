@@ -16,14 +16,14 @@ import {
     SuggestionRenderer,
     incrementalUpdate,
 } from "@/utils";
-import FuzzyChinesePinyinPlugin from "@/main";
+import ThePlugin from "@/main";
 
 export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
-    plugin: FuzzyChinesePinyinPlugin;
+    plugin: ThePlugin;
     index: PinyinIndex;
     historyMatchData: HistoryMatchDataNode<Item>;
     isYaml: boolean;
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app);
         this.plugin = plugin;
         this.index = this.plugin.addChild(new PinyinIndex(app, this.plugin));
@@ -172,7 +172,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
 }
 
 class PinyinIndex extends PI<Item> {
-    constructor(app: App, plugin: FuzzyChinesePinyinPlugin) {
+    constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.id = "tag";
     }

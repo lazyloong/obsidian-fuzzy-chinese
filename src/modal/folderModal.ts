@@ -49,6 +49,13 @@ export default class FolderModal extends FuzzyModal<Item> {
             let file = app.workspace.getActiveFile();
             app.vault.rename(file, this.getChoosenItem().name + "/" + file.name);
         });
+        this.scope.register([], "Tab", (e) => {
+            e.preventDefault();
+            let item = this.getChoosenItem();
+            if (item.path == "/") return;
+            this.inputEl.value = item.path;
+            this.onInput();
+        });
         this.toMoveFiles = null;
     }
     getSuggestions(query: string): MatchData[] {

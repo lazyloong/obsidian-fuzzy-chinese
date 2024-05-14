@@ -25,6 +25,7 @@ declare module "obsidian" {
             removeSuggest(suggest: EditorSuggest<any>): void;
         };
         createLeafInTabGroup(root: WorkspaceParent): WorkspaceLeaf;
+        getRecentFiles(): string[];
     }
     interface App {
         hotkeyManager: {

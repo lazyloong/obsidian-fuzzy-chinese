@@ -141,7 +141,7 @@ export default class FileModal extends FuzzyModal<Item> {
             this.historyMatchData = new HistoryMatchDataNode("\0");
             let items = this.index.items;
             let lastOpenFiles: MatchData[] = this.app.workspace
-                .getLastOpenFiles()
+                .getRecentFiles()
                 .map((p) => items.find((q) => q.type == "file" && q.path == p))
                 .filter((p) => p)
                 .map((p) => ({
@@ -401,10 +401,12 @@ class PinyinIndex extends PI<Item> {
     //@ts-ignore
     get items() {
         let items: Item[] = [];
+        items = items.concat(this.fileItems);
+        items = items.concat(this.aliasItems);
+        items = items.concat(this.linkItems);
         if (this.plugin.settings.file.showUnresolvedLink)
             items = items.concat(this.unresolvedLinkItems);
-        if (true) items = items.concat(this.linkItems);
-        return items.concat(this.fileItems).concat(this.aliasItems);
+        return items;
     }
     set items(value: Item[]) {
         this.fileItems = [];

@@ -24,7 +24,7 @@ import SimplifiedDict from "@/dict/simplified_dict";
 import TraditionalDict from "@/dict/traditional_dict";
 
 import DoubleDict from "@/dict/double_pinyin";
-import { pinyinSearch, stringArray2Items } from "@/search";
+import pinyinSearch, { stringArray2Items } from "@/search";
 import SettingTab, { DEFAULT_SETTINGS, TheSettings } from "@/settingTab";
 import {
     hijackingCanvasView,
@@ -96,6 +96,9 @@ export default class ThePlugin extends Plugin {
             search: (query: string, items: string[] | Item[]) => pinyinSearch(query, items, this),
             stringArray2Items: stringArray2Items,
         };
+
+        let leaf = this.app.workspace.getMostRecentLeaf();
+        if (leaf.view.getViewType() === "empty") leaf.detach();
     }
     registerHijackingEvents() {
         hijackingCanvasView(this);

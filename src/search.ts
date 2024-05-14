@@ -1,7 +1,7 @@
 import ThePlugin from "@/main";
 import { Pinyin, Item, MatchData } from "@/utils";
 
-export function pinyinSearch(
+export default function pinyinSearch(
     query: string,
     items: string[] | Item[],
     plugin: ThePlugin

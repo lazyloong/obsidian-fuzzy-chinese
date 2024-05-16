@@ -238,13 +238,17 @@ class IndexManager extends Array<PinyinIndex<any>> {
         component.forEach((p: any) => this.push(p.index));
         this.plugin = plugin;
     }
-    load() {
-        let notice = new Notice("正在刷新索引中");
-        setTimeout(() => {
+    load(showNotice: boolean = false) {
+        if (showNotice) {
+            let notice = new Notice("正在刷新索引中");
+            setTimeout(() => {
+                this.forEach((index) => this.load_(index));
+                notice.hide();
+                new Notice("索引刷新完成", 4000);
+            }, 100);
+        } else {
             this.forEach((index) => this.load_(index));
-            notice.hide();
-            new Notice("索引刷新完成", 4000);
-        }, 100);
+        }
     }
     load_(index: PinyinIndex<any>) {
         let startTime = Date.now();

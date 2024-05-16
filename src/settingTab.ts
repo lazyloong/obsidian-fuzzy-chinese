@@ -65,7 +65,7 @@ export default class SettingTab extends PluginSettingTab {
                             : this.plugin.pinyinDict.originalKeys.map((p) =>
                                   fullPinyin2doublePinyin(p, DoubleDict[value])
                               );
-                    this.plugin.indexManager.load();
+                    this.plugin.indexManager.load(true);
                     new Notice("双拼方案切换为：" + value, 4000);
                     await this.plugin.saveSettings();
                 })
@@ -81,7 +81,7 @@ export default class SettingTab extends PluginSettingTab {
                 this.plugin.settings.global.fuzzyPinyin = value;
                 await this.plugin.saveSettings();
                 if (this.plugin.settings.global.fuzzyPinyinSetting.length != 0)
-                    this.plugin.indexManager.load();
+                    this.plugin.indexManager.load(true);
                 this.display();
             })
         );
@@ -496,6 +496,6 @@ class FuzzyPinyinSettingModal extends Modal {
     }
     onClose(): void {
         if (xor(this.tempSetting, this.plugin.settings.global.fuzzyPinyinSetting).length != 0)
-            this.plugin.indexManager.load();
+            this.plugin.indexManager.load(true);
     }
 }

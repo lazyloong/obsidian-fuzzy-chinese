@@ -254,17 +254,15 @@ export default class FileModal extends FuzzyModal<Item> {
         lastNode.itemIndex = matchData1.map((p) => p.item);
         lastNode.itemIndexByPath = matchData2.map((p) => p.item);
         // 去除重复的笔记
-        let result = matchData.reduce((acc, cur) => {
+        let result = matchData.reduce<MatchData[]>((acc, cur) => {
             if (cur.item.type === "link") {
                 acc.push(cur);
             } else {
-                const existingItemIndex = acc.findIndex(
-                    (item) => item.item.path === cur.item.path && item.score < cur.score
-                );
-                if (existingItemIndex !== -1) {
-                    acc[existingItemIndex] = cur;
-                } else {
+                const existingItemIndex = acc.findIndex((item) => item.item.path === cur.item.path);
+                if (existingItemIndex === -1) {
                     acc.push(cur);
+                } else if (cur.score > acc[existingItemIndex].score) {
+                    acc[existingItemIndex] = cur;
                 }
             }
             return acc;

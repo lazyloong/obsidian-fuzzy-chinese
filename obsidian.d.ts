@@ -64,4 +64,24 @@ declare module "obsidian" {
     interface Scope {
         keys: any[];
     }
+    interface SuggestModal<T> {
+        chooser: {
+            values: T[];
+            suggestions: HTMLElement;
+            selectedItem: number;
+            addMessage(emptyStateText: string): unknown;
+            setSuggestions(arg0: T[]): void;
+            setSelectedItem(index: number, e: KeyboardEvent): void;
+        };
+    }
+    interface EditorSuggest<T> {
+        suggestions: {
+            chooser: this;
+            containerEl: HTMLDivElement;
+            selectedItem: number;
+            suggestions: Array<HTMLDivElement>;
+            values: T[];
+            useSelectedItem(e: KeyboardEvent): boolean;
+        };
+    }
 }

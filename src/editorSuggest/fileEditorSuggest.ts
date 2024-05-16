@@ -52,6 +52,10 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         );
         this.plugin = plugin;
         this.index = this.plugin.fileModal.index;
+        this.scope.register([], "Tab", (e) => {
+            e.preventDefault();
+            this.suggestions.useSelectedItem(e);
+        });
         let prompt = [
             {
                 command: "输入 #",

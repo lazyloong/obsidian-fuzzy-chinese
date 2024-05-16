@@ -4,14 +4,6 @@ import { HistoryMatchDataNode, PinyinIndex, MatchData, Item, SuggestionRenderer 
 
 export default abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<T>> {
     historyMatchData: HistoryMatchDataNode<T>;
-    chooser: {
-        setSuggestions(arg0: MatchData<T>[]): void;
-        addMessage(emptyStateText: string): unknown;
-        suggestions: HTMLElement;
-        values: MatchData<T>[];
-        selectedItem: number;
-        setSelectedItem(index: number, e: KeyboardEvent): void;
-    };
     index: PinyinIndex<T>;
     plugin: ThePlugin;
     useInput: boolean;

@@ -81,6 +81,9 @@ export default class ThePlugin extends Plugin {
             }
             this.registerFileExplorer();
             this.addCommands();
+
+            let leaf = this.app.workspace.getMostRecentLeaf();
+            if (leaf.view.getViewType() === "empty") leaf.detach();
         });
         this.addRibbonIcon("search", "FuzzySearch", () => {
             let leaf = this.app.workspace.getMostRecentLeaf();
@@ -96,9 +99,6 @@ export default class ThePlugin extends Plugin {
             search: (query: string, items: string[] | Item[]) => pinyinSearch(query, items, this),
             stringArray2Items: stringArray2Items,
         };
-
-        let leaf = this.app.workspace.getMostRecentLeaf();
-        if (leaf.view.getViewType() === "empty") leaf.detach();
     }
     registerHijackingEvents() {
         hijackingCanvasView(this);

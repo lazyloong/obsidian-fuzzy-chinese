@@ -542,7 +542,7 @@ function TFile2Item(file: TFile, plugin: ThePlugin): FileItem {
     if (file.parent.path == "/") {
         pathPinyin = fileNamePinyin;
     } else {
-        folderPathPinyin = folderIndex.find((folder) => folder.name == file.parent.path)?.pinyin;
+        folderPathPinyin = folderIndex.find((folder) => folder.path == file.parent.path)?.pinyin;
         if (folderPathPinyin)
             pathPinyin = folderPathPinyin.concat(new Pinyin("/", plugin)).concat(fileNamePinyin);
         else pathPinyin = new Pinyin(file.parent.path + "/" + name, plugin);

@@ -130,12 +130,6 @@ export default class SettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 })
             );
-        new Setting(this.containerEl).setName("显示路径").addToggle((cb) =>
-            cb.setValue(this.plugin.settings.file.showPath).onChange(async (value) => {
-                this.plugin.settings.file.showPath = value;
-                await this.plugin.saveSettings();
-            })
-        );
         new Setting(this.containerEl).setName("显示 Tag").addToggle((cb) =>
             cb.setValue(this.plugin.settings.file.showTags).onChange(async (value) => {
                 this.plugin.settings.file.showTags = value;
@@ -384,7 +378,6 @@ export interface TheSettings {
         attachmentExtensions: Array<string>;
         usePathToSearch: boolean;
         useFileEditorSuggest: boolean;
-        showPath: boolean;
         showTags: boolean;
         searchWithTag: boolean;
         quicklySelectHistoryFiles: boolean;
@@ -447,7 +440,6 @@ export const DEFAULT_SETTINGS: TheSettings = {
         ],
         usePathToSearch: false,
         useFileEditorSuggest: true,
-        showPath: true,
         showTags: false,
         searchWithTag: true,
         keyEnter: "打开",

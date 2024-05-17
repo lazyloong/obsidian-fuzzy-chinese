@@ -305,7 +305,6 @@ export default class FileModal extends FuzzyModal<Item> {
         let icon = { alias: "forward", link: "heading" };
         if (icon[matchData.item.type]) {
             renderer.addIcon(icon[matchData.item.type]);
-            if (!this.plugin.settings.file.showPath) renderer.flairEl.style.top = "9px";
             if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
         } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
     }

@@ -630,18 +630,18 @@ function openItem(leaf: WorkspaceLeaf, item: Item) {
     } else leaf.openFile(item.file);
 }
 
-function getFileTagArray(file: TFile): string[] {
+function getFileTagArray(file: TFile): string[] | undefined {
     let tags: string | Array<string> =
             app.metadataCache.getFileCache(file)?.frontmatter?.tags ||
             app.metadataCache.getFileCache(file)?.frontmatter?.tag,
         tagArray: string[];
-    if (tags) {
+    if (tags)
         tagArray = Array.isArray(tags)
             ? tags
-            : String(tags)
-                  .split(/(, ?)| +/)
-                  .filter((p) => p);
-    }
+            : tags
+                  .split(",")
+                  .filter((p) => p)
+                  .map((p) => p.trim());
     return tagArray;
 }
 

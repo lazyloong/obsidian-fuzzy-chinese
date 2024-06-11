@@ -42,14 +42,18 @@ export default class SettingTab extends PluginSettingTab {
                 }
             );
         });
+        const doublePinyinOptions = Object.keys(DoubleDict).reduce(
+            (acc, cur) => {
+                acc[cur] = cur;
+                return acc;
+            },
+            {
+                全拼: "全拼",
+            }
+        );
         new Setting(this.containerEl).setName("双拼方案").addDropdown((cb) =>
             cb
-                .addOptions({
-                    全拼: "全拼",
-                    智能ABC: "智能ABC",
-                    小鹤双拼: "小鹤双拼",
-                    微软双拼: "微软双拼",
-                })
+                .addOptions(doublePinyinOptions)
                 .setValue(this.plugin.settings.global.doublePinyin)
                 .onChange(async (value: keyof typeof DoubleDict | "全拼") => {
                     if (this.plugin.settings.global.doublePinyin == value) return;

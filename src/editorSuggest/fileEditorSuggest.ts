@@ -27,7 +27,7 @@ interface FileResult extends Result<"file"> {
 }
 interface LinktextResult extends Result<"linktext"> {}
 interface HeadingResult extends Result<"heading"> {
-    subpath: "#";
+    subpath: `#${string}`;
     heading: string;
     level: number;
     file: TFile;
@@ -48,7 +48,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
     constructor(app: App, plugin: ThePlugin) {
         super(app);
         this.originEditorSuggest = app.workspace.editorSuggest.suggests.find(
-            (p: any) => p?.suggestManager?.mode == "file"
+            (p: any) => p?.suggestManager
         );
         this.plugin = plugin;
         this.index = this.plugin.fileModal.index;
@@ -186,7 +186,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
                     type: "heading",
                     path: item.file == file ? "" : item.file.basename,
                     file: item.file,
-                    subpath: "#",
+                    subpath: `#${isLinkItem(item) ? item.link : item.name}`,
                     level: 1,
                     matches: null,
                     score: 0,

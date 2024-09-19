@@ -45,9 +45,10 @@ export default class FolderModal extends FuzzyModal<Item> {
         ];
         this.setInstructions(prompt);
         this.scope.register(["Shift"], "Enter", async (e) => {
-            app.vault.createFolder(this.getChoosenItem().name);
+            await app.vault.createFolder(this.inputEl.value);
             let file = app.workspace.getActiveFile();
-            app.vault.rename(file, this.getChoosenItem().name + "/" + file.name);
+            app.vault.rename(file, this.inputEl.value + "/" + file.name);
+            this.close();
         });
         this.scope.register([], "Tab", (e) => {
             e.preventDefault();
@@ -217,9 +218,9 @@ class PinyinIndex extends PI<Item> {
         this.registerEvent(this.vault.on("create", (folder) => this.update("create", folder)));
         this.registerEvent(this.vault.on("delete", (folder) => this.update("delete", folder)));
     }
-    update(type: "create", f: TAbstractFile);
-    update(type: "delete", f: TAbstractFile);
-    update(type: "rename", f: TAbstractFile, oldPath: string);
+    update(type: "create", f: TAbstractFile): void;
+    update(type: "delete", f: TAbstractFile): void;
+    update(type: "rename", f: TAbstractFile, oldPath: string): void;
     update(type: string, f: TAbstractFile, oldPath?: string) {
         if (f instanceof TFile) return;
         let folder = f as TFolder;

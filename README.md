@@ -24,7 +24,7 @@
 3. 携带标签一起搜索（目前仅支持单个标签）
 
 快捷键设置：
-Obsidian -> 选项 -> 快捷键 -> 搜索 `Fuzzy` -> 给 `Fuzzy Chinese Pinyin: Open Search` 设置 `<Cmd+o>` 快捷键，就可以平替默认的 `快速切换：打开快速切换` 面板。
+Obsidian -> 选项 -> 快捷键 -> 搜索 `Fuzzy` -> 给 `Fuzzy Chinese Pinyin: 搜索文件` 设置 `<Cmd+o>` 快捷键，就可以平替默认的 `快速切换：打开快速切换` 面板。
 
 在文件 frontmatter 中设置 `linkText` 字段，可以将标题或者 block id 加入搜索（与 `alias` 不同的是，可以直接跳转到对应标题或块）。如
 
@@ -38,7 +38,7 @@ linkText:
 
 ### 文件移动
 
-命令 `Fuzzy Chinese Pinyin: Move File`，效果类似命令 `将文件移动到其他文件夹`。
+命令 `Fuzzy Chinese Pinyin: 移动文件`，效果类似命令 `将文件移动到其他文件夹`。
 在文件列表中选择文件后，右键可一起移动，若设置了快捷键也可以快捷键打开，优先级大于当前页面文件。
 
 特性：
@@ -48,7 +48,7 @@ linkText:
 
 ### 命令搜索
 
-命令 `Fuzzy Chinese Pinyin: Execute Command`，效果类似命令 `命令面板: 打开命令面板`。
+命令 `Fuzzy Chinese Pinyin: 执行命令`，效果类似命令 `命令面板: 打开命令面板`。
 
 快捷键设置：
 Obsidian -> 选项 -> 快捷键 -> 搜索 `Fuzzy` -> 给 `Fuzzy Chinese Pinyin: Execute Command` 设置 `<Cmd+p>` 快捷键，就可以平替默认的 `命令面板：打开命令面板`。
@@ -62,13 +62,18 @@ Obsidian -> 选项 -> 快捷键 -> 搜索 `Fuzzy` -> 给 `Fuzzy Chinese Pinyin: 
 
 ### 当前文档标题搜索
 
-命令 `Fuzzy Chinese Pinyin: Search Heading`
+命令 `Fuzzy Chinese Pinyin: 搜索标题`
 对当前文档标题进行拼音搜索。
 
 特性：
 
 1. 隐藏第一级标题
 2. 对标题进行缩进
+
+### 插入模版
+
+命令 `Fuzzy Chinese Pinyin: 插入模版`，效果类似命令 `模板：插入模板`。
+与核心插件模板功能相同，仅加入拼音搜索功能。
 
 ### 双链
 

@@ -17,6 +17,7 @@ import FolderModal from "@/modal/folderModal";
 import CommandModal from "@/modal/commandModal";
 import FuzzySuggestModal from "@/modal/suggestModal";
 import HeadingModal from "@/modal/headingModal";
+import TemplatesModal from "@/modal/templatesModal";
 import FileEditorSuggest from "@/editorSuggest/fileEditorSuggest";
 import TagEditorSuggest from "@/editorSuggest/tagEditorSuggest";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
@@ -40,6 +41,7 @@ export default class ThePlugin extends Plugin {
     folderModal: FolderModal;
     commandModal: CommandModal;
     headingModal: HeadingModal;
+    templatesModal: TemplatesModal;
     fileEditorSuggest: FileEditorSuggest;
     tagEditorSuggest: TagEditorSuggest;
     indexManager: IndexManager;
@@ -54,6 +56,8 @@ export default class ThePlugin extends Plugin {
         this.folderModal = new FolderModal(this.app, this);
         this.commandModal = new CommandModal(this.app, this);
         this.headingModal = new HeadingModal(this.app, this);
+        this.templatesModal = new TemplatesModal(this.app, this);
+
         this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
         this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
 
@@ -114,14 +118,14 @@ export default class ThePlugin extends Plugin {
     addCommands() {
         this.addCommand({
             id: "open-search",
-            name: "Open Search",
+            name: "搜索文件",
             callback: () => {
                 this.fileModal.open();
             },
         });
         this.addCommand({
             id: "move-file",
-            name: "Move File",
+            name: "移动文件",
             checkCallback: (checking: boolean) => {
                 let files = this.fileExplorerHotkey.getFiles();
                 let file = this.app.workspace.getActiveFile();
@@ -133,19 +137,26 @@ export default class ThePlugin extends Plugin {
         });
         this.addCommand({
             id: "execute-command",
-            name: "Execute Command",
+            name: "执行命令",
             callback: () => {
                 this.commandModal.open();
             },
         });
         this.addCommand({
             id: "search-heading",
-            name: "Search Heading",
+            name: "搜索标题",
             checkCallback: (checking: boolean) => {
                 const file = this.app.workspace.getActiveFile();
                 if (checking) return Boolean(file);
                 this.headingModal.setFile(file);
                 this.headingModal.open();
+            },
+        });
+        this.addCommand({
+            id: "insert-templates",
+            name: "插入模板",
+            callback: () => {
+                this.templatesModal.open();
             },
         });
     }

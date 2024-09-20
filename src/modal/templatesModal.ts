@@ -38,12 +38,15 @@ export default class TemplatesModal extends FuzzyModal<Item> {
         let folder = plugin.options.folder;
         let templateFiles = this.app.vault
             .getFiles()
-            .filter((file) => file.parent.path === folder && file.extension === "md");
-
-        this.index.items = templateFiles.map((file: TFile) => ({
-            name: file.basename,
-            pinyin: new Pinyin(file.basename, this.plugin),
-            file,
-        }));
+            .filter((file) => file.path.split('/')[0] === folder && file.extension === "md");
+        
+        this.index.items = templateFiles.map((file: TFile) => {
+            const filePath = file.path.split('/').slice(1).join('/');
+            return {
+                name: filePath,
+                pinyin: new Pinyin(filePath, this.plugin),
+                file,
+            };
+        });
     }
 }

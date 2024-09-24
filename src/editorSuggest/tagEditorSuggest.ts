@@ -51,6 +51,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
                 query: s,
             };
         }
+        if (!file) return null;
         let frontmatterPosition = (app.metadataCache.getFileCache(file) as any)
                 ?.frontmatterPosition,
             start = frontmatterPosition?.start.line || 0,

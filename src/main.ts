@@ -130,8 +130,7 @@ export default class ThePlugin extends Plugin {
                 let files = this.fileExplorerHotkey.getFiles();
                 let file = this.app.workspace.getActiveFile();
                 if (checking) return Boolean(file) || files.length > 0;
-                if (this.fileExplorerHotkey.working && files.length > 0)
-                    this.folderModal.openWithFiles(files);
+                if (files.length > 0) this.folderModal.openWithFiles(files);
                 else if (file) this.folderModal.open();
             },
         });
@@ -227,24 +226,30 @@ class FileExplorerHotkey {
     app: App;
     leaf: WorkspaceLeaf;
     view: View;
-    working = false;
     constructor(app: App, plugin: ThePlugin) {
         this.plugin = plugin;
         this.app = app;
-        let leafs = this.app.workspace.getLeavesOfType("file-explorer");
-        if (leafs.length == 0) return;
-        this.leaf = leafs[0];
-        this.working = true;
-        this.view = this.leaf.view;
+        this.getView();
     }
     getFiles(): TFile[] {
-        // @ts-ignore
-        if (this.view === undefined || this.view.tree === undefined) {
-            // core plugin `Files` is disabled
-            return [];
+        if (!this.viewIsWorkable()) {
+            this.getView();
+            if (!this.viewIsWorkable()) return [];
         }
         // @ts-ignore
         return Array.from(this.view.tree.selectedDoms).map((p: { file: TFile }) => p.file);
+    }
+    getView(): View | undefined {
+        let leaf = this.app.workspace.getLeavesOfType("file-explorer");
+        if (leaf.length != 0) {
+            this.leaf = leaf[0];
+            this.view = this.leaf.view;
+        }
+        return this.view;
+    }
+    viewIsWorkable(): boolean {
+        // @ts-ignore
+        return Boolean(this.view?.tree?.selectedDoms);
     }
 }
 

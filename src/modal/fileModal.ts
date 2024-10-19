@@ -119,7 +119,8 @@ export default class FileModal extends FuzzyModal<Item> {
             });
         }
         this.setInstructions(prompt);
-
+    }
+    addTagInput(): void {
         let inputContainerEl = this.modalEl.querySelector(
             ".prompt-input-container"
         ) as HTMLInputElement;
@@ -130,6 +131,10 @@ export default class FileModal extends FuzzyModal<Item> {
             this.onInput();
         });
         if (this.plugin.settings.file.searchWithTag) this.tagInput.show();
+    }
+    onOpen(): void {
+        super.onOpen();
+        if (!this.tagInput) this.addTagInput();
     }
     onClose(): void {
         super.onClose();

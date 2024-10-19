@@ -238,11 +238,13 @@ class FileExplorerHotkey {
         this.view = this.leaf.view;
     }
     getFiles(): TFile[] {
-        if (this.view === undefined) {
+        // @ts-ignore
+        if (this.view === undefined || this.view.tree === undefined) {
             // core plugin `Files` is disabled
             return [];
         }
-        return Array.from((this.view as any).tree.selectedDoms).map((p: { file: TFile }) => p.file);
+        // @ts-ignore
+        return Array.from(this.view.tree.selectedDoms).map((p: { file: TFile }) => p.file);
     }
 }
 

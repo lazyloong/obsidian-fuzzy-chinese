@@ -165,7 +165,7 @@ export default class FileModal extends FuzzyModal<Item> {
                     return (
                         tagArray &&
                         tagArray.length != 0 &&
-                        tagArray.every((tag) => this.tags.some((t) => tag.startsWith(t)))
+                        tagArray.some((tag) => this.tags.some((t) => tag.startsWith(t)))
                     );
                 })
                 .map((p) => ({
@@ -276,7 +276,7 @@ export default class FileModal extends FuzzyModal<Item> {
             result = result.filter((matchData) => {
                 if (!matchData.item.file) return;
                 let tagArray = getFileTagArray(matchData.item.file);
-                return tagArray?.every((tag) => this.tags.some((t) => tag.startsWith(t)));
+                return tagArray?.some((tag) => this.tags.some((t) => tag.startsWith(t)));
             });
         }
         return result;
@@ -636,18 +636,18 @@ function openItem(leaf: WorkspaceLeaf, item: Item) {
 }
 
 function getFileTagArray(file: TFile): string[] | undefined {
-    let tags: string | Array<string> =
-            app.metadataCache.getFileCache(file)?.frontmatter?.tags ||
-            app.metadataCache.getFileCache(file)?.frontmatter?.tag,
-        tagArray: string[];
-    if (tags)
-        tagArray = Array.isArray(tags)
-            ? tags
-            : tags
-                  .split(",")
-                  .filter((p) => p)
-                  .map((p) => p.trim());
-    return tagArray;
+    let tags: string | string[] | Object =
+        app.metadataCache.getFileCache(file)?.frontmatter?.tags ||
+        app.metadataCache.getFileCache(file)?.frontmatter?.tag;
+    if (!tags) return undefined;
+
+    if (Array.isArray(tags)) return tags;
+    else if (typeof tags == "string")
+        return tags
+            .split(/[, ]/)
+            .filter((p) => p)
+            .map((p) => p.trim());
+    else if (typeof tags == "object") return undefined;
 }
 
 export const openFileKeyMap: Record<string, () => WorkspaceLeaf> = {

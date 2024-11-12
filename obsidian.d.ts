@@ -11,6 +11,7 @@ declare module "obsidian" {
             openViewState?: OpenViewState
         ): Promise<void>;
         parent: WorkspaceParent;
+        pinned: boolean;
     }
     interface Workspace {
         handleLinkContextMenu: (

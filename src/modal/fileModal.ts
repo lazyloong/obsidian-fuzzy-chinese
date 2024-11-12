@@ -651,7 +651,11 @@ function getFileTagArray(file: TFile): string[] | undefined {
 }
 
 export const openFileKeyMap: Record<string, () => WorkspaceLeaf> = {
-    打开: () => app.workspace.getMostRecentLeaf(),
+    打开: () => {
+        let leaf = app.workspace.getMostRecentLeaf();
+        if (leaf.pinned) return app.workspace.getLeaf("tab");
+        else return leaf;
+    },
     打开到新标签页: () => app.workspace.getLeaf("tab"),
     打开到其他面板: () => getNewOrAdjacentLeaf(),
     打开到新面板: () => app.workspace.getLeaf("split"),

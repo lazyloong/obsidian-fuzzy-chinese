@@ -119,6 +119,7 @@ export default class FileModal extends FuzzyModal<Item> {
             });
         }
         this.setInstructions(prompt);
+        this.addTagInput();
     }
     addTagInput(): void {
         let inputContainerEl = this.modalEl.querySelector(
@@ -130,16 +131,28 @@ export default class FileModal extends FuzzyModal<Item> {
             else this.tags = value.split(",").map((t) => t.trim());
             this.onInput();
         });
-        if (this.plugin.settings.file.searchWithTag) this.tagInput.show();
     }
     onOpen(): void {
         super.onOpen();
-        if (!this.tagInput) this.addTagInput();
+
+        this.tags = [];
+        this.tagInput.setValue("");
+        let inputContainerEl = this.modalEl.querySelector(
+            ".prompt-input-container"
+        ) as HTMLInputElement;
+        let clearButton = inputContainerEl.querySelector(
+            ".search-input-clear-button"
+        ) as HTMLDivElement;
+        if (this.plugin.settings.file.searchWithTag) {
+            this.tagInput.show();
+            clearButton.style.marginRight = "25%";
+        } else {
+            this.tagInput.hide();
+            clearButton.style.marginRight = "0";
+        }
     }
     onClose(): void {
         super.onClose();
-        this.tags = [];
-        this.tagInput.setValue("");
     }
     getEmptyInputSuggestions(): MatchData[] {
         if (this.tags.length == 0) {
@@ -165,7 +178,7 @@ export default class FileModal extends FuzzyModal<Item> {
                     return (
                         tagArray &&
                         tagArray.length != 0 &&
-                        tagArray.some((tag) => this.tags.some((t) => tag.startsWith(t)))
+                        this.tags.every((t) => tagArray.some((tt) => tt.startsWith(t)))
                     );
                 })
                 .map((p) => ({
@@ -276,7 +289,11 @@ export default class FileModal extends FuzzyModal<Item> {
             result = result.filter((matchData) => {
                 if (!matchData.item.file) return;
                 let tagArray = getFileTagArray(matchData.item.file);
-                return tagArray?.some((tag) => this.tags.some((t) => tag.startsWith(t)));
+                return (
+                    tagArray &&
+                    tagArray.length != 0 &&
+                    this.tags.every((t) => tagArray.some((tt) => tt.startsWith(t)))
+                );
             });
         }
         return result;
@@ -614,7 +631,8 @@ class TagInput extends TextComponent {
         super(inputEl);
         this.hide();
         this.setPlaceholder("标签");
-        this.inputEl.classList.add("prompt-input");
+        this.inputEl.addClasses(["prompt-input", "fz-tag-input"]);
+
         this.inputEl.style.width = "30%";
         this.inputEl.style.borderLeft = "2px solid var(--background-primary)";
         let tagSuggest = new PinyinSuggest(this.inputEl, plugin);

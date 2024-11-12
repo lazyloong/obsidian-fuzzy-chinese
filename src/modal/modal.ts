@@ -15,6 +15,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         this.useInput = false;
         this.plugin = plugin;
         this.historyMatchData = new HistoryMatchDataNode("\0");
+        this.containerEl.addClass("fz-modal");
 
         this.scope.register([], "Backspace", async (e) => {
             if (this.plugin.settings.global.closeWithBackspace && this.inputEl.value === "") {

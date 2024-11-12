@@ -1,5 +1,5 @@
 import ThePlugin from "@/main";
-import { TextInputSuggest } from "templater/src/settings/suggesters/suggest";
+import { TextInputSuggest } from "./suggest";
 import { SuggestionRenderer } from "./suggestionRenderer";
 import { MatchData, Item } from "./type";
 
@@ -7,7 +7,7 @@ export class PinyinSuggest extends TextInputSuggest<MatchData<Item>> {
     getItemFunction: (query: string) => MatchData<Item>[];
     plugin: ThePlugin;
     constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: ThePlugin) {
-        super(inputEl);
+        super(inputEl, plugin.app);
         this.plugin = plugin;
     }
     getSuggestions(inputStr: string): MatchData<Item>[] {

@@ -54,7 +54,11 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         this.index = this.plugin.fileModal.index;
         this.scope.register([], "Tab", (e) => {
             e.preventDefault();
-            this.suggestions.useSelectedItem(e);
+            if (this.app.vault.getConfig("useMarkdownLinks")) {
+                this.app.vault.setConfig("useMarkdownLinks", false);
+                this.suggestions.useSelectedItem(e);
+                this.app.vault.setConfig("useMarkdownLinks", true);
+            } else this.suggestions.useSelectedItem(e);
         });
         let prompt = [
             {
@@ -68,6 +72,10 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
             {
                 command: "输入 |",
                 purpose: "指定显示的文本",
+            },
+            {
+                command: "tab",
+                purpose: "使用标准md链接时，仅输入wiki链接，不转换为md链接",
             },
         ];
         this.setInstructions(prompt);

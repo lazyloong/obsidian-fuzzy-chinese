@@ -85,4 +85,8 @@ declare module "obsidian" {
             useSelectedItem(e: KeyboardEvent): boolean;
         };
     }
+    interface Valut {
+        getConfig(key: string): any;
+        setConfig(key: string, value: any): void;
+    }
 }

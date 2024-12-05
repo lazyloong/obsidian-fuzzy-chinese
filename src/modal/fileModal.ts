@@ -54,25 +54,17 @@ export default class FileModal extends FuzzyModal<Item> {
             key: "Enter",
             func: async (e: KeyboardEvent) => {
                 e.preventDefault();
-                const modKey = e.ctrlKey || e.metaKey;
-                const altKey = e.altKey;
                 const shiftKey = e.shiftKey;
                 if (shiftKey && this.inputEl.value == "") return;
                 this.close();
 
-                let leaf: WorkspaceLeaf;
-                let getKey = (key: keyof typeof openFileKeyMap) =>
-                    openFileKeyMap[this.plugin.settings.file[key]];
-                if (modKey && altKey) leaf = getKey("keyCtrlAltEnter")();
-                else if (modKey) leaf = getKey("keyCtrlEnter")();
-                else if (altKey) leaf = getKey("keyAltEnter")();
-                else leaf = getKey("keyEnter")();
                 if (shiftKey) {
-                    let newFile = await createFile(this.inputEl.value);
+                    const leaf = this.getLeaf(e);
+                    const newFile = await createFile(this.inputEl.value);
                     leaf.openFile(newFile);
                 } else {
-                    let item = this.getChoosenItem();
-                    openItem(leaf, item);
+                    const matchData = this.getChoosenMatchData();
+                    this.onChooseSuggestion(matchData, e);
                 }
             },
         };
@@ -335,18 +327,11 @@ export default class FileModal extends FuzzyModal<Item> {
             this.resolve(matchData.item);
             return;
         }
+
         if (matchData.score == -1 || matchData.item.type == "unresolvedLink")
             matchData.item.file = await this.getChoosenItemFile(matchData);
 
-        const modKey = e.ctrlKey || e.metaKey;
-        const altKey = e.altKey;
-        let leaf: WorkspaceLeaf;
-        let getKey = (key: keyof typeof openFileKeyMap) =>
-            openFileKeyMap[this.plugin.settings.file[key]];
-        if (modKey && altKey) leaf = getKey("keyCtrlAltEnter")();
-        else if (modKey) leaf = getKey("keyCtrlEnter")();
-        else if (altKey) leaf = getKey("keyAltEnter")();
-        else leaf = getKey("keyEnter")();
+        const leaf = this.getLeaf(e);
         openItem(leaf, matchData.item);
     }
     onNoSuggestion(): void {
@@ -361,6 +346,18 @@ export default class FileModal extends FuzzyModal<Item> {
         return matchData.score == -1 || matchData.item.type == "unresolvedLink"
             ? await createFile(matchData.item.name)
             : matchData.item.file;
+    }
+    getLeaf(e: MouseEvent | KeyboardEvent): WorkspaceLeaf {
+        const modKey = e.ctrlKey || e.metaKey;
+        const altKey = e.altKey;
+        let leaf: WorkspaceLeaf;
+        let getKey = (key: keyof typeof openFileKeyMap) =>
+            openFileKeyMap[this.plugin.settings.file[key]];
+        if (modKey && altKey) leaf = getKey("keyCtrlAltEnter")();
+        else if (modKey) leaf = getKey("keyCtrlEnter")();
+        else if (altKey) leaf = getKey("keyAltEnter")();
+        else leaf = getKey("keyEnter")();
+        return leaf;
     }
 }
 

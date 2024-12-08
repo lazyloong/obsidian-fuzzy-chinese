@@ -109,6 +109,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
             this.isPromiseCall = true;
             this.open();
         }).then((v: T) => {
+            this.resolve = null;
             this.isPromiseCall = false;
             return v;
         });

@@ -54,18 +54,8 @@ export default class FileModal extends FuzzyModal<Item> {
             key: "Enter",
             func: async (e: KeyboardEvent) => {
                 e.preventDefault();
-                const shiftKey = e.shiftKey;
-                if (shiftKey && this.inputEl.value == "") return;
-                this.close();
-
-                if (shiftKey) {
-                    const leaf = this.getLeaf(e);
-                    const newFile = await createFile(this.inputEl.value);
-                    leaf.openFile(newFile);
-                } else {
-                    const matchData = this.getChoosenMatchData();
-                    this.onChooseSuggestion(matchData, e);
-                }
+                const matchData = this.getChoosenMatchData();
+                this.onChooseSuggestion(matchData, e);
             },
         };
         this.scope.keys.unshift(i);
@@ -323,15 +313,20 @@ export default class FileModal extends FuzzyModal<Item> {
         } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
     }
     async onChooseSuggestion(matchData: MatchData, e: MouseEvent | KeyboardEvent) {
+        const shiftKey = e.shiftKey;
+        if (shiftKey && this.inputEl.value == "") return;
+        this.close();
+        const leaf = this.getLeaf(e);
+
+        if (shiftKey) matchData.item.file = await createFile(this.inputEl.value);
+        else if (matchData.score == -1 || matchData.item.type == "unresolvedLink")
+            matchData.item.file = await createFile(matchData.item.name);
+
         if (this.resolve) {
             this.resolve(matchData.item);
             return;
         }
 
-        if (matchData.score == -1 || matchData.item.type == "unresolvedLink")
-            matchData.item.file = await this.getChoosenItemFile(matchData);
-
-        const leaf = this.getLeaf(e);
         openItem(leaf, matchData.item);
     }
     onNoSuggestion(): void {
@@ -340,12 +335,6 @@ export default class FileModal extends FuzzyModal<Item> {
             score: -1,
             usePath: false,
         });
-    }
-    async getChoosenItemFile(matchData?: MatchData): Promise<TFile> {
-        matchData = matchData ?? this.chooser.values[this.chooser.selectedItem];
-        return matchData.score == -1 || matchData.item.type == "unresolvedLink"
-            ? await createFile(matchData.item.name)
-            : matchData.item.file;
     }
     getLeaf(e: MouseEvent | KeyboardEvent): WorkspaceLeaf {
         const modKey = e.ctrlKey || e.metaKey;

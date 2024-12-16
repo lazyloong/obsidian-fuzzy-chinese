@@ -35,15 +35,14 @@ export class Pinyin extends Array<PinyinChild> {
         return score;
     }
     match<T extends Item>(query: string, item: T, smathCase = false): MatchData<T> {
-        let range = this.match_(query, smathCase);
-        range = range ? toRanges(range) : false;
+        const range_ = this.match_(query, smathCase);
+        const range = range_ ? toRanges(range_) : false;
         if (!range) return;
-        let data: MatchData<T> = {
+        return {
             item: item,
             score: this.getScore(range),
             range: range,
         };
-        return data;
     }
     concat(pinyin: Pinyin) {
         let result = new Pinyin("", null);
@@ -58,14 +57,19 @@ export class Pinyin extends Array<PinyinChild> {
     }
     // The following two functions are based on the work of zh-lx (https://github.com/zh-lx).
     // Original code: https://github.com/zh-lx/pinyin-pro/blob/main/lib/core/match/index.ts.
-    match_(pinyin: string, smathCase: boolean) {
+    match_(pinyin: string, smathCase: boolean): number[] | null {
         pinyin = pinyin.replace(/\s/g, "");
-        let f = (str: string) => (smathCase ? str : str.toLocaleLowerCase());
-        const result = this.matchAboveStart(f(this.text), f(pinyin));
+        const f = (str: string) => (smathCase ? str : str.toLocaleLowerCase());
+        let result: number[];
+        try {
+            result = this.matchAboveStart(f(this.text), f(pinyin));
+        } catch (e) {
+            console.log(this, pinyin);
+        }
         return result;
     }
 
-    matchAboveStart(text: string, pinyin: string) {
+    matchAboveStart(text: string, pinyin: string): number[] | null {
         const words = text.split("");
 
         // 二维数组 dp[i][j]，i 表示遍历到的 text 索引+1, j 表示遍历到的 pinyin 的索引+1

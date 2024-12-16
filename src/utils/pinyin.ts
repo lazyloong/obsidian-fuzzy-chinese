@@ -64,7 +64,14 @@ export class Pinyin extends Array<PinyinChild> {
         try {
             result = this.matchAboveStart(f(this.text), f(pinyin));
         } catch (e) {
-            console.log(this, pinyin);
+            // 土耳其字符 "İ" 转小写后变成两个字符（"i"和附加的点下加符号 "̇"）导致长度对不上
+            if (this.text.includes("İ")) {
+                const f = (str: string) => (smathCase ? str : str.toLocaleLowerCase("tr"));
+                result = this.matchAboveStart(f(this.text), f(pinyin));
+            } else {
+                console.log(this.text, pinyin, this);
+                throw e;
+            }
         }
         return result;
     }

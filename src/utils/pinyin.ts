@@ -69,8 +69,9 @@ export class Pinyin extends Array<PinyinChild> {
                 const f = (str: string) => (smathCase ? str : str.toLocaleLowerCase("tr"));
                 result = this.matchAboveStart(f(this.text), f(pinyin));
             } else {
-                console.log(this.text, pinyin, this);
-                throw e;
+                console.log(this.text, this);
+                console.error(e);
+                result = this.matchAboveStart(this.text, pinyin);
             }
         }
         return result;

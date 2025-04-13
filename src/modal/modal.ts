@@ -2,8 +2,14 @@ import { SuggestModal, App } from "obsidian";
 import ThePlugin from "@/main";
 import { HistoryMatchDataNode, PinyinIndex, MatchData, Item, SuggestionRenderer } from "@/utils";
 
+export enum SpecialItemScore {
+    emptyInput = 0,
+    noFoundToCreate = -1,
+}
+
 export default abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<T>> {
     historyMatchData: HistoryMatchDataNode<T>;
+    protected currentNode: HistoryMatchDataNode<T>;
     index: PinyinIndex<T>;
     plugin: ThePlugin;
     useInput: boolean;
@@ -39,25 +45,72 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         this.onInput(); // 无输入时触发历史记录
     }
     abstract getEmptyInputSuggestions(): MatchData<T>[];
-    getSuggestions(query: string): MatchData<T>[] {
-        if (query == "") {
-            this.historyMatchData = new HistoryMatchDataNode("\0");
-            return this.getEmptyInputSuggestions();
+    getFirstInputSuggestions(query: string[1], items = this.index.items): MatchData<T>[] {
+        const matchData: MatchData<T>[] = [];
+        for (const item of items) {
+            const index = item.pinyin.findIndex(
+                (p) =>
+                    p.pinyin.some((q) => q.toLowerCase().startsWith(query)) || p.character == query
+            );
+            if (index != -1)
+                matchData.push({
+                    item,
+                    score: item.pinyin.getScore([[index, index]]),
+                    range: [[index, index]],
+                });
         }
-        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
-        let { toMatchItem, currentNode } = this.getItemFromHistoryTree(query);
-        let matchData: MatchData<T>[] = [];
-        for (let p of toMatchItem) {
-            let d = p.pinyin.match(query, p, smathCase);
-            if (d) matchData.push(d as MatchData<T>);
-        }
-
-        matchData = matchData.sort((a, b) => b.score - a.score);
-        // 记录数据以便下次匹配可以使用
-        currentNode.itemIndex = matchData.map((p) => p.item);
         return matchData;
     }
-    getItemFromHistoryTree(query: string) {
+    getNormalInputSuggestions(query: string, items: T[]): MatchData<T>[] {
+        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+        const matchData: MatchData<T>[] = [];
+        for (const p of items) {
+            const d = p.pinyin.match(query, p, smathCase);
+            if (d) matchData.push(d as MatchData<T>);
+        }
+        return matchData;
+    }
+
+    getSuggestions(query: string): MatchData<T>[] {
+        let matchData: MatchData<T>[];
+        if (query.length == 0) {
+            this.historyMatchData = new HistoryMatchDataNode("\0");
+            matchData = this.getEmptyInputSuggestions();
+        } else if (query.length == 1) {
+            matchData = this.getFirstInputSuggestions(query);
+            this.historyMatchData.init(query);
+            this.historyMatchData.itemIndex = matchData.map((p) => p.item);
+        } else {
+            const toMatchItem = this.getHistoryData(query);
+            matchData = this.getNormalInputSuggestions(query, toMatchItem);
+            this.currentNode.itemIndex = matchData.map((p) => p.item);
+        }
+        matchData = matchData.sort((a, b) => b.score - a.score);
+        return matchData;
+    }
+    removeDuplicates(
+        matchData: MatchData<T>[],
+        getValue: (p: MatchData<T>) => string = (p: MatchData<T>) => p.item.name
+    ): MatchData<T>[] {
+        const result = matchData.reduce(
+            ({ arr, cache }, cur) => {
+                const value = getValue(cur);
+                if (Object.hasOwn(cache, value)) {
+                    const index = cache[value];
+                    if (cur.score > arr[index].score) {
+                        arr[index] = cur; // 替换为更高分数的项
+                    }
+                } else {
+                    cache[value] = arr.length;
+                    arr.push(cur);
+                }
+                return { arr, cache };
+            },
+            { arr: [], cache: Object.create(null) }
+        ).arr;
+        return result;
+    }
+    getHistoryData(query: string): T[] {
         let node = this.historyMatchData,
             lastNode: HistoryMatchDataNode<T>,
             index = 0,
@@ -75,10 +128,10 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
             node = node.next;
             if (_f) index++;
         }
-        const currentNode = this.historyMatchData.index(index - 1),
-            toMatchItem =
-                currentNode.itemIndex.length == 0 ? this.index.items : currentNode.itemIndex;
-        return { toMatchItem, currentNode };
+        this.currentNode = this.historyMatchData.index(index - 1);
+        const toMatchItem =
+            this.currentNode.itemIndex.length == 0 ? this.index.items : this.currentNode.itemIndex;
+        return toMatchItem;
     }
 
     renderSuggestion(matchData: MatchData<T>, el: HTMLElement) {
@@ -89,7 +142,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         if (this.useInput) {
             value = value ?? {
                 item: { name: this.inputEl.value, pinyin: null } as T,
-                score: -1,
+                score: SpecialItemScore.noFoundToCreate,
                 range: null,
             };
             this.chooser.setSuggestions([value]);

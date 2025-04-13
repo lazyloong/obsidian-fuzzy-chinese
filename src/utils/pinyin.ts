@@ -44,15 +44,12 @@ export class Pinyin extends Array<PinyinChild> {
             range: range,
         };
     }
-    concat(pinyin: Pinyin) {
-        let result = new Pinyin("", null);
+    concat(pinyin: Pinyin): Pinyin {
+        const result = new Pinyin("", null);
+        result.push(...this);
+        result.push(...pinyin);
         result.text = this.text + pinyin.text;
-        for (let i of this) {
-            result.push(i);
-        }
-        for (let i of pinyin) {
-            result.push(i);
-        }
+
         return result;
     }
     // The following two functions are based on the work of zh-lx (https://github.com/zh-lx).

@@ -11,40 +11,34 @@ import {
     PinyinSuggest,
 } from "@/utils";
 import ThePlugin from "@/main";
-import FuzzyModal from "./modal";
+import FuzzyModal, { SpecialItemScore } from "./modal";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 
-type ItemType = "file" | "alias" | "unresolvedLink" | "link";
+type ItemType = "file" | "path" | "alias" | "unresolvedLink" | "link";
 interface Item_<T extends ItemType> extends uItem {
     file: TFile;
     type: T;
     path: string;
-    pinyinOfPath: Pinyin;
 }
 interface FileItem extends Item_<"file"> {}
+interface PathItem extends Item_<"path"> {}
 interface AliasItem extends Item_<"alias"> {}
 interface UnresolvedLinkItem extends Item_<"unresolvedLink"> {}
 export interface LinkItem extends Item_<"link"> {
     link: string;
 }
-export type Item = FileItem | AliasItem | UnresolvedLinkItem | LinkItem;
+export type Item = FileItem | PathItem | AliasItem | UnresolvedLinkItem | LinkItem;
 
 export interface MatchData<T = Item> extends uMatchData<T> {
-    usePath?: boolean;
     ignore?: boolean;
     history?: boolean;
 }
 
-enum SpecialItemScore {
-    emptyInput = 0,
-    noFoundToCreate = -1,
-}
-
 export default class FileModal extends FuzzyModal<Item> {
-    plugin: ThePlugin;
     tags: string[] = [];
     tagInput: TagInput;
+    declare index: PinyinIndex;
     constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.useInput = true;
@@ -141,135 +135,101 @@ export default class FileModal extends FuzzyModal<Item> {
         super.onClose();
     }
     getEmptyInputSuggestions(): MatchData[] {
+        let items: Item[];
         if (this.tags.length == 0) {
-            let items = this.index.items;
-            let lastOpenFiles: MatchData[] = this.app.workspace
+            items = this.app.workspace
                 .getRecentFiles()
-                .map((p) => items.find((q) => q.type == "file" && q.path == p))
-                .filter((p) => p && !isIgnore(p.path))
-                .map((p) => ({
-                    item: p,
-                    score: SpecialItemScore.emptyInput,
-                    range: null,
-                    usePath: false,
-                    history: true,
-                }));
-            return lastOpenFiles;
+                .map((p) => this.index.items.find((q) => q.type == "file" && q.path == p));
         } else {
-            return this.index.items
-                .filter((item) => {
-                    if (!item.file) return false;
-                    if (isIgnore(item.path)) return false;
-                    let tagArray = getFileTagArray(item.file);
-                    return (
-                        tagArray &&
-                        tagArray.length != 0 &&
-                        this.tags.every((t) => tagArray.some((tt) => tt.startsWith(t)))
-                    );
-                })
-                .map((p) => ({
-                    item: p,
-                    score: SpecialItemScore.emptyInput,
-                    range: null,
-                    usePath: false,
-                }));
+            items = this.index.items.filter((p) => this.filterWithTags(p));
         }
+        return items
+            .filter((p) => p && !isIgnore(p.path))
+            .map((p) => ({
+                item: p,
+                score: SpecialItemScore.emptyInput,
+                range: null,
+                usePath: false,
+                history: this.tags.length == 0,
+            }));
     }
+
+    getFirstInputSuggestions(query: string): MatchData[] {
+        let matchData1: MatchData[] = [], // 使用标题、别名搜索的数据
+            matchData2: MatchData[] = []; // 使用路径搜索的数据
+
+        matchData1 = super.getFirstInputSuggestions(query);
+
+        if (this.plugin.settings.file.usePathToSearch && matchData1.length <= 10) {
+            const toMatchItem = this.index.pathItems.filter(
+                (p) => !matchData1.find((q) => p.path == q.item.path)
+            );
+            matchData2 = super.getFirstInputSuggestions(query, toMatchItem);
+        }
+
+        this.currentNode = this.historyMatchData;
+        this.historyMatchData.init(query);
+        this.historyMatchData.itemIndex = matchData1.map((p) => p.item);
+        this.historyMatchData.itemIndexByPath = matchData2.map((p) => p.item);
+
+        const matchData = matchData1.concat(matchData2);
+        return matchData;
+    }
+
+    getNormalInputSuggestions(query: string): MatchData[] {
+        let matchData1: MatchData[] = [], // 使用标题、别名搜索的数据
+            matchData2: MatchData[] = []; // 使用路径搜索的数据
+
+        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+        let toMatchItem = this.getHistoryData(query);
+        matchData1 = super.getNormalInputSuggestions(query, toMatchItem);
+
+        if (this.plugin.settings.file.usePathToSearch && matchData1.length <= 10) {
+            toMatchItem =
+                this.currentNode.itemIndexByPath.length == 0
+                    ? this.index.pathItems
+                    : this.currentNode.itemIndexByPath;
+            toMatchItem = toMatchItem.filter((p) => !matchData1.find((q) => q.item.path == p.path));
+            matchData2 = super.getNormalInputSuggestions(query, toMatchItem);
+        }
+        this.currentNode.itemIndex = matchData1.map((p) => p.item);
+        this.currentNode.itemIndexByPath = matchData2.map((p) => p.item);
+
+        const matchData = matchData1.concat(matchData2);
+        return matchData;
+    }
+
     getSuggestions(query: string): MatchData[] {
-        if (query == "") return this.getEmptyInputSuggestions();
         if (query[0] == " " && this.plugin.settings.file.quicklySelectHistoryFiles) {
-            let items = this.getEmptyInputSuggestions();
-            this.selectSuggestion;
+            let matchData = this.getEmptyInputSuggestions();
             switch (query.length) {
                 case 1:
-                    return items;
+                    break;
                 case 2:
                     let index = max([
                         "asdfjklgh".indexOf(query[1]),
                         "1234567890".indexOf(query[1]),
                     ]);
-                    index = min([index, items.length - 1]);
+                    index = min([index, matchData.length - 1]);
                     if (index == -1) break;
-                    this.selectSuggestion(items[index], new MouseEvent("click"));
+                    this.selectSuggestion(matchData[index], new MouseEvent("click"));
+                    return;
             }
         }
-
-        let matchData: MatchData[] = [],
-            matchData1: MatchData[] = [] /*使用标题、别名搜索的数据*/,
-            matchData2: MatchData[] = []; /*使用路径搜索的数据*/
-
-        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
-        let { toMatchItem, currentNode } = this.getItemFromHistoryTree(query);
-        for (let p of toMatchItem) {
-            let d = p.pinyin.match(query, p, smathCase) as MatchData;
-
-            if (!d) continue;
-            if (d.item.type == "unresolvedLink") d.score -= 15;
-            if (isIgnore(p.path)) {
-                d.score -= 1000;
-                d.ignore = true;
-            }
-            matchData1.push(d);
-        }
-
-        if (this.plugin.settings.file.usePathToSearch && matchData1.length <= 10) {
-            toMatchItem =
-                currentNode.itemIndexByPath.length == 0
-                    ? this.index.items
-                    : currentNode.itemIndexByPath;
-            toMatchItem = toMatchItem.filter(
-                (p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path)
-            );
-
-            for (let p of toMatchItem) {
-                let d = p.pinyinOfPath.match(query, p, smathCase) as MatchData;
-
-                if (!d) continue;
-                if (isIgnore(p.path)) {
-                    d.score -= 1000;
-                    d.ignore = true;
-                }
-                d.usePath = true;
-                matchData2.push(d);
-            }
-        }
-        matchData = matchData1.concat(matchData2);
-        matchData = matchData.sort((a, b) => b.score - a.score);
-        // 记录数据以便下次匹配可以使用
-        currentNode.itemIndex = matchData1.map((p) => p.item);
-        currentNode.itemIndexByPath = matchData2.map((p) => p.item);
-        // 去除重复的笔记
-        let result = matchData.reduce<MatchData[]>((acc, cur) => {
-            if (cur.item.type === "link") {
-                acc.push(cur);
-            } else {
-                const existingItemIndex = acc.findIndex((item) => item.item.path === cur.item.path);
-                if (existingItemIndex === -1) {
-                    acc.push(cur);
-                } else if (cur.score > acc[existingItemIndex].score) {
-                    acc[existingItemIndex] = cur;
-                }
-            }
-            return acc;
-        }, []);
+        let matchData = super.getSuggestions(query);
         if (this.plugin.settings.file.searchWithTag && this.tags.length > 0) {
-            result = result.filter((matchData) => {
-                if (!matchData.item.file) return;
-                let tagArray = getFileTagArray(matchData.item.file);
-                return (
-                    tagArray &&
-                    tagArray.length != 0 &&
-                    this.tags.every((t) => tagArray.some((tt) => tt.startsWith(t)))
-                );
-            });
+            matchData = matchData.filter((p) => this.filterWithTags(p.item));
         }
-        return result;
+        return matchData;
     }
 
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
         let renderer = new SuggestionRenderer(el);
         if (matchData.item.file) renderer.setNote(matchData.item.path);
-        if (matchData.usePath) renderer.setToHighlightEl("note");
+        if (matchData.item.type == "path") {
+            renderer.setTitle(matchData.item.file.basename);
+            renderer.setToHighlightEl("note");
+        }
         if (matchData.ignore) renderer.setIgnore();
         if (matchData.history && this.plugin.settings.file.quicklySelectHistoryFiles) {
             let auxEl = el.createEl("span", { cls: "fz-suggestion-aux" });
@@ -321,7 +281,6 @@ export default class FileModal extends FuzzyModal<Item> {
         super.onNoSuggestion(<MatchData>{
             item: { type: "file", name: this.inputEl.value },
             score: SpecialItemScore.noFoundToCreate,
-            usePath: false,
         });
     }
     getLeaf(e: MouseEvent | KeyboardEvent): WorkspaceLeaf {
@@ -335,6 +294,15 @@ export default class FileModal extends FuzzyModal<Item> {
         else if (altKey) leaf = getKey("keyAltEnter")();
         else leaf = getKey("keyEnter")();
         return leaf;
+    }
+    filterWithTags(item: Item): boolean {
+        if (!item.file) return false;
+        const tagArray = getFileTagArray(item.file);
+        return (
+            tagArray &&
+            tagArray.length != 0 &&
+            this.tags.every((t) => tagArray.some((tt) => tt.startsWith(t)))
+        );
     }
 }
 
@@ -384,6 +352,7 @@ const getNewOrAdjacentLeaf = (
 
 class PinyinIndex extends PI<Item> {
     fileItems: FileItem[] = [];
+    pathItems: PathItem[] = [];
     aliasItems: AliasItem[] = [];
     linkItems: LinkItem[] = [];
     unresolvedLinkItems: UnresolvedLinkItem[] = [];
@@ -394,9 +363,7 @@ class PinyinIndex extends PI<Item> {
     //@ts-ignore
     get items() {
         let items: Item[] = [];
-        items = items.concat(this.fileItems);
-        items = items.concat(this.aliasItems);
-        items = items.concat(this.linkItems);
+        items = items.concat(this.fileItems, this.aliasItems, this.linkItems);
         if (this.plugin.settings.file.showUnresolvedLink)
             items = items.concat(this.unresolvedLinkItems);
         return items;
@@ -426,16 +393,18 @@ class PinyinIndex extends PI<Item> {
     initIndex() {
         let files = this.app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
 
-        this.fileItems = files.map((file) => TFile2Item(file, this.plugin));
+        const fp = files.map((f) => TFile2Item(f, this.plugin));
+        this.fileItems = fp.map((f) => f.fileItem);
+        this.pathItems = fp.map((f) => f.pathItem);
         this.aliasItems = [];
         this.linkItems = [];
         this.unresolvedLinkItems = [];
 
         for (let file of files) {
             if (file.extension != "md") continue;
-            let [a, b] = CachedMetadata2Item(file, this.plugin, this.fileItems);
-            this.aliasItems.push(...a);
-            this.linkItems.push(...b);
+            const { aliasItem, linkItem } = CachedMetadata2Item(file, this.plugin, this.pathItems);
+            this.aliasItems.push(...aliasItem);
+            this.linkItems.push(...linkItem);
         }
 
         this.updateUnresolvedLinkItems();
@@ -463,27 +432,45 @@ class PinyinIndex extends PI<Item> {
         if (!this.isEffectiveFile(file)) return;
         switch (type) {
             case "changed": {
-                let [a, b] = CachedMetadata2Item(file, this.plugin, this.fileItems, args);
+                const { aliasItem, linkItem } = CachedMetadata2Item(
+                    file,
+                    this.plugin,
+                    this.pathItems,
+                    args
+                );
                 this.aliasItems = this.aliasItems
                     .filter((item) => item.path != file.path)
-                    .concat(a);
-                this.linkItems = this.linkItems.filter((item) => item.path != file.path).concat(b);
+                    .concat(aliasItem);
+                this.linkItems = this.linkItems
+                    .filter((item) => item.path != file.path)
+                    .concat(linkItem);
                 break;
             }
             case "create": {
-                this.fileItems.push(TFile2Item(file, this.plugin));
+                const { fileItem, pathItem } = TFile2Item(file, this.plugin);
+                this.fileItems.push(fileItem);
+                this.pathItems.push(pathItem);
                 break;
             }
             case "rename": {
                 this.fileItems = this.fileItems.filter((item) => item.path != args);
-                this.fileItems.push(TFile2Item(file, this.plugin));
-                let [a, b] = CachedMetadata2Item(file, this.plugin, this.aliasItems);
-                this.aliasItems = this.aliasItems.filter((item) => item.path != args).concat(a);
-                this.linkItems = this.linkItems.filter((item) => item.path != args).concat(b);
-                break;
+                this.pathItems = this.pathItems.filter((item) => item.path != args);
+                this.aliasItems = this.aliasItems.filter((item) => item.path != args);
+                this.linkItems = this.linkItems.filter((item) => item.path != args);
+                const { fileItem, pathItem } = TFile2Item(file, this.plugin);
+                const { aliasItem, linkItem } = CachedMetadata2Item(
+                    file,
+                    this.plugin,
+                    this.pathItems
+                );
+                this.fileItems.push(fileItem);
+                this.pathItems.push(pathItem);
+                this.aliasItems.push(...aliasItem);
+                this.linkItems.push(...linkItem);
             }
             case "delete": {
                 this.fileItems = this.fileItems.filter((item) => item.path != file.path);
+                this.pathItems = this.pathItems.filter((item) => item.path != file.path);
                 this.aliasItems = this.aliasItems.filter((item) => item.path != file.path);
                 this.linkItems = this.linkItems.filter((item) => item.path != file.path);
                 break;
@@ -526,7 +513,7 @@ class PinyinIndex extends PI<Item> {
     }
 }
 
-function TFile2Item(file: TFile, plugin: ThePlugin): FileItem {
+function TFile2Item(file: TFile, plugin: ThePlugin): { fileItem: FileItem; pathItem: PathItem } {
     let name = file.extension != "md" ? file.name : file.basename;
     let folderIndex = plugin.folderModal.index.items;
     let fileNamePinyin = new Pinyin(name, plugin);
@@ -535,18 +522,30 @@ function TFile2Item(file: TFile, plugin: ThePlugin): FileItem {
     if (file.parent.path == "/") {
         pathPinyin = fileNamePinyin;
     } else {
-        folderPathPinyin = folderIndex.find((folder) => folder.path == file.parent.path)?.pinyin;
+        folderPathPinyin = folderIndex.find(
+            (folder) => folder.path == file.parent.path
+        )?.pinyinOfPath;
         if (folderPathPinyin)
             pathPinyin = folderPathPinyin.concat(new Pinyin("/", plugin)).concat(fileNamePinyin);
-        else pathPinyin = new Pinyin(file.parent.path + "/" + name, plugin);
+        else pathPinyin = new Pinyin(file.path, plugin);
     }
-    return {
+    const fileItem: FileItem = {
         type: "file",
         file: file,
         name: name,
         pinyin: fileNamePinyin,
         path: file.path,
-        pinyinOfPath: pathPinyin,
+    };
+    const pathItem: PathItem = {
+        type: "path",
+        file: file,
+        name: file.path,
+        pinyin: pathPinyin,
+        path: file.path,
+    };
+    return {
+        fileItem,
+        pathItem,
     };
 }
 
@@ -555,7 +554,7 @@ function CachedMetadata2Item(
     plugin: ThePlugin,
     items: Item[],
     cache?: CachedMetadata
-): [AliasItem[], LinkItem[]] {
+): { aliasItem: AliasItem[]; linkItem: LinkItem[] } {
     cache = cache ?? plugin.app.metadataCache.getFileCache(file);
     let alias =
         cache?.frontmatter?.alias ||
@@ -564,12 +563,12 @@ function CachedMetadata2Item(
         cache?.frontmatter?.Aliases;
     let linkText = cache?.frontmatter?.linkText;
     let item = items.find((item) => item.path == file.path);
-    let pinyinOfPath = item?.pinyinOfPath ?? new Pinyin(file.path, plugin);
-    let aliasItems: AliasItem[] = [],
-        linkItems: LinkItem[] = [];
+    let pinyinOfPath = item?.pinyin ?? new Pinyin(file.path, plugin);
+    let aliasItem: AliasItem[] = [],
+        linkItem: LinkItem[] = [];
     if (alias) {
         alias = Array.isArray(alias) ? alias.map((p) => String(p)) : String(alias).split(/, ?/);
-        aliasItems = alias.map((p: string) => ({
+        aliasItem = alias.map((p: string) => ({
             type: "alias",
             name: p,
             pinyin: new Pinyin(p, plugin),
@@ -582,7 +581,7 @@ function CachedMetadata2Item(
         let link = Array.isArray(linkText)
             ? linkText.map((p) => String(p))
             : String(linkText).split(/, ?/);
-        linkItems = link.map((p: string) => {
+        linkItem = link.map((p: string) => {
             let [link, name] = p.split("|");
             name = name || link;
             // if (name[0] != "#") name = "#" + name;
@@ -597,7 +596,10 @@ function CachedMetadata2Item(
             };
         });
     }
-    return [aliasItems, linkItems];
+    return {
+        aliasItem,
+        linkItem,
+    };
 }
 
 class TagInput extends TextComponent {

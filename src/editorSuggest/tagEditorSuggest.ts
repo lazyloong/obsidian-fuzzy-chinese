@@ -11,14 +11,17 @@ import {
     PinyinIndex as PI,
     HistoryMatchDataNode,
     Pinyin,
-    MatchData,
+    MatchData as uMatchData,
     Item,
     SuggestionRenderer,
     incrementalUpdate,
 } from "@/utils";
 import ThePlugin from "@/main";
+import { SpecialItemScore } from "@/modal/modal";
 
-export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
+interface MatchData extends uMatchData<Item> {}
+
+export default class TagEditorSuggest extends EditorSuggest<MatchData> {
     plugin: ThePlugin;
     index: PinyinIndex;
     historyMatchData: HistoryMatchDataNode<Item>;
@@ -103,20 +106,45 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
         }
         return null;
     }
+
     getSuggestionsByString(query: string) {
         return this.getSuggestions({ query } as EditorSuggestContext);
     }
-    getSuggestions(content: EditorSuggestContext): MatchData<Item>[] {
+
+    getEmptyInputSuggestions(): MatchData[] {
+        return this.index.items.map((p) => {
+            return { item: p, score: SpecialItemScore.emptyInput, range: null };
+        });
+    }
+
+    getNormalInputSuggestions(query: string): MatchData[] {
+        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+        const { toMatchItem, currentNode } = this.getItemFromHistoryTree(query);
+        const matchData: MatchData[] = [];
+        for (let p of toMatchItem) {
+            let d = p.pinyin.match(query, p, smathCase);
+            if (d) matchData.push(d);
+        }
+        currentNode.itemIndex = matchData.map((p) => p.item);
+        return matchData;
+    }
+
+    getSuggestions(content: EditorSuggestContext): MatchData[] {
         this.index.update();
-        let query = content.query;
-        if (query == "") {
+        const query = content.query;
+        let matchData: MatchData[];
+        if (query.length == 0) {
             this.historyMatchData = new HistoryMatchDataNode("\0");
-            return this.index.items.map((p) => {
-                return { item: p, score: 0, range: null };
-            });
+            matchData = this.getEmptyInputSuggestions();
+        } else {
+            matchData = this.getNormalInputSuggestions(query);
         }
 
-        let matchData: MatchData<Item>[] = [];
+        matchData = matchData.sort((a, b) => b.score - a.score);
+        return matchData;
+    }
+
+    getItemFromHistoryTree(query: string) {
         let node = this.historyMatchData,
             lastNode: HistoryMatchDataNode<Item>,
             index = 0,
@@ -134,24 +162,16 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData<Item>> {
             node = node.next;
             if (_f) index++;
         }
-        let smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity,
-            indexNode = this.historyMatchData.index(index - 1),
-            toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
-        for (let p of toMatchData) {
-            let d = p.pinyin.match(query, p, smathCase);
-            if (d) matchData.push(d as MatchData<Item>);
-        }
-
-        matchData = matchData.sort((a, b) => b.score - a.score);
-        // 记录数据以便下次匹配可以使用
-        if (!lastNode) lastNode = this.historyMatchData;
-        lastNode.itemIndex = matchData.map((p) => p.item);
-        return matchData;
+        const currentNode = this.historyMatchData.index(index - 1),
+            toMatchItem =
+                currentNode.itemIndex.length == 0 ? this.index.items : currentNode.itemIndex;
+        return { toMatchItem, currentNode };
     }
-    renderSuggestion(matchData: MatchData<Item>, el: HTMLElement) {
+
+    renderSuggestion(matchData: MatchData, el: HTMLElement) {
         new SuggestionRenderer(el).render(matchData);
     }
-    selectSuggestion(matchData: MatchData<Item>): void {
+    selectSuggestion(matchData: MatchData): void {
         var context = this.context;
         if (context) {
             var editor = context.editor,

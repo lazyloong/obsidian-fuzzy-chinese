@@ -4,7 +4,6 @@ import {
     Item as uItem,
     MatchData as uMatchData,
     Pinyin,
-    HistoryMatchDataNode,
     SuggestionRenderer,
 } from "@/utils";
 import ThePlugin from "@/main";
@@ -59,71 +58,79 @@ export default class FolderModal extends FuzzyModal<Item> {
         });
         this.toMoveFiles = null;
     }
-    getSuggestions(query: string): MatchData[] {
-        if (query == "") {
-            return this.getEmptyInputSuggestions();
+    getFirstInputSuggestions(query: string[1]): MatchData[] {
+        const matchData1: MatchData[] = [], // 使用文件夹名搜索的数据
+            matchData2: MatchData[] = []; // 使用长路径搜索的数据
+        for (const item of this.index.items) {
+            const index = item.pinyin.findIndex(
+                (p) =>
+                    p.pinyin.some((q) => q.toLowerCase().startsWith(query)) || p.character == query
+            );
+            if (index != -1)
+                matchData1.push({
+                    item,
+                    score: item.pinyin.getScore([[index, index]]),
+                    range: [[index, index]],
+                });
         }
-
-        let matchData: MatchData[] = [],
-            matchData1: MatchData[] = [] /*使用文件夹名称搜索的数据*/,
-            matchData2: MatchData[] = []; /*使用文件夹路径搜索的数据*/
-
-        let node: HistoryMatchDataNode<Item> = this.historyMatchData,
-            lastNode: HistoryMatchDataNode<Item>,
-            index = 0,
-            _f = true;
-        for (let i of query) {
-            if (node) {
-                if (i != node.query) {
-                    node.init(i);
-                    _f = false;
-                }
-            } else {
-                node = lastNode.push(i);
-            }
-            lastNode = node;
-            node = node.next;
-            if (_f) index++;
+        for (const item of this.index.items) {
+            const index = item.pinyinOfPath.findIndex(
+                (p) =>
+                    p.pinyin.some((q) => q.toLowerCase().startsWith(query)) || p.character == query
+            );
+            if (index != -1)
+                matchData1.push({
+                    item,
+                    score: item.pinyin.getScore([[index, index]]),
+                    range: [[index, index]],
+                });
         }
-        let smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity,
-            indexNode = this.historyMatchData.index(index - 1),
-            toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
-        for (let p of toMatchData) {
-            let d = p.pinyin.match(query, p, smathCase);
+        this.currentNode = this.historyMatchData;
+        this.historyMatchData.init(query);
+        this.historyMatchData.itemIndex = matchData1.map((p) => p.item);
+        this.historyMatchData.itemIndexByPath = matchData2.map((p) => p.item);
+
+        const matchData = matchData1.concat(matchData2);
+        return matchData;
+    }
+
+    getNormalInputSuggestions(query: string): MatchData[] {
+        let matchData: MatchData[] = [];
+        const matchData1: MatchData[] = [], // 使用标题、别名搜索的数据
+            matchData2: MatchData[] = []; // 使用路径搜索的数据
+
+        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+        let toMatchItem = this.getHistoryData(query);
+        for (const p of toMatchItem) {
+            const d = p.pinyin.match(query, p, smathCase);
             if (!d) continue;
             const l = d.item.path.lastIndexOf("/") + 1;
             d.range = d.range.map((p) => p.map((q) => q + l)) as [number, number][];
             matchData1.push(d);
         }
 
-        toMatchData =
-            indexNode.itemIndexByPath.length == 0 ? this.index.items : indexNode.itemIndexByPath;
-        for (let p of toMatchData.filter(
+        toMatchItem =
+            this.currentNode.itemIndexByPath.length == 0
+                ? this.index.items
+                : this.currentNode.itemIndexByPath;
+        for (const p of toMatchItem.filter(
             (p) => !matchData1.map((p) => p.item.path).includes(p.path)
         )) {
-            let d = p.pinyinOfPath.match(query, p, smathCase);
+            const d = p.pinyinOfPath.match(query, p, smathCase);
             if (d) matchData2.push(d);
         }
 
         matchData = matchData1.concat(matchData2);
         matchData = matchData.sort((a, b) => b.score - a.score);
         // 记录数据以便下次匹配可以使用
-        if (!lastNode) lastNode = this.historyMatchData;
-        lastNode.itemIndex = matchData1.map((p) => p.item);
-        lastNode.itemIndexByPath = matchData2.map((p) => p.item);
-        // 去除重复的笔记
-        let result = matchData.reduce((acc, cur) => {
-            let index = acc.findIndex((item) => item.item.path === cur.item.path);
-            if (index !== -1) {
-                if (cur.score > acc[index].score) {
-                    acc[index] = cur;
-                }
-            } else {
-                acc.push(cur);
-            }
-            return acc;
-        }, []);
-        return result;
+        this.currentNode.itemIndex = matchData1.map((p) => p.item);
+        this.currentNode.itemIndexByPath = matchData2.map((p) => p.item);
+        return matchData;
+    }
+    getSuggestions(query: string): MatchData[] {
+        let matchData: MatchData[] = super.getSuggestions(query);
+        matchData = this.removeDuplicates(matchData, (p) => p.item.path);
+        return matchData;
     }
 
     getEmptyInputSuggestions(): MatchData[] {

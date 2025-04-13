@@ -7,7 +7,7 @@ export abstract class PinyinIndex<T extends Item> extends Component {
     vault: Vault;
     metadataCache: MetadataCache;
     items: Array<T>;
-    id: string;
+    protected id: string;
     plugin: ThePlugin;
     app: App;
     constructor(app: App, plugin: ThePlugin) {

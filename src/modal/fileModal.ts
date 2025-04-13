@@ -143,7 +143,7 @@ export default class FileModal extends FuzzyModal<Item> {
             let lastOpenFiles: MatchData[] = this.app.workspace
                 .getRecentFiles()
                 .map((p) => items.find((q) => q.type == "file" && q.path == p))
-                .filter((p) => p)
+                .filter((p) => p && !isIgnore(p.path))
                 .map((p) => ({
                     item: p,
                     score: 0,
@@ -155,7 +155,8 @@ export default class FileModal extends FuzzyModal<Item> {
         } else {
             return this.index.items
                 .filter((item) => {
-                    if (!item.file) return;
+                    if (!item.file) return false;
+                    if (isIgnore(item.path)) return false;
                     let tagArray = getFileTagArray(item.file);
                     return (
                         tagArray &&
@@ -219,7 +220,7 @@ export default class FileModal extends FuzzyModal<Item> {
 
             if (!d) continue;
             if (d.item.type == "unresolvedLink") d.score -= 15;
-            if (app.metadataCache.userIgnoreFilterCache[p.path]) {
+            if (isIgnore(p.path)) {
                 d.score -= 1000;
                 d.ignore = true;
             }
@@ -239,7 +240,7 @@ export default class FileModal extends FuzzyModal<Item> {
                 let d = p.pinyinOfPath.match(query, p, smathCase) as MatchData;
 
                 if (!d) continue;
-                if (app.metadataCache.userIgnoreFilterCache[p.path]) {
+                if (isIgnore(p.path)) {
                     d.score -= 1000;
                     d.ignore = true;
                 }
@@ -665,3 +666,7 @@ export const openFileKeyMap: Record<string, () => WorkspaceLeaf> = {
     打开到新面板: () => app.workspace.getLeaf("split"),
     打开到新窗口: () => app.workspace.getLeaf("window"),
 };
+
+function isIgnore(path: string): boolean {
+    return app.metadataCache.userIgnoreFilterCache[path];
+}

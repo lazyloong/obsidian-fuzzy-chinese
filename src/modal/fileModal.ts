@@ -37,6 +37,11 @@ export interface MatchData<T = Item> extends uMatchData<T> {
     history?: boolean;
 }
 
+enum SpecialItemScore {
+    emptyInput = 0,
+    noFoundToCreate = -1,
+}
+
 export default class FileModal extends FuzzyModal<Item> {
     plugin: ThePlugin;
     tags: string[] = [];
@@ -146,7 +151,7 @@ export default class FileModal extends FuzzyModal<Item> {
                 .filter((p) => p && !isIgnore(p.path))
                 .map((p) => ({
                     item: p,
-                    score: 0,
+                    score: SpecialItemScore.emptyInput,
                     range: null,
                     usePath: false,
                     history: true,
@@ -166,7 +171,7 @@ export default class FileModal extends FuzzyModal<Item> {
                 })
                 .map((p) => ({
                     item: p,
-                    score: 0,
+                    score: SpecialItemScore.emptyInput,
                     range: null,
                     usePath: false,
                 }));
@@ -320,7 +325,10 @@ export default class FileModal extends FuzzyModal<Item> {
         const leaf = this.getLeaf(e);
 
         if (shiftKey) matchData.item.file = await createFile(this.inputEl.value);
-        else if (matchData.score == -1 || matchData.item.type == "unresolvedLink")
+        else if (
+            matchData.score == SpecialItemScore.noFoundToCreate ||
+            matchData.item.type == "unresolvedLink"
+        )
             matchData.item.file = await createFile(matchData.item.name);
 
         if (this.resolve) {
@@ -333,7 +341,7 @@ export default class FileModal extends FuzzyModal<Item> {
     onNoSuggestion(): void {
         super.onNoSuggestion(<MatchData>{
             item: { type: "file", name: this.inputEl.value },
-            score: -1,
+            score: SpecialItemScore.noFoundToCreate,
             usePath: false,
         });
     }

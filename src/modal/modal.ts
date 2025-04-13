@@ -44,8 +44,20 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
             this.historyMatchData = new HistoryMatchDataNode("\0");
             return this.getEmptyInputSuggestions();
         }
-
+        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+        let { toMatchItem, currentNode } = this.getItemFromHistoryTree(query);
         let matchData: MatchData<T>[] = [];
+        for (let p of toMatchItem) {
+            let d = p.pinyin.match(query, p, smathCase);
+            if (d) matchData.push(d as MatchData<T>);
+        }
+
+        matchData = matchData.sort((a, b) => b.score - a.score);
+        // 记录数据以便下次匹配可以使用
+        currentNode.itemIndex = matchData.map((p) => p.item);
+        return matchData;
+    }
+    getItemFromHistoryTree(query: string) {
         let node = this.historyMatchData,
             lastNode: HistoryMatchDataNode<T>,
             index = 0,
@@ -63,19 +75,10 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
             node = node.next;
             if (_f) index++;
         }
-        let smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity,
-            indexNode = this.historyMatchData.index(index - 1),
-            toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
-        for (let p of toMatchData) {
-            let d = p.pinyin.match(query, p, smathCase);
-            if (d) matchData.push(d as MatchData<T>);
-        }
-
-        matchData = matchData.sort((a, b) => b.score - a.score);
-        // 记录数据以便下次匹配可以使用
-        if (!lastNode) lastNode = this.historyMatchData;
-        lastNode.itemIndex = matchData.map((p) => p.item);
-        return matchData;
+        const currentNode = this.historyMatchData.index(index - 1),
+            toMatchItem =
+                currentNode.itemIndex.length == 0 ? this.index.items : currentNode.itemIndex;
+        return { toMatchItem, currentNode };
     }
 
     renderSuggestion(matchData: MatchData<T>, el: HTMLElement) {

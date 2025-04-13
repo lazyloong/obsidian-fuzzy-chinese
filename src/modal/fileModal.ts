@@ -3,7 +3,6 @@ import { max, min } from "lodash";
 import {
     Pinyin,
     PinyinIndex as PI,
-    HistoryMatchDataNode,
     MatchData as uMatchData,
     Item as uItem,
     SuggestionRenderer,
@@ -143,7 +142,6 @@ export default class FileModal extends FuzzyModal<Item> {
     }
     getEmptyInputSuggestions(): MatchData[] {
         if (this.tags.length == 0) {
-            this.historyMatchData = new HistoryMatchDataNode("\0");
             let items = this.index.items;
             let lastOpenFiles: MatchData[] = this.app.workspace
                 .getRecentFiles()
@@ -200,27 +198,9 @@ export default class FileModal extends FuzzyModal<Item> {
             matchData1: MatchData[] = [] /*使用标题、别名搜索的数据*/,
             matchData2: MatchData[] = []; /*使用路径搜索的数据*/
 
-        let node: HistoryMatchDataNode<Item> = this.historyMatchData,
-            lastNode: HistoryMatchDataNode<Item>,
-            index = 0,
-            _f = true;
-        for (let i of query) {
-            if (node) {
-                if (i != node.query) {
-                    node.init(i);
-                    _f = false;
-                }
-            } else {
-                node = lastNode.push(i);
-            }
-            lastNode = node;
-            node = node.next;
-            if (_f) index++;
-        }
-        let smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity,
-            indexNode = this.historyMatchData.index(index - 1),
-            toMatchData = indexNode.itemIndex.length == 0 ? this.index.items : indexNode.itemIndex;
-        for (let p of toMatchData) {
+        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+        let { toMatchItem, currentNode } = this.getItemFromHistoryTree(query);
+        for (let p of toMatchItem) {
             let d = p.pinyin.match(query, p, smathCase) as MatchData;
 
             if (!d) continue;
@@ -233,15 +213,15 @@ export default class FileModal extends FuzzyModal<Item> {
         }
 
         if (this.plugin.settings.file.usePathToSearch && matchData1.length <= 10) {
-            toMatchData =
-                indexNode.itemIndexByPath.length == 0
+            toMatchItem =
+                currentNode.itemIndexByPath.length == 0
                     ? this.index.items
-                    : indexNode.itemIndexByPath;
-            toMatchData = toMatchData.filter(
+                    : currentNode.itemIndexByPath;
+            toMatchItem = toMatchItem.filter(
                 (p) => p.type == "file" && !matchData1.map((p) => p.item.path).includes(p.path)
             );
 
-            for (let p of toMatchData) {
+            for (let p of toMatchItem) {
                 let d = p.pinyinOfPath.match(query, p, smathCase) as MatchData;
 
                 if (!d) continue;
@@ -256,9 +236,8 @@ export default class FileModal extends FuzzyModal<Item> {
         matchData = matchData1.concat(matchData2);
         matchData = matchData.sort((a, b) => b.score - a.score);
         // 记录数据以便下次匹配可以使用
-        if (!lastNode) lastNode = this.historyMatchData;
-        lastNode.itemIndex = matchData1.map((p) => p.item);
-        lastNode.itemIndexByPath = matchData2.map((p) => p.item);
+        currentNode.itemIndex = matchData1.map((p) => p.item);
+        currentNode.itemIndexByPath = matchData2.map((p) => p.item);
         // 去除重复的笔记
         let result = matchData.reduce<MatchData[]>((acc, cur) => {
             if (cur.item.type === "link") {

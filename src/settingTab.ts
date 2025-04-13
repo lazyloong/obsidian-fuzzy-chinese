@@ -69,7 +69,7 @@ export default class SettingTab extends PluginSettingTab {
                             : this.plugin.pinyinDict.originalKeys.map((p) =>
                                   fullPinyin2doublePinyin(p, DoubleDict[value])
                               );
-                    this.plugin.indexManager.load(true);
+                    this.plugin.indexManager.refresh();
                     new Notice("双拼方案切换为：" + value, 4000);
                     await this.plugin.saveSettings();
                 })
@@ -85,7 +85,7 @@ export default class SettingTab extends PluginSettingTab {
                 this.plugin.settings.global.fuzzyPinyin = value;
                 await this.plugin.saveSettings();
                 if (this.plugin.settings.global.fuzzyPinyinSetting.length != 0)
-                    this.plugin.indexManager.load(true);
+                    this.plugin.indexManager.refresh();
                 this.display();
             })
         );
@@ -354,6 +354,11 @@ export default class SettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
+        new Setting(this.containerEl).setName("重建索引").addButton((cb) =>
+            cb.setButtonText("重建").onClick(async () => {
+                this.plugin.indexManager.refresh();
+            })
+        );
         new Setting(this.containerEl)
             .setName("dev 模式")
             .setDesc("将索引存储到 global 以便重启时不重建索引")
@@ -492,6 +497,6 @@ class FuzzyPinyinSettingModal extends Modal {
     }
     onClose(): void {
         if (xor(this.tempSetting, this.plugin.settings.global.fuzzyPinyinSetting).length != 0)
-            this.plugin.indexManager.load(true);
+            this.plugin.indexManager.refresh();
     }
 }

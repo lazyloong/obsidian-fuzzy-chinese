@@ -78,11 +78,7 @@ export default class ThePlugin extends Plugin {
         this.registerFileMenu();
         this.registerHijackingEvents();
         runOnLayoutReady(() => {
-            if (this.settings.other.devMode) {
-                this.indexManager.devLoad();
-            } else {
-                this.indexManager.load();
-            }
+            this.indexManager.load();
             this.registerFileExplorer();
             this.addCommands();
 
@@ -160,9 +156,7 @@ export default class ThePlugin extends Plugin {
         });
     }
     onunload() {
-        if (this.settings.other.devMode) {
-            this.indexManager.devUnload();
-        }
+        this.indexManager.unload();
     }
     async loadSettings() {
         this.settings = merge({}, DEFAULT_SETTINGS, await this.loadData());
@@ -260,17 +254,26 @@ class IndexManager extends Array<PinyinIndex<any>> {
         component.forEach((p: any) => this.push(p.index));
         this.plugin = plugin;
     }
-    load(showNotice: boolean = false) {
-        if (showNotice) {
-            let notice = new Notice("正在刷新索引中");
-            setTimeout(() => {
-                this.forEach((index) => this.load_(index));
-                notice.hide();
-                new Notice("索引刷新完成", 4000);
-            }, 100);
+    load() {
+        if (this.plugin.settings.other.devMode) {
+            this.devLoad();
         } else {
-            this.forEach((index) => this.load_(index));
+            this.normalLoad();
         }
+        globalThis.refreshFuzzyChineseIndex = () => {
+            this.normalLoad();
+            this.devUnload();
+        };
+    }
+
+    unload() {
+        if (this.plugin.settings.other.devMode) {
+            this.devUnload();
+        }
+    }
+
+    normalLoad() {
+        this.forEach((index) => this.load_(index));
     }
     load_(index: PinyinIndex<any>) {
         let startTime = Date.now();
@@ -290,16 +293,19 @@ class IndexManager extends Array<PinyinIndex<any>> {
                 this.load_(index);
             }
         });
-        globalThis.refreshFuzzyChineseIndex = () => {
-            globalThis.FuzzyChineseIndex = {};
-            this.load();
-            this.devUnload();
-        };
     }
     devUnload() {
         globalThis.FuzzyChineseIndex = {};
         this.forEach((index) => {
             globalThis.FuzzyChineseIndex[index.id] = index.items;
         });
+    }
+    refresh() {
+        const notice = new Notice("正在刷新索引中");
+        setTimeout(() => {
+            this.forEach((index) => this.load_(index));
+            notice.hide();
+            new Notice("索引刷新完成", 4000);
+        }, 100);
     }
 }

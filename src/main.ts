@@ -35,7 +35,7 @@ import {
 
 export default class ThePlugin extends Plugin {
     settings: TheSettings;
-    pinyinDict: { originalKeys: any; keys: string[]; values: string[] };
+    pinyinDict: Record<string, string[]>;
     api: any;
     fileModal: FileModal;
     folderModal: FolderModal;
@@ -165,20 +165,19 @@ export default class ThePlugin extends Plugin {
         await this.saveData(this.settings);
     }
     loadPinyinDict() {
-        let pinyinDict = this.settings.global.traditionalChineseSupport
+        const pinyinDict = this.settings.global.traditionalChineseSupport
             ? TraditionalDict
             : SimplifiedDict;
-        let PinyinKeys_ = Object.keys(pinyinDict);
-        let PinyinValues = Object.values(pinyinDict);
-        let PinyinKeys =
-            this.settings.global.doublePinyin == "全拼"
-                ? PinyinKeys_
-                : PinyinKeys_.map((p) =>
-                      fullPinyin2doublePinyin(p, DoubleDict[this.settings.global.doublePinyin])
-                  );
 
-        // originalKeys 永远是全拼的拼音，keys 是转换后的拼音（可能也是全拼或双拼）
-        this.pinyinDict = { keys: PinyinKeys, values: PinyinValues, originalKeys: PinyinKeys_ };
+        if (this.settings.global.doublePinyin != "全拼") {
+            for (const i in pinyinDict) {
+                pinyinDict[i] = pinyinDict[i].map((p) =>
+                    fullPinyin2doublePinyin(p, DoubleDict[this.settings.global.doublePinyin])
+                );
+            }
+        }
+
+        this.pinyinDict = pinyinDict;
     }
     async suggester(text_items: string[], items: any[]): Promise<string> {
         let modal = new FuzzySuggestModal(this.app, this, text_items, items);

@@ -63,12 +63,7 @@ export default class SettingTab extends PluginSettingTab {
                         return;
                     }
                     this.plugin.settings.global.doublePinyin = value;
-                    this.plugin.pinyinDict.keys =
-                        value == "全拼"
-                            ? this.plugin.pinyinDict.originalKeys
-                            : this.plugin.pinyinDict.originalKeys.map((p) =>
-                                  fullPinyin2doublePinyin(p, DoubleDict[value])
-                              );
+                    this.plugin.loadPinyinDict();
                     this.plugin.indexManager.refresh();
                     new Notice("双拼方案切换为：" + value, 4000);
                     await this.plugin.saveSettings();

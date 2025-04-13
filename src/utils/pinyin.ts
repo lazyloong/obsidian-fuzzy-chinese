@@ -6,19 +6,20 @@ export class Pinyin extends Array<PinyinChild> {
     text: string;
     constructor(query: string, plugin: ThePlugin) {
         super();
-        let pinyinDict = plugin?.pinyinDict;
+        const pinyinDict = plugin?.pinyinDict;
         this.text = query;
         this.text.split("").forEach((p) => {
-            let index = pinyinDict.values
-                .map((q, i) => (q.includes(p) ? i : null))
-                .filter((p) => p);
-            let pinyin =
-                index.length == 0 ? [p] : pinyinDict.keys.filter((_, i) => index.includes(i));
-            if (plugin.settings.global.fuzzyPinyin) {
-                let fuzzyPinyin = fullPinyin2fuzzyPinyin(pinyin[0], plugin);
-                if (typeof fuzzyPinyin === "string") pinyin.push(fuzzyPinyin);
-                else if (Array.isArray(fuzzyPinyin)) pinyin.push(...fuzzyPinyin);
+            let pinyin = pinyinDict[p];
+            if (pinyin && plugin.settings.global.fuzzyPinyin) {
+                const fuzzyPinyins = [];
+                for (const i of pinyin) {
+                    const fuzzyPinyin = fullPinyin2fuzzyPinyin(i, plugin);
+                    if (typeof fuzzyPinyin === "string") fuzzyPinyins.push(fuzzyPinyin);
+                    else if (Array.isArray(fuzzyPinyin)) fuzzyPinyins.push(...fuzzyPinyin);
+                }
+                pinyin = pinyin.concat(fuzzyPinyins);
             }
+            pinyin = pinyin || [p];
             this.push({
                 character: p,
                 pinyin,

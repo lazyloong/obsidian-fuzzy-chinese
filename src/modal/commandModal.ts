@@ -45,6 +45,12 @@ const SPECIAL_KEYS: Record<string, string> = {
     ESC: "Esc",
 };
 
+enum SpecialItemScore {
+    pinned = 0,
+    history = -1,
+    common = -2,
+}
+
 function generateHotKeyText(hotkey: Hotkey): string {
     let modifierIcons = Platform.isMacOS ? MAC_MODIFIER_ICONS : BASIC_MODIFIER_ICONS;
     const hotKeyStrings: string[] = [];
@@ -105,7 +111,7 @@ export default class CommandModal extends FuzzyModal<Item> {
         let pinnedCommands: MatchData<Item>[] = this.plugin.settings.command.pinnedCommands.map(
                 (p) => ({
                     item: this.index.items.find((q) => q.name == p),
-                    score: -2,
+                    score: SpecialItemScore.pinned,
                     range: null,
                 })
             ),
@@ -113,7 +119,7 @@ export default class CommandModal extends FuzzyModal<Item> {
                 .filter((p) => !this.plugin.settings.command.pinnedCommands.includes(p.name))
                 .map((p) => ({
                     item: this.index.items.find((q) => q.name == p.name),
-                    score: -1,
+                    score: SpecialItemScore.history,
                     range: null,
                 })),
             commonCommands: MatchData<Item>[] = this.index.items
@@ -124,7 +130,7 @@ export default class CommandModal extends FuzzyModal<Item> {
                 )
                 .map((p) => ({
                     item: p,
-                    score: 0,
+                    score: SpecialItemScore.common,
                     range: null,
                 }));
         return pinnedCommands
@@ -155,8 +161,8 @@ export default class CommandModal extends FuzzyModal<Item> {
             });
         });
 
-        if (matchData.score == -2) renderer.addIcon("pin");
-        else if (matchData.score == -1) renderer.addIcon("history");
+        if (matchData.score == SpecialItemScore.pinned) renderer.addIcon("pin");
+        else if (matchData.score == SpecialItemScore.history) renderer.addIcon("history");
         if (renderer.hasIcon) renderer.flairEl.style.marginLeft = "10px";
     }
 }

@@ -1,6 +1,6 @@
 import { App, TFile } from "obsidian";
 import FuzzyModal from "./modal";
-import { MatchData, Pinyin, runOnLayoutReady, Item as uItem } from "@/utils";
+import { MatchData, Pinyin, PinyinIndex, runOnLayoutReady, Item as uItem } from "@/utils";
 import ThePlugin from "@/main";
 
 interface Item extends uItem {

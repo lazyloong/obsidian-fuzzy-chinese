@@ -173,6 +173,13 @@ export default class FileModal extends FuzzyModal<Item> {
         this.historyMatchData.itemIndexByPath = matchData2.map((p) => p.item);
 
         const matchData = matchData1.concat(matchData2);
+
+        matchData
+            .filter((p) => isIgnore(p.item.path))
+            .forEach((p) => {
+                p.ignore = true;
+                p.score -= 1000;
+            });
         return matchData;
     }
 
@@ -196,6 +203,13 @@ export default class FileModal extends FuzzyModal<Item> {
         this.currentNode.itemIndexByPath = matchData2.map((p) => p.item);
 
         const matchData = matchData1.concat(matchData2);
+
+        matchData
+            .filter((p) => isIgnore(p.item.path))
+            .forEach((p) => {
+                p.ignore = true;
+                p.score -= 1000;
+            });
         return matchData;
     }
 
@@ -216,7 +230,7 @@ export default class FileModal extends FuzzyModal<Item> {
                     return;
             }
         }
-        let matchData = super.getSuggestions(query);
+        let matchData = super.getSuggestions(query) as MatchData<Item>[];
         if (this.plugin.settings.file.searchWithTag && this.tags.length > 0) {
             matchData = matchData.filter((p) => this.filterWithTags(p.item));
         }

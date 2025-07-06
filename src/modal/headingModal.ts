@@ -12,6 +12,7 @@ export default class HeadingModal extends FuzzyModal<Item> {
     constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.index = {} as any;
+        this.limit = 300;
     }
     setFile(file: TFile) {
         this.file = file;

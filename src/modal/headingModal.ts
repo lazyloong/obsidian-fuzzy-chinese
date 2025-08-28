@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import { App, MarkdownView, TFile } from "obsidian";
 import ThePlugin from "@/main";
 import { MatchData, Pinyin, SuggestionRenderer, Item as uItem } from "@/utils";
 import FuzzyModal from "./modal";
@@ -34,8 +34,8 @@ export default class HeadingModal extends FuzzyModal<Item> {
         }));
     }
     onChooseSuggestion(matchData: MatchData<Item>, evt: KeyboardEvent | MouseEvent): void {
-        const leaf = app.workspace.getMostRecentLeaf();
-        leaf.openLinkText("#" + matchData.item.name, this.file.path);
+        const view = app.workspace.getActiveViewOfType(MarkdownView);
+        view.leaf.openLinkText("#" + matchData.item.name, this.file.path);
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
         let renderer = new SuggestionRenderer(el);

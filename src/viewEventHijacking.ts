@@ -35,25 +35,25 @@ interface EmptyView extends View {
 }
 
 export function hijackingCanvasView(plugin: ThePlugin) {
-    let app = plugin.app;
+    const app = plugin.app;
     plugin.registerEvent(
         app.workspace.on("active-leaf-change", (leaf) => {
             if (!isCanvasView(leaf.view)) return;
-            let canvas = leaf.view.canvas;
-            let openBtl = canvas.cardMenuEl.children[1] as HTMLElement;
+            const canvas = leaf.view.canvas;
+            const openBtl = canvas.cardMenuEl.children[1] as HTMLElement;
             const newBtnElement = openBtl.cloneNode(true) as HTMLElement;
             openBtl.replaceWith(newBtnElement);
             plugin.registerDomEvent(newBtnElement, "click", async (e) => {
-                let item = await plugin.fileModal.openAndGetValue();
+                const item = await plugin.fileModal.openAndGetValue();
                 canvas.createFileNode({
                     pos: canvas.posCenter(),
                     file: item.file,
                 });
             });
             plugin.registerDomEvent(newBtnElement, "pointerdown", async (e) => {
-                let size = canvas.config.defaultFileNodeDimensions;
+                const size = canvas.config.defaultFileNodeDimensions;
                 canvas.dragTempNode(e, size, async function (e) {
-                    let item = (await plugin.fileModal.openAndGetValue()) as fItem;
+                    const item = (await plugin.fileModal.openAndGetValue()) as fItem;
                     canvas.createFileNode({
                         pos: e,
                         file: item.file,

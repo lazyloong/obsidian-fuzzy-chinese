@@ -1,4 +1,4 @@
-import { Notice, TFile } from "obsidian";
+import { MarkdownView, Notice, TFile, View } from "obsidian";
 import { Item } from "./type";
 
 export function runOnLayoutReady(calback: Function) {
@@ -47,4 +47,8 @@ export function incrementalUpdate<T extends Item>(
     if (addItems.length > 0) items.push(...addItems.map((p) => text2Item(p)));
     if (removeItems.length > 0) items = items.filter((item) => !removeItems.includes(item.name));
     return items;
+}
+
+export function getMostRecentView() {
+    return app.workspace.getActiveViewOfType(View) ?? app.workspace.getMostRecentLeaf().view;
 }

@@ -9,6 +9,7 @@ import {
     createFile,
     incrementalUpdate,
     PinyinSuggest,
+    getMostRecentView,
 } from "@/utils";
 import ThePlugin from "@/main";
 import FuzzyModal, { SpecialItemScore } from "./modal";
@@ -325,9 +326,8 @@ export default class FileModal extends FuzzyModal<Item> {
 // It means returning another leaf but don't create a new split.
 // This code is based on the work of zsviczian (https://github.com/zsviczian).
 // Original code: https://github.com/zsviczian/obsidian-excalidraw-plugin.
-const getNewOrAdjacentLeaf = (
-    leaf: WorkspaceLeaf = app.workspace.getMostRecentLeaf()
-): WorkspaceLeaf => {
+const getNewOrAdjacentLeaf = (leaf?: WorkspaceLeaf): WorkspaceLeaf => {
+    leaf ??= app.workspace.getMostRecentLeaf();
     const layout = app.workspace.getLayout();
     const getLeaves = (l: any) =>
         l.children
@@ -661,7 +661,7 @@ function getFileTagArray(file: TFile): string[] | undefined {
 
 export const openFileKeyMap: Record<string, () => WorkspaceLeaf> = {
     打开: () => {
-        let leaf = app.workspace.getMostRecentLeaf();
+        const leaf = getMostRecentView().leaf;
         if (leaf.pinned) return app.workspace.getLeaf("tab");
         else return leaf;
     },

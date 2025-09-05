@@ -154,6 +154,13 @@ export default class ThePlugin extends Plugin {
                 this.templatesModal.open();
             },
         });
+        this.addCommand({
+            id: "rebuild-index",
+            name: "重建索引",
+            callback: () => {
+                this.indexManager.refresh();
+            },
+        });
     }
     onunload() {
         this.indexManager.unload();

@@ -74,17 +74,14 @@ export function hijackingEmptyView(plugin: ThePlugin) {
             let hotkey = app.hotkeyManager.printHotkeyForCommand(
                 "fuzzy-chinese-pinyin:open-search"
             );
-            let openBtl1 = actionListEl.children[1] as HTMLElement;
-            let openBtl2 = actionListEl.children[2] as HTMLElement;
-            for (let openBtl of [openBtl1, openBtl2]) {
-                let newBtnElement = openBtl.cloneNode(true) as HTMLElement;
-                let m = /^([^(]*)( \((.*)\))?$/.exec(openBtl.innerText);
-                if (m) newBtnElement.innerText = m[1] + (hotkey != "" ? ` (${hotkey})` : "");
-                openBtl.replaceWith(newBtnElement);
-                plugin.registerDomEvent(newBtnElement, "click", async (e) => {
-                    plugin.fileModal.open();
-                });
-            }
+            let openBtl = actionListEl.children[1] as HTMLElement;
+            let newBtnElement = openBtl.cloneNode(true) as HTMLElement;
+            let m = /^([^(]*)( \((.*)\))?$/.exec(openBtl.innerText);
+            if (m) newBtnElement.innerText = m[1] + (hotkey != "" ? ` (${hotkey})` : "");
+            openBtl.replaceWith(newBtnElement);
+            plugin.registerDomEvent(newBtnElement, "click", async (e) => {
+                plugin.fileModal.open();
+            });
         })
     );
 }

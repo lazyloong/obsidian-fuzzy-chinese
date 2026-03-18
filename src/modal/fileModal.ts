@@ -275,8 +275,9 @@ export default class FileModal extends FuzzyModal<Item> {
     async onChooseSuggestion(matchData: MatchData, e: MouseEvent | KeyboardEvent) {
         const shiftKey = e.shiftKey;
         if (shiftKey && this.inputEl.value == "") return;
-        this.close();
         const leaf = this.getLeaf(e);
+        if (!leaf) return;
+        this.close();
 
         if (shiftKey) matchData.item.file = await createFile(this.inputEl.value);
         else if (
@@ -298,10 +299,11 @@ export default class FileModal extends FuzzyModal<Item> {
             score: SpecialItemScore.noFoundToCreate,
         });
     }
-    getLeaf(e: MouseEvent | KeyboardEvent): WorkspaceLeaf {
+    getLeaf(e: MouseEvent | KeyboardEvent): WorkspaceLeaf | null {
+        if (e instanceof MouseEvent) return openFileKeyMap["打开"]();
         const modKey = e.ctrlKey || e.metaKey;
         const altKey = e.altKey;
-        let leaf: WorkspaceLeaf;
+        let leaf: WorkspaceLeaf | null;
         let getKey = (key: keyof typeof openFileKeyMap) =>
             openFileKeyMap[this.plugin.settings.file[key]];
         if (modKey && altKey) leaf = getKey("keyCtrlAltEnter")();
@@ -659,7 +661,7 @@ function getFileTagArray(file: TFile): string[] | undefined {
     else if (typeof tags == "object") return undefined;
 }
 
-export const openFileKeyMap: Record<string, () => WorkspaceLeaf> = {
+export const openFileKeyMap: Record<string, () => WorkspaceLeaf | null> = {
     打开: () => {
         const leaf = getMostRecentView().leaf;
         if (leaf.pinned) return app.workspace.getLeaf("tab");
@@ -669,6 +671,7 @@ export const openFileKeyMap: Record<string, () => WorkspaceLeaf> = {
     打开到其他面板: () => getNewOrAdjacentLeaf(),
     打开到新面板: () => app.workspace.getLeaf("split"),
     打开到新窗口: () => app.workspace.getLeaf("window"),
+    不操作: () => null,
 };
 
 function isIgnore(path: string): boolean {

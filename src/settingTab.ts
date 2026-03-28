@@ -386,10 +386,10 @@ export interface TheSettings {
         searchWithTag: boolean;
         quicklySelectHistoryFiles: boolean;
         quicklySelectHistoryFilesHint: string;
-        keyEnter: keyof typeof openFileKeyMap;
-        keyCtrlEnter: keyof typeof openFileKeyMap;
-        keyAltEnter: keyof typeof openFileKeyMap;
-        keyCtrlAltEnter: keyof typeof openFileKeyMap;
+        keyEnter: string;
+        keyCtrlEnter: string;
+        keyAltEnter: string;
+        keyCtrlAltEnter: string;
     };
     heading: {
         showFirstLevelHeading: boolean;

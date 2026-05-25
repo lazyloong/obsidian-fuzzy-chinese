@@ -14,7 +14,9 @@ type Item = uItem<{
     pinyinOfPath: Pinyin;
 }>;
 
-type MatchData = uMatchData<Item>;
+type MatchData = uMatchData<Item> & {
+    ignore?: boolean;
+};
 
 export default class FolderModal extends FuzzyModal<Item> {
     toMoveFiles: TAbstractFile | TFile[];
@@ -91,6 +93,12 @@ export default class FolderModal extends FuzzyModal<Item> {
         this.historyMatchData.itemIndexByPath = matchData2.map((p) => p.item);
 
         const matchData = matchData1.concat(matchData2);
+        matchData
+            .filter((p) => isIgnore(p.item.path))
+            .forEach((p) => {
+                p.ignore = true;
+                p.score -= 1000;
+            });
         return matchData;
     }
 
@@ -123,6 +131,12 @@ export default class FolderModal extends FuzzyModal<Item> {
         // 记录数据以便下次匹配可以使用
         this.currentNode.itemIndex = matchData1.map((p) => p.item);
         this.currentNode.itemIndexByPath = matchData2.map((p) => p.item);
+        matchData
+            .filter((p) => isIgnore(p.item.path))
+            .forEach((p) => {
+                p.ignore = true;
+                p.score -= 1000;
+            });
         return matchData;
     }
     getSuggestions(query: string): MatchData[] {
@@ -172,7 +186,8 @@ export default class FolderModal extends FuzzyModal<Item> {
         this.open();
     }
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
-        new SuggestionRenderer(el).setTitle(matchData.item.path).render(matchData);
+        const renderer = new SuggestionRenderer(el).setTitle(matchData.item.path).render(matchData);
+        if (matchData.ignore) renderer.setIgnore();
     }
 }
 
@@ -248,4 +263,8 @@ class PinyinIndex extends PI<Item> {
                 break;
         }
     }
+}
+
+function isIgnore(path: string): boolean {
+    return app.metadataCache.userIgnoreFilters.some((filter) => filter.test(path));
 }

@@ -275,8 +275,10 @@ class IndexManager extends Array<PinyinIndex<any>> {
             this.normalLoad();
         }
         globalThis.refreshFuzzyChineseIndex = () => {
+            console.time("refreshFuzzyChineseIndex");
             this.normalLoad();
             this.devUnload();
+            console.timeEnd("refreshFuzzyChineseIndex");
         };
     }
 

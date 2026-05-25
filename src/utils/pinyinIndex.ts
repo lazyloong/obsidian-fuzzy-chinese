@@ -6,7 +6,13 @@ import { Item } from "./type";
 export default abstract class PinyinIndex<T extends Item> extends Component {
     vault: Vault;
     metadataCache: MetadataCache;
-    items: T[];
+    private _items: T[];
+    public get items(): T[] {
+        return this._items;
+    }
+    public set items(value: T[]) {
+        this._items = value;
+    }
     id: string;
     plugin: ThePlugin;
     app: App;

@@ -460,10 +460,17 @@ class FuzzyPinyinSettingModal extends Modal {
         contentEl.createEl("h1", { text: "模糊音设置" });
         // 模糊音展示规则（精→模）单向映射
         const fuzzyDisplay: Record<string, string> = {
-            zh: "z", ch: "c", sh: "s",
-            n: "l", h: "f", l: "r",
-            ang: "an", eng: "en", ing: "in",
-            iang: "ian", uang: "uan",
+            zh: "z",
+            ch: "c",
+            sh: "s",
+            n: "l",
+            h: "f",
+            l: "r",
+            ang: "an",
+            eng: "en",
+            ing: "in",
+            iang: "ian",
+            uang: "uan",
         };
         Object.entries(fuzzyDisplay).forEach(([key, value]) => {
             new Setting(contentEl).setName(`${value} => ${key}`).addToggle((cb) =>

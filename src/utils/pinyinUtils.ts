@@ -6,9 +6,7 @@ export { SHENG_LIST, matchSheng, FuzzyPinyinRules } from "./pinyinCore";
 
 type DoublePinyinDict = Record<string, string[]>;
 
-// ============================================================
-// 双拼转换（依赖 Obsidian legacy 双拼字典格式）
-// ============================================================
+// 双拼转换
 
 export function fullPinyin2doublePinyin(
     fullPinyin: string,
@@ -30,9 +28,7 @@ export function fullPinyin2doublePinyin(
     return doublePinyin;
 }
 
-// ============================================================
-// 模糊音（依赖 Obsidian Plugin settings）
-// ============================================================
+// 模糊音
 
 export function fullPinyin2fuzzyPinyin(pinyin: string): string[] {
     const { fuzzyPinyinSetting } = usePlugin().settings.global;

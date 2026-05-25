@@ -153,7 +153,7 @@ export default class FileModal extends FuzzyModal<Item> {
             items = this.index.items.filter((p) => this.filterWithTags(p));
         }
         return items
-            .filter((p) => p && !isIgnore(p.path))
+            .filter((p) => p && !isIgnore(p.file))
             .map((p) => ({
                 item: p,
                 score: SpecialItemScore.emptyInput,
@@ -184,7 +184,7 @@ export default class FileModal extends FuzzyModal<Item> {
         const matchData = matchData1.concat(matchData2);
 
         matchData
-            .filter((p) => isIgnore(p.item.path))
+            .filter((p) => isIgnore(p.item.file))
             .forEach((p) => {
                 p.ignore = true;
                 p.score -= 1000;
@@ -213,7 +213,7 @@ export default class FileModal extends FuzzyModal<Item> {
         const matchData = matchData1.concat(matchData2);
 
         matchData
-            .filter((p) => isIgnore(p.item.path))
+            .filter((p) => isIgnore(p.item.file))
             .forEach((p) => {
                 p.ignore = true;
                 p.score -= 1000;
@@ -384,7 +384,6 @@ class PinyinIndex extends PI<Item> {
         super(app, plugin);
         this.id = "file";
     }
-    //@ts-ignore
     get items() {
         let items: Item[] = [];
         items = items.concat(this.fileItems, this.aliasItems, this.linkItems);
@@ -662,6 +661,6 @@ export const openFileKeyMap: Record<string, () => WorkspaceLeaf | null> = {
     不操作: () => null,
 };
 
-function isIgnore(path: string): boolean {
-    return app.metadataCache.userIgnoreFilterCache[path];
+function isIgnore(tfile: TAbstractFile): boolean {
+    return app.metadataCache.isUserIgnored(tfile);
 }

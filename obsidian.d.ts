@@ -58,6 +58,8 @@ declare module "obsidian" {
     interface MetadataCache {
         getTags(): { [k: `#${string}`]: number };
         userIgnoreFilterCache: { [k: string]: boolean };
+        userIgnoreFilters: RegExp[];
+        isUserIgnored(file: TAbstractFile): boolean;
     }
     interface WorkspaceParent {
         id: string;
@@ -66,6 +68,7 @@ declare module "obsidian" {
         keys: any[];
     }
     interface SuggestModal<T> {
+        onInput: () => void;
         chooser: {
             values: T[];
             suggestions: HTMLElement;

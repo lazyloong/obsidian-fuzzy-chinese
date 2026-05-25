@@ -13,7 +13,6 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     index: PinyinIndex<T>;
     plugin: ThePlugin;
     useInput: boolean;
-    onInput: () => void;
     resolve: (value?: Item) => void;
     isPromiseCall: boolean = false;
     constructor(app: App, plugin: ThePlugin) {

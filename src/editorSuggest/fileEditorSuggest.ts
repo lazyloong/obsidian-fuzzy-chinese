@@ -7,9 +7,10 @@ import {
     EditorSuggestTriggerInfo,
     TFile,
 } from "obsidian";
-import { MatchData as fMatchData, Item as fItem, LinkItem } from "@/modal/fileModal";
+import { MatchData as fMatchData, Item as fItem, LinkItem, FileItemType } from "@/modal/fileModal";
 import { PinyinIndex, Pinyin } from "@/utils";
 import ThePlugin from "@/main";
+import { SpecialItemScore } from "@/modal/modal";
 
 type ResultType = "alias" | "file" | "linktext" | "heading";
 type Result<T extends ResultType> = {
@@ -60,7 +61,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
                 this.app.vault.setConfig("useMarkdownLinks", true);
             } else this.suggestions.useSelectedItem(e);
         });
-        let prompt = [
+        const prompt = [
             {
                 command: "输入 #",
                 purpose: "可以链接到标题",
@@ -106,9 +107,9 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
     }
     async getSuggestions(context: EditorSuggestContext): Promise<MatchData[]> {
         this.context = context;
-        let e = this.originEditorSuggest;
-        let query = context.query,
-            matchData: MatchData[];
+        const e = this.originEditorSuggest;
+        const query = context.query;
+        let matchData: MatchData[];
         switch (this.findLastSymbol(query)) {
             case "|": {
                 matchData = this.getFileAliases(query);
@@ -116,7 +117,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
             }
             case "#": {
                 e.context = context;
-                let result = (await e.getSuggestions(context)) as HeadingResult[];
+                const result = (await e.getSuggestions(context)) as HeadingResult[];
                 matchData = this.getHeadings(query, result);
                 break;
             }
@@ -131,18 +132,20 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         return matchData;
     }
     getFileAliases(query: string) {
-        let [name, q] = query.split("|");
-        let items = this.index.items.filter((p) => p.type == "alias" && p.file.basename == name);
+        const [name, q] = query.split("|");
+        const items = this.index.items.filter(
+            (p) => p.type === FileItemType.alias && p.file.basename === name
+        );
         return this.match(q, items);
     }
     getHeadings(query: string, items: HeadingResult[]) {
-        let [_, q] = query.split("#");
+        const [_, q] = query.split("#");
         if (q == "") {
             this.tempItems = items.map((p) => ({
                 type: "heading",
                 file: p.file,
                 name: p.heading,
-                pinyin: new Pinyin(p.heading, this.plugin),
+                pinyin: new Pinyin(p.heading),
                 path: p.file.basename,
                 pinyinOfPath: null,
             }));
@@ -151,22 +154,27 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
     }
     match(query: string, items: Item[]) {
         if (query == "")
-            return items.map((p) => ({ item: p, score: -1, range: null, usePath: false }));
+            return items.map((p) => ({
+                item: p,
+                score: SpecialItemScore.emptyInput,
+                range: null,
+                usePath: false,
+            }));
         query = query.toLocaleLowerCase();
-        let matchData: MatchData[] = [];
-        for (let p of items) {
-            let d = p.pinyin.match(query, p);
+        const matchData: MatchData[] = [];
+        for (const p of items) {
+            const d = p.pinyin.match(query, p);
             if (d) matchData.push(d as MatchData);
         }
-        matchData = matchData.sort((a, b) => b.score - a.score);
+        matchData.sort((a, b) => b.score - a.score);
         return matchData;
     }
     findLastSymbol(str: string): "" | "#" | "|" | "^" {
-        let index1 = str.lastIndexOf("#");
-        let index2 = str.lastIndexOf("|");
-        let index3 = str.lastIndexOf("^");
+        const index1 = str.lastIndexOf("#");
+        const index2 = str.lastIndexOf("|");
+        const index3 = str.lastIndexOf("^");
 
-        let maxIndex = Math.max(index1, index2, index3);
+        const maxIndex = Math.max(index1, index2, index3);
 
         switch (maxIndex) {
             case -1:
@@ -183,12 +191,12 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         this.plugin.fileModal.renderSuggestion(matchData as fMatchData, el);
     }
     selectSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent): void {
-        let item = matchData.item;
+        const item = matchData.item;
+        const file = app.workspace.getActiveFile();
         let result: OriginEditorSuggestResult;
-        let file = app.workspace.getActiveFile();
         switch (item.type) {
             case "heading":
-            case "link":
+            case FileItemType.link:
                 result = {
                     heading: isLinkItem(item) ? item.link : item.name,
                     type: "heading",
@@ -200,7 +208,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
                     score: 0,
                 };
                 break;
-            case "alias":
+            case FileItemType.alias:
                 result = {
                     type: "alias",
                     alias: item.name,
@@ -210,7 +218,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
                     score: 0,
                 };
                 break;
-            case "file":
+            case FileItemType.file:
                 result = {
                     type: "file",
                     path: item.path,
@@ -219,7 +227,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
                     score: 0,
                 };
                 break;
-            case "unresolvedLink":
+            case FileItemType.unresolvedLink:
                 result = {
                     type: "linktext",
                     path: item.name,
@@ -234,5 +242,5 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
 }
 
 function isLinkItem(item: Item): item is LinkItem {
-    return item.type === "link";
+    return item.type === FileItemType.link;
 }

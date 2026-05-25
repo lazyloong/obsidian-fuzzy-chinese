@@ -1,9 +1,9 @@
 import ThePlugin from "@/main";
-import { TextInputSuggest } from "./suggest";
-import { SuggestionRenderer } from "./suggestionRenderer";
+import TextInputSuggest from "./suggest";
+import SuggestionRenderer from "./suggestionRenderer";
 import { MatchData, Item } from "./type";
 
-export class PinyinSuggest extends TextInputSuggest<MatchData<Item>> {
+export default class PinyinSuggest extends TextInputSuggest<MatchData<Item>> {
     getItemFunction: (query: string) => MatchData<Item>[];
     plugin: ThePlugin;
     constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: ThePlugin) {

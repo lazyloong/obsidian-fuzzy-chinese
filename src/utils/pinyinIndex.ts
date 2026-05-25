@@ -3,10 +3,10 @@ import { Component, Vault, MetadataCache, App } from "obsidian";
 import { runOnLayoutReady } from "./helpers";
 import { Item } from "./type";
 
-export abstract class PinyinIndex<T extends Item> extends Component {
+export default abstract class PinyinIndex<T extends Item> extends Component {
     vault: Vault;
     metadataCache: MetadataCache;
-    items: Array<T>;
+    items: T[];
     id: string;
     plugin: ThePlugin;
     app: App;
@@ -25,6 +25,6 @@ export abstract class PinyinIndex<T extends Item> extends Component {
     abstract initEvent(): void;
     abstract update(...args: any[]): void;
     has(query: string): boolean {
-        return Boolean(this.items.find((p) => p.name == query));
+        return Boolean(this.items.find((p) => p.name === query));
     }
 }

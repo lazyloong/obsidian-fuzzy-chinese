@@ -1,19 +1,26 @@
-import { MarkdownView, Notice, TFile, View } from "obsidian";
+import { Notice, TFile, View } from "obsidian";
 import { Item } from "./type";
+import ThePlugin from "@/main";
+import Pinyin from "./pinyin";
+
+export function usePlugin() {
+    return ThePlugin.getInstance();
+}
 
 export function runOnLayoutReady(calback: Function) {
     if (app.workspace.layoutReady) {
         calback();
     } else {
-        app.workspace.onLayoutReady(async () => {
+        app.workspace.onLayoutReady(() => {
             calback();
         });
     }
 }
 
 // 在数组中交换两个元素的位置
-export function arraymove<T>(arr: T[], fromIndex: number, toIndex: number): void {
-    if (toIndex < 0 || toIndex === arr.length) return;
+export function arraySwap<T>(arr: T[], fromIndex: number, toIndex: number): void {
+    if (fromIndex < 0 || fromIndex >= arr.length) return;
+    if (toIndex < 0 || toIndex >= arr.length) return;
     const element = arr[fromIndex];
     arr[fromIndex] = arr[toIndex];
     arr[toIndex] = element;
@@ -35,11 +42,12 @@ export function copy(text: string) {
 
 export function incrementalUpdate<T extends Item>(
     items: T[],
-    getAllItems: () => string[],
-    text2Item: (name: string) => T
+    getAllStrings: () => string[],
+    text2Item?: (name: string) => T
 ) {
+    text2Item ??= (name) => ({ name, pinyin: new Pinyin(name) }) as T;
     let oldItems = items.map((p) => p.name);
-    let newItems = getAllItems();
+    let newItems = getAllStrings();
 
     let addItems = newItems.filter((p) => !oldItems.includes(p));
     let removeItems = oldItems.filter((p) => !newItems.includes(p));

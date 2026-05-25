@@ -1,26 +1,34 @@
 import { App } from "obsidian";
-import { Item, MatchData, Pinyin } from "@/utils";
+import { Item as uItem, MatchData, Pinyin } from "@/utils";
 import ThePlugin from "@/main";
-import FuzzyModal from "./modal";
+import FuzzyModal, { SpecialItemScore } from "./modal";
+
+type Item = uItem<{ data: any }>;
 
 export default class SuggestModal extends FuzzyModal<Item> {
-    index: any;
-    items: any[];
-    constructor(app: App, plugin: ThePlugin, text_items: string[], items: string[]) {
+    // @ts-ignore
+    index: { items: Item[] } = { items: [] };
+    constructor(
+        app: App,
+        plugin: ThePlugin,
+        data: any[],
+        getKey: (p: any) => string = (p) => p.key
+    ) {
         super(app, plugin);
-        this.items = items;
-        this.index = {
-            items: text_items.map((p) => ({
-                name: p,
-                pinyin: new Pinyin(p, plugin),
-            })),
-        };
+        this.index.items = data.map((p) => ({
+            name: getKey(p),
+            pinyin: new Pinyin(getKey(p)),
+            data: p,
+        }));
     }
     getEmptyInputSuggestions(): MatchData<Item>[] {
-        return this.index.items.map((p) => ({ item: p, score: 0, range: null }));
+        return this.index.items.map((p) => ({
+            item: p,
+            score: SpecialItemScore.emptyInput,
+            range: null,
+        }));
     }
     onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent): void {
-        let i = this.index.items.indexOf(matchData.item);
-        this.resolve(this.items[i]);
+        this.resolve(matchData.item);
     }
 }

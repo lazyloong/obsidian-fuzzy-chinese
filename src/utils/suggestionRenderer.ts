@@ -1,12 +1,12 @@
 import { getIcon } from "obsidian";
 import { MatchData } from "./type";
 
-export class SuggestionRenderer {
-    containerEl: HTMLElement;
-    contentEl: HTMLElement;
+export default class SuggestionRenderer {
+    readonly containerEl: HTMLElement;
+    readonly contentEl: HTMLElement;
+    readonly noteEl: HTMLElement;
+    readonly titleEl: HTMLElement;
     flairEl: HTMLElement;
-    noteEl: HTMLElement;
-    titleEl: HTMLElement;
     toHighlightEl: HTMLElement;
     title: string = "";
     note: string = "";
@@ -23,14 +23,16 @@ export class SuggestionRenderer {
     }
     setToHighlightEl(name: "title" | "note") {
         this.toHighlightEl = this[`${name}El`];
+        return this;
     }
     setIgnore() {
         this.containerEl.addClass("mod-downranked");
+        return this;
     }
     render(matchData: MatchData<any>) {
-        let range = matchData.range,
-            text: string,
-            index = 0;
+        const range = matchData.range;
+        let text: string;
+        let index = 0;
         if (this.title == "") this.setTitle(matchData.item.name);
         if (this.toHighlightEl == this.titleEl) {
             text = this.title;
@@ -50,12 +52,15 @@ export class SuggestionRenderer {
             }
         }
         this.toHighlightEl.appendText(text.slice(index));
+        return this;
     }
     setTitle(text: string) {
         this.title = text;
+        return this;
     }
     setNote(text: string) {
         this.note = text;
+        return this;
     }
     addIcon(icon: string) {
         if (!this.flairEl)
@@ -64,5 +69,6 @@ export class SuggestionRenderer {
             });
         this.flairEl.appendChild(getIcon(icon));
         this.hasIcon = true;
+        return this;
     }
 }

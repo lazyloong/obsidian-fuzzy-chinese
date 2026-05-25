@@ -11,15 +11,13 @@ import {
     PinyinIndex as PI,
     HistoryMatchDataNode,
     Pinyin,
-    MatchData as uMatchData,
+    MatchData,
     Item,
     SuggestionRenderer,
     incrementalUpdate,
 } from "@/utils";
 import ThePlugin from "@/main";
 import { SpecialItemScore } from "@/modal/modal";
-
-interface MatchData extends uMatchData<Item> {}
 
 export default class TagEditorSuggest extends EditorSuggest<MatchData> {
     plugin: ThePlugin;
@@ -33,7 +31,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
         this.historyMatchData = new HistoryMatchDataNode("\0");
     }
     onTrigger(cursor: EditorPosition, editor: Editor, file: TFile): EditorSuggestTriggerInfo {
-        var lineIndex = cursor.line,
+        const lineIndex = cursor.line,
             lineContent = editor.getLine(lineIndex),
             sub = lineContent.substr(0, cursor.ch);
         if (
@@ -43,7 +41,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
             "#" !== lineContent.substr(cursor.ch, 1)
         ) {
             this.isYaml = false;
-            var a = sub.lastIndexOf("#"),
+            const a = sub.lastIndexOf("#"),
                 s = sub.substr(a + 1);
             return {
                 start: {
@@ -118,11 +116,10 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
     }
 
     getNormalInputSuggestions(query: string): MatchData[] {
-        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
         const { toMatchItem, currentNode } = this.getItemFromHistoryTree(query);
         const matchData: MatchData[] = [];
         for (let p of toMatchItem) {
-            let d = p.pinyin.match(query, p, smathCase);
+            let d = p.pinyin.match(query, p);
             if (d) matchData.push(d);
         }
         currentNode.itemIndex = matchData.map((p) => p.item);
@@ -139,8 +136,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
         } else {
             matchData = this.getNormalInputSuggestions(query);
         }
-
-        matchData = matchData.sort((a, b) => b.score - a.score);
+        matchData.sort((a, b) => b.score - a.score);
         return matchData;
     }
 
@@ -162,9 +158,9 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
             node = node.next;
             if (_f) index++;
         }
-        const currentNode = this.historyMatchData.index(index - 1),
-            toMatchItem =
-                currentNode.itemIndex.length == 0 ? this.index.items : currentNode.itemIndex;
+        const currentNode = this.historyMatchData.index(index - 1);
+        const toMatchItem =
+            currentNode.itemIndex.length == 0 ? this.index.items : currentNode.itemIndex;
         return { toMatchItem, currentNode };
     }
 
@@ -172,23 +168,22 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
         new SuggestionRenderer(el).render(matchData);
     }
     selectSuggestion(matchData: MatchData): void {
-        var context = this.context;
-        if (context) {
-            var editor = context.editor,
-                start = context.start,
-                end = context.end,
-                text = this.isYaml ? matchData.item.name : "#" + matchData.item.name + " ";
-            editor.transaction({
-                changes: [
-                    {
-                        from: start,
-                        to: end,
-                        text,
-                    },
-                ],
-            });
-            editor.setCursor({ line: start.line, ch: start.ch + text.length });
-        }
+        const { context } = this;
+        if (!context) return;
+        const editor = context.editor,
+            start = context.start,
+            end = context.end,
+            text = this.isYaml ? matchData.item.name : "#" + matchData.item.name + " ";
+        editor.transaction({
+            changes: [
+                {
+                    from: start,
+                    to: end,
+                    text,
+                },
+            ],
+        });
+        editor.setCursor({ line: start.line, ch: start.ch + text.length });
     }
 }
 
@@ -198,24 +193,16 @@ class PinyinIndex extends PI<Item> {
         this.id = "tag";
     }
     initIndex() {
-        let tags: string[] = Object.keys(this.app.metadataCache.getTags()).map((p) => p.slice(1));
-        this.items = tags.map((tag) => {
-            let item = {
-                name: tag,
-                pinyin: new Pinyin(tag, this.plugin),
-            };
-            return item;
-        });
+        const tags: string[] = Object.keys(this.app.metadataCache.getTags()).map((p) => p.slice(1));
+        this.items = tags.map((tag) => ({
+            name: tag,
+            pinyin: new Pinyin(tag),
+        }));
     }
     initEvent() {}
     update() {
-        this.items = incrementalUpdate(
-            this.items,
-            () => Object.keys(this.app.metadataCache.getTags()).map((p) => p.slice(1)),
-            (name) => ({
-                name,
-                pinyin: new Pinyin(name, this.plugin),
-            })
+        this.items = incrementalUpdate(this.items, () =>
+            Object.keys(this.app.metadataCache.getTags()).map((p) => p.slice(1))
         );
     }
 }

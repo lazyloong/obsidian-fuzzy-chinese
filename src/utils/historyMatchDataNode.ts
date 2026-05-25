@@ -1,4 +1,4 @@
-export class HistoryMatchDataNode<T> {
+export default class HistoryMatchDataNode<T> {
     query: string[1];
     next: HistoryMatchDataNode<T>;
     itemIndex: Array<T>;
@@ -7,9 +7,8 @@ export class HistoryMatchDataNode<T> {
         this.init(query);
     }
     push(query: string[1]) {
-        let node = new HistoryMatchDataNode<T>(query);
-        this.next = node;
-        return node;
+        this.next = new HistoryMatchDataNode<T>(query);
+        return this.next;
     }
     index(index: number) {
         let node: HistoryMatchDataNode<T> = this;

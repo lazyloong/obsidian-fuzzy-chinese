@@ -1,17 +1,16 @@
 import { App, MarkdownView, TFile } from "obsidian";
 import ThePlugin from "@/main";
 import { MatchData, Pinyin, SuggestionRenderer, Item as uItem } from "@/utils";
-import FuzzyModal from "./modal";
+import FuzzyModal, { SpecialItemScore } from "./modal";
 
-interface Item extends uItem {
-    level: number;
-}
+type Item = uItem<{ level: number }>;
 
 export default class HeadingModal extends FuzzyModal<Item> {
+    // @ts-ignore
+    index: { items: Item[] } = { items: [] };
     file: TFile;
     constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
-        this.index = {} as any;
         this.limit = 300;
     }
     setFile(file: TFile) {
@@ -22,14 +21,14 @@ export default class HeadingModal extends FuzzyModal<Item> {
             heading = heading.filter((h) => h.level > 1);
         this.index.items = heading.map((h) => ({
             name: h.heading,
-            pinyin: new Pinyin(h.heading, this.plugin),
+            pinyin: new Pinyin(h.heading),
             level: h.level,
-        })) as Item[];
+        }));
     }
     getEmptyInputSuggestions(): MatchData<Item>[] {
         return this.index.items.map((p) => ({
             item: p,
-            score: -1,
+            score: SpecialItemScore.emptyInput,
             range: null,
         }));
     }
@@ -38,9 +37,9 @@ export default class HeadingModal extends FuzzyModal<Item> {
         view.leaf.openLinkText("#" + matchData.item.name, this.file.path);
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
-        let renderer = new SuggestionRenderer(el);
-        renderer.render(matchData);
-        renderer.addIcon("heading-" + matchData.item.level);
+        const renderer = new SuggestionRenderer(el)
+            .render(matchData)
+            .addIcon("heading-" + matchData.item.level);
         if (this.plugin.settings.heading.headingIndent) {
             let indent = this.plugin.settings.heading.showFirstLevelHeading
                 ? matchData.item.level - 1

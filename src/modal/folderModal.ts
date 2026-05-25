@@ -7,12 +7,12 @@ import {
     SuggestionRenderer,
 } from "@/utils";
 import ThePlugin from "@/main";
-import FuzzyModal from "./modal";
+import FuzzyModal, { SpecialItemScore } from "./modal";
 
-interface Item extends uItem {
+type Item = uItem<{
     path: string;
     pinyinOfPath: Pinyin;
-}
+}>;
 
 type MatchData = uMatchData<Item>;
 
@@ -24,7 +24,7 @@ export default class FolderModal extends FuzzyModal<Item> {
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
         this.emptyStateText = "未找到相关文件夹。";
         this.setPlaceholder("输入文件夹名称");
-        let prompt = [
+        const prompt = [
             {
                 command: "↑↓",
                 purpose: "导航",
@@ -45,13 +45,13 @@ export default class FolderModal extends FuzzyModal<Item> {
         this.setInstructions(prompt);
         this.scope.register(["Shift"], "Enter", async (e) => {
             await app.vault.createFolder(this.inputEl.value);
-            let file = app.workspace.getActiveFile();
+            const file = app.workspace.getActiveFile();
             app.vault.rename(file, this.inputEl.value + "/" + file.name);
             this.close();
         });
         this.scope.register([], "Tab", (e) => {
             e.preventDefault();
-            let item = this.getChoosenItem();
+            const item = this.getChoosenItem();
             if (item.path == "/") return;
             this.inputEl.value = item.path;
             this.onInput();
@@ -95,14 +95,12 @@ export default class FolderModal extends FuzzyModal<Item> {
     }
 
     getNormalInputSuggestions(query: string): MatchData[] {
-        let matchData: MatchData[] = [];
         const matchData1: MatchData[] = [], // 使用标题、别名搜索的数据
             matchData2: MatchData[] = []; // 使用路径搜索的数据
 
-        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
         let toMatchItem = this.getHistoryData(query);
         for (const p of toMatchItem) {
-            const d = p.pinyin.match(query, p, smathCase);
+            const d = p.pinyin.match(query, p);
             if (!d) continue;
             const l = d.item.path.lastIndexOf("/") + 1;
             d.range = d.range.map((p) => p.map((q) => q + l)) as [number, number][];
@@ -116,12 +114,12 @@ export default class FolderModal extends FuzzyModal<Item> {
         for (const p of toMatchItem.filter(
             (p) => !matchData1.map((p) => p.item.path).includes(p.path)
         )) {
-            const d = p.pinyinOfPath.match(query, p, smathCase);
+            const d = p.pinyinOfPath.match(query, p);
             if (d) matchData2.push(d);
         }
 
-        matchData = matchData1.concat(matchData2);
-        matchData = matchData.sort((a, b) => b.score - a.score);
+        const matchData: MatchData[] = matchData1.concat(matchData2);
+        matchData.sort((a, b) => b.score - a.score);
         // 记录数据以便下次匹配可以使用
         this.currentNode.itemIndex = matchData1.map((p) => p.item);
         this.currentNode.itemIndexByPath = matchData2.map((p) => p.item);
@@ -134,23 +132,23 @@ export default class FolderModal extends FuzzyModal<Item> {
     }
 
     getEmptyInputSuggestions(): MatchData[] {
-        let root = app.vault.getRoot();
-        let result: MatchData[] = [];
-        let item = this.index.items.find((item) => item.name == "/");
+        const root = app.vault.getRoot();
+        const result: MatchData[] = [];
+        const item = this.index.items.find((item) => item.name == "/");
         result.push({
             item: item,
-            score: 0,
+            score: SpecialItemScore.emptyInput,
             range: null,
         });
-        let quene: TFolder[] = [root];
+        const quene: TFolder[] = [root];
         while (result.length < 20 && quene.length > 0) {
-            let folder = quene.shift();
-            for (let child of folder.children) {
+            const folder = quene.shift();
+            for (const child of folder.children) {
                 if (child instanceof TFolder) {
-                    let item = this.index.items.find((item) => item.path == child.path);
+                    const item = this.index.items.find((item) => item.path == child.path);
                     result.push({
                         item: item,
-                        score: 0,
+                        score: SpecialItemScore.emptyInput,
                         range: null,
                     });
                     quene.push(child);
@@ -174,9 +172,7 @@ export default class FolderModal extends FuzzyModal<Item> {
         this.open();
     }
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
-        let renderer = new SuggestionRenderer(el);
-        renderer.setTitle(matchData.item.path);
-        renderer.render(matchData);
+        new SuggestionRenderer(el).setTitle(matchData.item.path).render(matchData);
     }
 }
 
@@ -187,19 +183,17 @@ class PinyinIndex extends PI<Item> {
     }
     initIndex() {
         this.items = [];
-        let root = this.app.vault.getRoot();
-        let iterate = (node: TFolder, nodePinyin: Pinyin) => {
-            let children = node.children;
-            for (let child of children) {
+        const root = this.app.vault.getRoot();
+        const iterate = (node: TFolder, nodePinyin: Pinyin) => {
+            const children = node.children;
+            for (const child of children) {
                 if (child instanceof TFolder) {
-                    let name = child.name;
-                    let pinyinOfName = new Pinyin(name, this.plugin);
-                    let pinyinOfPath =
+                    const name = child.name;
+                    const pinyinOfName = new Pinyin(name);
+                    const pinyinOfPath =
                         node.path == "/"
                             ? pinyinOfName
-                            : nodePinyin
-                                  .concat(new Pinyin("/", this.plugin))
-                                  .concat(new Pinyin(name, this.plugin));
+                            : nodePinyin.concat(new Pinyin("/")).concat(new Pinyin(name));
                     this.items.push({
                         name,
                         pinyin: pinyinOfName,
@@ -212,11 +206,11 @@ class PinyinIndex extends PI<Item> {
         };
         this.items.push({
             name: "/",
-            pinyin: new Pinyin("/", this.plugin),
+            pinyin: new Pinyin("/"),
             path: root.path,
-            pinyinOfPath: new Pinyin(root.path, this.plugin),
+            pinyinOfPath: new Pinyin(root.path),
         });
-        iterate(root, new Pinyin("", this.plugin));
+        iterate(root, new Pinyin(""));
     }
     initEvent() {
         this.registerEvent(
@@ -230,14 +224,14 @@ class PinyinIndex extends PI<Item> {
     update(type: "rename", f: TAbstractFile, oldPath: string): void;
     update(type: string, f: TAbstractFile, oldPath?: string) {
         if (f instanceof TFile) return;
-        let folder = f as TFolder;
+        const folder = f as TFolder;
         switch (type) {
             case "create":
                 this.items.push({
                     name: folder.name,
-                    pinyin: new Pinyin(folder.name, this.plugin),
+                    pinyin: new Pinyin(folder.name),
                     path: folder.path,
-                    pinyinOfPath: new Pinyin(folder.path, this.plugin),
+                    pinyinOfPath: new Pinyin(folder.path),
                 });
                 break;
             case "delete":
@@ -247,9 +241,9 @@ class PinyinIndex extends PI<Item> {
                 this.items = this.items.filter((item) => item.name != oldPath);
                 this.items.push({
                     name: folder.name,
-                    pinyin: new Pinyin(folder.name, this.plugin),
+                    pinyin: new Pinyin(folder.name),
                     path: folder.path,
-                    pinyinOfPath: new Pinyin(folder.path, this.plugin),
+                    pinyinOfPath: new Pinyin(folder.path),
                 });
                 break;
         }

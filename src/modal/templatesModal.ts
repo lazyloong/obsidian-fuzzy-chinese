@@ -1,16 +1,15 @@
 import { App, TFile } from "obsidian";
-import FuzzyModal from "./modal";
-import { MatchData, Pinyin, PinyinIndex, runOnLayoutReady, Item as uItem } from "@/utils";
+import FuzzyModal, { SpecialItemScore } from "./modal";
+import { MatchData, Pinyin, runOnLayoutReady, Item as uItem } from "@/utils";
 import ThePlugin from "@/main";
 
-interface Item extends uItem {
-    file: TFile;
-}
+type Item = uItem<{ file: TFile }>;
 
 export default class TemplatesModal extends FuzzyModal<Item> {
+    // @ts-ignore
+    index: { items: Item[] } = { items: [] };
     constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
-        this.index = {} as any;
         runOnLayoutReady(() => {
             this.updateIndex();
         });
@@ -22,27 +21,25 @@ export default class TemplatesModal extends FuzzyModal<Item> {
     getEmptyInputSuggestions(): MatchData<Item>[] {
         return this.index.items.map((p) => ({
             item: p,
-            score: -1,
+            score: SpecialItemScore.emptyInput,
             range: null,
         }));
     }
     onChooseSuggestion(matchData: MatchData<Item>, evt: MouseEvent | KeyboardEvent): void {
-        let plugin = this.getOriginPlugin();
-        plugin.insertTemplate(matchData.item.file);
+        this.getOriginPlugin().insertTemplate(matchData.item.file);
     }
     getOriginPlugin() {
         return this.app.internalPlugins.plugins.templates.instance;
     }
     updateIndex(): void {
-        let plugin = this.getOriginPlugin();
-        let folder = plugin.options.folder;
-        let templateFiles = this.app.vault
+        const folder = this.getOriginPlugin().options.folder;
+        const templateFiles = this.app.vault
             .getFiles()
             .filter((file) => file.path.startsWith(folder) && file.extension === "md");
 
         this.index.items = templateFiles.map((file: TFile) => ({
             name: file.basename,
-            pinyin: new Pinyin(file.basename, this.plugin),
+            pinyin: new Pinyin(file.basename),
             file,
         }));
     }

@@ -1,4 +1,5 @@
 import ThePlugin from "@/main";
+import { usePlugin } from "./helpers";
 
 type DoublePinyinDict = Record<string, string[]>;
 
@@ -8,7 +9,7 @@ export function fullPinyin2doublePinyin(
 ): string {
     let doublePinyin: string;
     let [shengmu, yunmu] = splitPinyin(fullPinyin);
-    let findKeys = (pinyin: string, dict: DoublePinyinDict) => {
+    const findKeys = (pinyin: string, dict: DoublePinyinDict) => {
         return Object.keys(dict).find((key) => dict[key].includes(pinyin));
     };
     if (shengmu != "") shengmu = findKeys(shengmu, doublePinyinDict);
@@ -70,17 +71,17 @@ export const FuzzyPinyinDict = {
     uang: "uan",
 };
 
-export function fullPinyin2fuzzyPinyin(pinyin: string, plugin: ThePlugin): string | string[] {
-    const { fuzzyPinyinSetting } = plugin.settings.global;
+export function fullPinyin2fuzzyPinyin(pinyin: string): string[] {
+    const { fuzzyPinyinSetting } = usePlugin().settings.global;
     const dict = fuzzyPinyinSetting.reduce((acc, key) => {
         acc[key] = FuzzyPinyinDict[key];
         return acc;
     }, {});
     const [shengmu, yunmu] = splitPinyin(pinyin);
-    let fuzzyShengmu = dict[shengmu];
-    let fuzzyYunmu = dict[yunmu];
+    const fuzzyShengmu = dict[shengmu];
+    const fuzzyYunmu = dict[yunmu];
     if (fuzzyShengmu && fuzzyYunmu)
         return [shengmu + fuzzyYunmu, fuzzyShengmu + yunmu, fuzzyShengmu + fuzzyYunmu];
-    else if (fuzzyShengmu) return fuzzyShengmu + yunmu;
-    else if (fuzzyYunmu) return shengmu + fuzzyYunmu;
+    else if (fuzzyShengmu) return [fuzzyShengmu + yunmu];
+    else if (fuzzyYunmu) return [shengmu + fuzzyYunmu];
 }

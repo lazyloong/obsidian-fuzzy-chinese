@@ -1,21 +1,22 @@
 import ThePlugin from "@/main";
 import { fullPinyin2fuzzyPinyin } from "./pinyinUtils";
 import { Item, MatchData } from "./type";
+import { usePlugin } from "./helpers";
 
-export class Pinyin extends Array<PinyinChild> {
+export default class Pinyin extends Array<PinyinChild> {
     text: string;
-    constructor(query: string, plugin: ThePlugin) {
+    constructor(query: string) {
         super();
-        const pinyinDict = plugin?.pinyinDict;
+        const plugin = ThePlugin.getInstance();
+        let pinyinDict = plugin?.pinyinDict;
         this.text = query;
         this.text.split("").forEach((p) => {
             let pinyin = pinyinDict[p];
             if (pinyin && plugin.settings.global.fuzzyPinyin) {
                 const fuzzyPinyins = [];
                 for (const i of pinyin) {
-                    const fuzzyPinyin = fullPinyin2fuzzyPinyin(i, plugin);
-                    if (typeof fuzzyPinyin === "string") fuzzyPinyins.push(fuzzyPinyin);
-                    else if (Array.isArray(fuzzyPinyin)) fuzzyPinyins.push(...fuzzyPinyin);
+                    const fuzzyPinyin = fullPinyin2fuzzyPinyin(i);
+                    fuzzyPinyins.push(...fuzzyPinyin);
                 }
                 pinyin = pinyin.concat(fuzzyPinyins);
             }
@@ -27,49 +28,47 @@ export class Pinyin extends Array<PinyinChild> {
         });
     }
     getScore(range: Array<[number, number]>) {
+        const coverage = range.reduce((p, c) => p + c[1] - c[0] + 1, 0) / this.text.length;
         let score = 0;
-        let coverage = range.reduce((p, c) => p + c[1] - c[0] + 1, 0);
-        coverage = coverage / this.text.length;
         score += coverage < 0.5 ? 150 * coverage : 50 * coverage + 50; // 使用线性函数计算覆盖度
         score += 20 / (range[0][0] + 1); // 靠前加分
         score += 30 / range.length; // 分割越少分越高
         return score;
     }
-    match<T extends Item>(query: string, item: T, smathCase = false): MatchData<T> {
-        const range_ = this.match_(query, smathCase);
+    match<T extends Item>(query: string, item: T): MatchData<T> {
+        const range_ = this.match_(query);
         const range = range_ ? toRanges(range_) : false;
         if (!range) return;
         return {
             item: item,
             score: this.getScore(range),
-            range: range,
+            range,
         };
     }
     concat(pinyin: Pinyin): Pinyin {
-        const result = new Pinyin("", null);
-        result.push(...this);
-        result.push(...pinyin);
+        const result = new Pinyin("");
         result.text = this.text + pinyin.text;
-
+        result.push(...this, ...pinyin);
         return result;
     }
     // The following two functions are based on the work of zh-lx (https://github.com/zh-lx).
     // Original code: https://github.com/zh-lx/pinyin-pro/blob/main/lib/core/match/index.ts.
-    match_(pinyin: string, smathCase: boolean): number[] | null {
-        pinyin = pinyin.replace(/\s/g, "");
+    match_(query: string): number[] | null {
+        const smathCase = /[A-Z]/.test(query) && usePlugin().settings.global.autoCaseSensitivity;
+        query = query.replace(/\s/g, "");
         const f = (str: string) => (smathCase ? str : str.toLocaleLowerCase());
         let result: number[];
         try {
-            result = this.matchAboveStart(f(this.text), f(pinyin));
+            result = this.matchAboveStart(f(this.text), f(query));
         } catch (e) {
             // 土耳其字符 "İ" 转小写后变成两个字符（"i"和附加的点下加符号 "̇"）导致长度对不上
             if (this.text.includes("İ")) {
                 const f = (str: string) => (smathCase ? str : str.toLocaleLowerCase("tr"));
-                result = this.matchAboveStart(f(this.text), f(pinyin));
+                result = this.matchAboveStart(f(this.text), f(query));
             } else {
                 console.log(this.text, this);
                 console.error(e);
-                result = this.matchAboveStart(this.text, pinyin);
+                result = this.matchAboveStart(this.text, query);
             }
         }
         return result;
@@ -161,9 +160,12 @@ type PinyinChild = {
     pinyin: string[];
 };
 
-// 将一个有序的数字数组转换为一个由连续数字区间组成的数组
-// console.log(toRanges([1, 2, 3, 5, 7, 8]));
-// 输出: [[1,3],[5,5],[7,8]]
+/**
+ * 将一个有序的数字数组转换为由连续数字区间组成的数组
+ * @example
+ * toRanges([1, 2, 3, 5, 7, 8])
+ * // 输出: [[1,3],[5,5],[7,8]]
+ */
 function toRanges(arr: Array<number>): Array<[number, number]> {
     const result = [];
     let start = arr[0];

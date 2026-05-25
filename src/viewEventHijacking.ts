@@ -108,7 +108,7 @@ export function hijackingTagForMarkdownView(plugin: ThePlugin) {
                     )
                         newInputEl.focus();
                 });
-                let tagSuggest = new metadataEditorSuggest(newInputEl, plugin);
+                let tagSuggest = new MetadataEditorSuggest(newInputEl, plugin);
                 tagSuggest.getItemFunction = (query) =>
                     plugin.tagEditorSuggest
                         .getSuggestionsByString(query ?? "")
@@ -152,7 +152,7 @@ function isEmptyView(view: View): view is EmptyView {
     return view.getViewType() === "empty";
 }
 
-class metadataEditorSuggest extends PinyinSuggest {
+class MetadataEditorSuggest extends PinyinSuggest {
     constructor(inputEl: HTMLInputElement | HTMLTextAreaElement, plugin: ThePlugin) {
         super(inputEl, plugin);
         this.suggestEl.style.minWidth = "160px";

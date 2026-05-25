@@ -25,7 +25,7 @@ import SimplifiedDict from "@/dict/simplified_dict";
 import TraditionalDict from "@/dict/traditional_dict";
 
 import DoubleDict from "@/dict/double_pinyin";
-import pinyinSearch, { stringArray2Items as strings2Items } from "@/search";
+import pinyinSearch from "@/utils/pinyinSearch";
 import SettingTab, { DEFAULT_SETTINGS, TheSettings } from "@/settingTab";
 import {
     hijackingCanvasView,
@@ -34,6 +34,7 @@ import {
 } from "./viewEventHijacking";
 
 export default class ThePlugin extends Plugin {
+    static instance: ThePlugin;
     settings: TheSettings;
     pinyinDict: Record<string, string[]>;
     api: any;
@@ -47,8 +48,11 @@ export default class ThePlugin extends Plugin {
     indexManager: IndexManager;
     editorSuggests: EditorSuggest<any>[];
     fileExplorerHotkey: FileExplorerHotkey;
-
+    static getInstance(): ThePlugin {
+        return this.instance;
+    }
     async onload() {
+        ThePlugin.instance = this;
         await this.loadSettings();
 
         this.loadPinyinDict();
@@ -79,14 +83,14 @@ export default class ThePlugin extends Plugin {
         this.registerHijackingEvents();
         runOnLayoutReady(() => {
             this.indexManager.load();
-            this.registerFileExplorer();
+            this.fileExplorerHotkey = new FileExplorerHotkey(this.app, this);
             this.addCommands();
 
-            let leaf = this.app.workspace.getMostRecentLeaf();
+            const leaf = this.app.workspace.getMostRecentLeaf();
             if (leaf.view.getViewType() === "empty") leaf.detach();
         });
         this.addRibbonIcon("search", "FuzzySearch", () => {
-            let leaf = this.app.workspace.getMostRecentLeaf();
+            const leaf = this.app.workspace.getMostRecentLeaf();
             if (leaf) {
                 this.fileModal.open();
                 return true;
@@ -96,8 +100,7 @@ export default class ThePlugin extends Plugin {
         this.addSettingTab(new SettingTab(this.app, this));
         this.api = {
             suggester: this.suggester.bind(this),
-            search: (query: string, items: string[] | Item[]) => pinyinSearch(query, items, this),
-            strings2Items: strings2Items,
+            pinyinSearch,
         };
     }
     registerHijackingEvents() {
@@ -123,8 +126,8 @@ export default class ThePlugin extends Plugin {
             id: "move-file",
             name: "移动文件",
             checkCallback: (checking: boolean) => {
-                let files = this.fileExplorerHotkey.getFiles();
-                let file = this.app.workspace.getActiveFile();
+                const files = this.fileExplorerHotkey.getFiles();
+                const file = this.app.workspace.getActiveFile();
                 if (checking) return Boolean(file) || files.length > 0;
                 if (files.length > 0) this.folderModal.openWithFiles(files);
                 else if (file) this.folderModal.open();
@@ -176,7 +179,7 @@ export default class ThePlugin extends Plugin {
             ? TraditionalDict
             : SimplifiedDict;
 
-        if (this.settings.global.doublePinyin != "全拼") {
+        if (this.settings.global.doublePinyin !== "全拼") {
             for (const i in pinyinDict) {
                 pinyinDict[i] = pinyinDict[i].map((p) =>
                     fullPinyin2doublePinyin(p, DoubleDict[this.settings.global.doublePinyin])
@@ -186,15 +189,15 @@ export default class ThePlugin extends Plugin {
 
         this.pinyinDict = pinyinDict;
     }
-    async suggester(text_items: string[], items: any[]): Promise<string> {
-        let modal = new FuzzySuggestModal(this.app, this, text_items, items);
-        let item = await modal.openAndGetValue();
+    async suggester(data: any[], getKey: (p: any) => string = (p) => p.key): Promise<string> {
+        const modal = new FuzzySuggestModal(this.app, this, data, getKey);
+        const item = await modal.openAndGetValue();
         return item.name;
     }
     registerFileMenu() {
         this.registerEvent(
             this.app.workspace.on("file-menu", (menu: Menu, file: TAbstractFile) => {
-                let title = file instanceof TFile ? "文件" : "文件夹";
+                const title = file instanceof TFile ? "文件" : "文件夹";
                 menu.addItem((item) => {
                     item.setIcon("folder-tree")
                         .setTitle("FuzzyPinyin: 移动" + title)
@@ -215,9 +218,6 @@ export default class ThePlugin extends Plugin {
                 });
             })
         );
-    }
-    registerFileExplorer() {
-        this.fileExplorerHotkey = new FileExplorerHotkey(this.app, this);
     }
 }
 
@@ -240,7 +240,7 @@ class FileExplorerHotkey {
         return Array.from(this.view.tree.selectedDoms).map((p: { file: TFile }) => p.file);
     }
     getView(): View | undefined {
-        let leaf = this.app.workspace.getLeavesOfType("file-explorer");
+        const leaf = this.app.workspace.getLeavesOfType("file-explorer");
         if (leaf.length != 0) {
             this.leaf = leaf[0];
             this.view = this.leaf.view;
@@ -282,7 +282,7 @@ class IndexManager extends Array<PinyinIndex<any>> {
         this.forEach((index) => this.load_(index));
     }
     load_(index: PinyinIndex<any>) {
-        let startTime = Date.now();
+        const startTime = Date.now();
         index.initIndex();
         console.log(
             `Fuzzy Chinese Pinyin: ${index.id} indexing completed, totaling ${
@@ -292,7 +292,7 @@ class IndexManager extends Array<PinyinIndex<any>> {
     }
     devLoad() {
         this.forEach((index) => {
-            if (globalThis.FuzzyChineseIndex && globalThis.FuzzyChineseIndex[index.id]) {
+            if (globalThis.FuzzyChineseIndex?.[index.id]) {
                 index.items = globalThis.FuzzyChineseIndex[index.id];
                 console.log(`Fuzzy Chinese Pinyin: Use old ${index.id} index`);
             } else {

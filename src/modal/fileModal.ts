@@ -10,31 +10,37 @@ import {
     incrementalUpdate,
     PinyinSuggest,
     getMostRecentView,
+    usePlugin,
 } from "@/utils";
 import ThePlugin from "@/main";
 import FuzzyModal, { SpecialItemScore } from "./modal";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
+export enum FileItemType {
+    file = "file",
+    path = "path",
+    alias = "alias",
+    unresolvedLink = "unresolvedLink",
+    link = "link",
+}
 
-type ItemType = "file" | "path" | "alias" | "unresolvedLink" | "link";
-interface Item_<T extends ItemType> extends uItem {
+type Item_<T extends FileItemType> = uItem<{
     file: TFile;
     type: T;
     path: string;
-}
-interface FileItem extends Item_<"file"> {}
-interface PathItem extends Item_<"path"> {}
-interface AliasItem extends Item_<"alias"> {}
-interface UnresolvedLinkItem extends Item_<"unresolvedLink"> {}
-export interface LinkItem extends Item_<"link"> {
-    link: string;
-}
+}>;
+
+type FileItem = Item_<FileItemType.file>;
+type PathItem = Item_<FileItemType.path>;
+type AliasItem = Item_<FileItemType.alias>;
+type UnresolvedLinkItem = Item_<FileItemType.unresolvedLink>;
+export type LinkItem = Item_<FileItemType.link> & { link: string };
 export type Item = FileItem | PathItem | AliasItem | UnresolvedLinkItem | LinkItem;
 
-export interface MatchData<T = Item> extends uMatchData<T> {
+export type MatchData<T extends uItem = Item> = uMatchData<T> & {
     ignore?: boolean;
     history?: boolean;
-}
+};
 
 export default class FileModal extends FuzzyModal<Item> {
     tags: string[] = [];
@@ -47,7 +53,7 @@ export default class FileModal extends FuzzyModal<Item> {
         this.emptyStateText = "未发现该笔记，按下回车创建。";
         this.setPlaceholder("输入以切换或创建文件……");
 
-        let i = {
+        const i = {
             scope: this.scope,
             modifiers: null,
             key: "Enter",
@@ -58,7 +64,7 @@ export default class FileModal extends FuzzyModal<Item> {
             },
         };
         this.scope.keys.unshift(i);
-        let prompt = [
+        const prompt = [
             {
                 command: "ctrl ↵",
                 purpose: this.plugin.settings.file["keyCtrlEnter"],
@@ -91,7 +97,7 @@ export default class FileModal extends FuzzyModal<Item> {
             });
             this.scope.register(["Mod"], "o", (event: KeyboardEvent) => {
                 this.close();
-                let item = this.getChoosenItem();
+                const item = this.getChoosenItem();
                 const newLeaf = app.plugins.plugins["obsidian-hover-editor"].spawnPopover(
                     undefined,
                     () => this.app.workspace.setActiveLeaf(newLeaf)
@@ -103,7 +109,7 @@ export default class FileModal extends FuzzyModal<Item> {
         this.addTagInput();
     }
     addTagInput(): void {
-        let inputContainerEl = this.modalEl.querySelector(
+        const inputContainerEl = this.modalEl.querySelector(
             ".prompt-input-container"
         ) as HTMLInputElement;
         this.tagInput = new TagInput(inputContainerEl, this.plugin);
@@ -118,10 +124,10 @@ export default class FileModal extends FuzzyModal<Item> {
 
         this.tags = [];
         this.tagInput.setValue("");
-        let inputContainerEl = this.modalEl.querySelector(
+        const inputContainerEl = this.modalEl.querySelector(
             ".prompt-input-container"
         ) as HTMLInputElement;
-        let clearButton = inputContainerEl.querySelector(
+        const clearButton = inputContainerEl.querySelector(
             ".search-input-clear-button"
         ) as HTMLDivElement;
         if (this.plugin.settings.file.searchWithTag) {
@@ -140,7 +146,9 @@ export default class FileModal extends FuzzyModal<Item> {
         if (this.tags.length == 0) {
             items = this.app.workspace
                 .getRecentFiles()
-                .map((p) => this.index.items.find((q) => q.type == "file" && q.path == p));
+                .map((p) =>
+                    this.index.items.find((q) => q.type === FileItemType.file && q.path === p)
+                );
         } else {
             items = this.index.items.filter((p) => this.filterWithTags(p));
         }
@@ -188,7 +196,6 @@ export default class FileModal extends FuzzyModal<Item> {
         let matchData1: MatchData[] = [], // 使用标题、别名搜索的数据
             matchData2: MatchData[] = []; // 使用路径搜索的数据
 
-        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
         let toMatchItem = this.getHistoryData(query);
         matchData1 = super.getNormalInputSuggestions(query, toMatchItem);
 
@@ -216,7 +223,7 @@ export default class FileModal extends FuzzyModal<Item> {
 
     getSuggestions(query: string): MatchData[] {
         if (query[0] == " " && this.plugin.settings.file.quicklySelectHistoryFiles) {
-            let matchData = this.getEmptyInputSuggestions();
+            const matchData = this.getEmptyInputSuggestions();
             switch (query.length) {
                 case 1:
                     break;
@@ -239,15 +246,15 @@ export default class FileModal extends FuzzyModal<Item> {
     }
 
     renderSuggestion(matchData: MatchData, el: HTMLElement) {
-        let renderer = new SuggestionRenderer(el);
+        const renderer = new SuggestionRenderer(el);
         if (matchData.item.file) renderer.setNote(matchData.item.path);
-        if (matchData.item.type == "path") {
+        if (matchData.item.type === FileItemType.path) {
             renderer.setTitle(matchData.item.file.basename);
             renderer.setToHighlightEl("note");
         }
         if (matchData.ignore) renderer.setIgnore();
         if (matchData.history && this.plugin.settings.file.quicklySelectHistoryFiles) {
-            let auxEl = el.createEl("span", { cls: "fz-suggestion-aux" });
+            const auxEl = el.createEl("span", { cls: "fz-suggestion-aux" });
             auxEl.createEl("kbd", {
                 cls: "suggestion-command",
                 text: this.plugin.settings.file.quicklySelectHistoryFilesHint[
@@ -260,17 +267,18 @@ export default class FileModal extends FuzzyModal<Item> {
         renderer.render(matchData);
 
         if (this.plugin.settings.file.showTags && matchData.item.file) {
-            let tagArray = getFileTagArray(matchData.item.file);
+            const tagArray = getFileTagArray(matchData.item.file);
             if (tagArray) {
-                let tagEl = renderer.titleEl.createDiv({ cls: "fz-suggestion-tags" });
+                const tagEl = renderer.titleEl.createDiv({ cls: "fz-suggestion-tags" });
                 tagArray.forEach((p) => tagEl.createEl("a", { cls: "tag", text: p }));
             }
         }
-        let icon = { alias: "forward", link: "heading" };
+        const icon = { [FileItemType.alias]: "forward", [FileItemType.link]: "heading" };
         if (icon[matchData.item.type]) {
             renderer.addIcon(icon[matchData.item.type]);
             if (renderer.noteEl) renderer.noteEl.style.width = "calc(100% - 30px)";
-        } else if (matchData.item.type == "unresolvedLink") renderer.addIcon("file-plus");
+        } else if (matchData.item.type === FileItemType.unresolvedLink)
+            renderer.addIcon("file-plus");
     }
     async onChooseSuggestion(matchData: MatchData, e: MouseEvent | KeyboardEvent) {
         const shiftKey = e.shiftKey;
@@ -281,8 +289,8 @@ export default class FileModal extends FuzzyModal<Item> {
 
         if (shiftKey) matchData.item.file = await createFile(this.inputEl.value);
         else if (
-            matchData.score == SpecialItemScore.noFoundToCreate ||
-            matchData.item.type == "unresolvedLink"
+            matchData.score === SpecialItemScore.noFoundToCreate ||
+            matchData.item.type === FileItemType.unresolvedLink
         )
             matchData.item.file = await createFile(matchData.item.name);
 
@@ -295,7 +303,7 @@ export default class FileModal extends FuzzyModal<Item> {
     }
     onNoSuggestion(): void {
         super.onNoSuggestion(<MatchData>{
-            item: { type: "file", name: this.inputEl.value },
+            item: { type: FileItemType.file, name: this.inputEl.value },
             score: SpecialItemScore.noFoundToCreate,
         });
     }
@@ -304,7 +312,7 @@ export default class FileModal extends FuzzyModal<Item> {
         const modKey = e.ctrlKey || e.metaKey;
         const altKey = e.altKey;
         let leaf: WorkspaceLeaf | null;
-        let getKey = (key: keyof typeof openFileKeyMap) =>
+        const getKey = (key: keyof typeof openFileKeyMap) =>
             openFileKeyMap[this.plugin.settings.file[key]];
         if (modKey && altKey) leaf = getKey("keyCtrlAltEnter")();
         else if (modKey) leaf = getKey("keyCtrlEnter")();
@@ -357,7 +365,7 @@ const getNewOrAdjacentLeaf = (leaf?: WorkspaceLeaf): WorkspaceLeaf => {
             mainLeaf = l;
         });
         let newLeaf: WorkspaceLeaf;
-        if (mainLeaf.parent.id == leaf.parent.id) newLeaf = app.workspace.getLeaf("split");
+        if (mainLeaf.parent.id === leaf.parent.id) newLeaf = app.workspace.getLeaf("split");
         else newLeaf = app.workspace.createLeafInTabGroup(mainLeaf.parent);
         return newLeaf;
     };
@@ -389,36 +397,28 @@ class PinyinIndex extends PI<Item> {
         this.aliasItems = [];
         this.linkItems = [];
         this.unresolvedLinkItems = [];
+        const map = {
+            [FileItemType.file]: this.fileItems,
+            [FileItemType.alias]: this.aliasItems,
+            [FileItemType.unresolvedLink]: this.unresolvedLinkItems,
+            [FileItemType.link]: this.linkItems,
+        };
         for (const item of value) {
-            switch (item.type) {
-                case "file":
-                    this.fileItems.push(item);
-                    break;
-                case "alias":
-                    this.aliasItems.push(item);
-                    break;
-                case "unresolvedLink":
-                    this.unresolvedLinkItems.push(item);
-                    break;
-                case "link":
-                    this.linkItems.push(item);
-                    break;
-            }
+            map[item.type].push(item);
         }
     }
     initIndex() {
-        let files = this.app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
-
-        const fp = files.map((f) => TFile2Item(f, this.plugin));
+        const files = this.app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
+        const fp = files.map((f) => TFile2Item(f));
         this.fileItems = fp.map((f) => f.fileItem);
         this.pathItems = fp.map((f) => f.pathItem);
         this.aliasItems = [];
         this.linkItems = [];
         this.unresolvedLinkItems = [];
 
-        for (let file of files) {
-            if (file.extension != "md") continue;
-            const { aliasItem, linkItem } = CachedMetadata2Item(file, this.plugin, this.pathItems);
+        for (const file of files) {
+            if (file.extension !== "md") continue;
+            const { aliasItem, linkItem } = CachedMetadata2Item(file, this.pathItems);
             this.aliasItems.push(...aliasItem);
             this.linkItems.push(...linkItem);
         }
@@ -448,37 +448,28 @@ class PinyinIndex extends PI<Item> {
         if (!this.isEffectiveFile(file)) return;
         switch (type) {
             case "changed": {
-                const { aliasItem, linkItem } = CachedMetadata2Item(
-                    file,
-                    this.plugin,
-                    this.pathItems,
-                    args
-                );
+                const { aliasItem, linkItem } = CachedMetadata2Item(file, this.pathItems, args);
                 this.aliasItems = this.aliasItems
-                    .filter((item) => item.path != file.path)
+                    .filter((item) => item.path !== file.path)
                     .concat(aliasItem);
                 this.linkItems = this.linkItems
-                    .filter((item) => item.path != file.path)
+                    .filter((item) => item.path !== file.path)
                     .concat(linkItem);
                 break;
             }
             case "create": {
-                const { fileItem, pathItem } = TFile2Item(file, this.plugin);
+                const { fileItem, pathItem } = TFile2Item(file);
                 this.fileItems.push(fileItem);
                 this.pathItems.push(pathItem);
                 break;
             }
             case "rename": {
-                this.fileItems = this.fileItems.filter((item) => item.path != args);
-                this.pathItems = this.pathItems.filter((item) => item.path != args);
-                this.aliasItems = this.aliasItems.filter((item) => item.path != args);
-                this.linkItems = this.linkItems.filter((item) => item.path != args);
-                const { fileItem, pathItem } = TFile2Item(file, this.plugin);
-                const { aliasItem, linkItem } = CachedMetadata2Item(
-                    file,
-                    this.plugin,
-                    this.pathItems
-                );
+                this.fileItems = this.fileItems.filter((item) => item.path !== args);
+                this.pathItems = this.pathItems.filter((item) => item.path !== args);
+                this.aliasItems = this.aliasItems.filter((item) => item.path !== args);
+                this.linkItems = this.linkItems.filter((item) => item.path !== args);
+                const { fileItem, pathItem } = TFile2Item(file);
+                const { aliasItem, linkItem } = CachedMetadata2Item(file, this.pathItems);
                 this.fileItems.push(fileItem);
                 this.pathItems.push(pathItem);
                 this.aliasItems.push(...aliasItem);
@@ -486,10 +477,10 @@ class PinyinIndex extends PI<Item> {
                 break;
             }
             case "delete": {
-                this.fileItems = this.fileItems.filter((item) => item.path != file.path);
-                this.pathItems = this.pathItems.filter((item) => item.path != file.path);
-                this.aliasItems = this.aliasItems.filter((item) => item.path != file.path);
-                this.linkItems = this.linkItems.filter((item) => item.path != file.path);
+                this.fileItems = this.fileItems.filter((item) => item.path !== file.path);
+                this.pathItems = this.pathItems.filter((item) => item.path !== file.path);
+                this.aliasItems = this.aliasItems.filter((item) => item.path !== file.path);
+                this.linkItems = this.linkItems.filter((item) => item.path !== file.path);
                 break;
             }
         }
@@ -498,7 +489,7 @@ class PinyinIndex extends PI<Item> {
         this.unresolvedLinkItems = incrementalUpdate(
             this.unresolvedLinkItems,
             () => {
-                let unresolvedLinks = new Set<string>();
+                const unresolvedLinks = new Set<string>();
                 Object.values(this.metadataCache.unresolvedLinks)
                     .map((p) => Object.keys(p))
                     .filter((p) => p.length > 0)
@@ -506,9 +497,9 @@ class PinyinIndex extends PI<Item> {
                 return Array.from(unresolvedLinks);
             },
             (name) => ({
-                type: "unresolvedLink",
+                type: FileItemType.unresolvedLink,
                 name,
-                pinyin: new Pinyin(name, this.plugin),
+                pinyin: new Pinyin(name),
                 path: null,
                 pinyinOfPath: null,
                 file: null,
@@ -530,31 +521,29 @@ class PinyinIndex extends PI<Item> {
     }
 }
 
-function TFile2Item(file: TFile, plugin: ThePlugin): { fileItem: FileItem; pathItem: PathItem } {
-    let name = file.extension != "md" ? file.name : file.basename;
-    let folderIndex = plugin.folderModal.index.items;
-    let fileNamePinyin = new Pinyin(name, plugin);
+function TFile2Item(file: TFile): { fileItem: FileItem; pathItem: PathItem } {
+    const name = file.extension != "md" ? file.name : file.basename;
+    const folderIndex = usePlugin().folderModal.index.items;
+    const fileNamePinyin = new Pinyin(name);
     let folderPathPinyin: Pinyin;
     let pathPinyin: Pinyin;
-    if (file.parent.path == "/") {
+    if (file.parent.path === "/") {
         pathPinyin = fileNamePinyin;
     } else {
-        folderPathPinyin = folderIndex.find(
-            (folder) => folder.path == file.parent.path
-        )?.pinyinOfPath;
+        folderPathPinyin = folderIndex.find((folder) => folder.name == file.parent.path)?.pinyin;
         if (folderPathPinyin)
-            pathPinyin = folderPathPinyin.concat(new Pinyin("/", plugin)).concat(fileNamePinyin);
-        else pathPinyin = new Pinyin(file.path, plugin);
+            pathPinyin = folderPathPinyin.concat(new Pinyin("/")).concat(fileNamePinyin);
+        else pathPinyin = new Pinyin(file.path);
     }
     const fileItem: FileItem = {
-        type: "file",
+        type: FileItemType.file,
         file: file,
         name: name,
         pinyin: fileNamePinyin,
         path: file.path,
     };
     const pathItem: PathItem = {
-        type: "path",
+        type: FileItemType.path,
         file: file,
         name: file.path,
         pinyin: pathPinyin,
@@ -568,19 +557,18 @@ function TFile2Item(file: TFile, plugin: ThePlugin): { fileItem: FileItem; pathI
 
 function CachedMetadata2Item(
     file: TFile,
-    plugin: ThePlugin,
     items: Item[],
     cache?: CachedMetadata
 ): { aliasItem: AliasItem[]; linkItem: LinkItem[] } {
-    cache = cache ?? plugin.app.metadataCache.getFileCache(file);
+    cache ??= usePlugin().app.metadataCache.getFileCache(file);
     let alias =
         cache?.frontmatter?.alias ||
         cache?.frontmatter?.aliases ||
         cache?.frontmatter?.Alias ||
         cache?.frontmatter?.Aliases;
-    let linkText = cache?.frontmatter?.linkText;
-    let item = items.find((item) => item.path == file.path);
-    let pinyinOfPath = item?.pinyin ?? new Pinyin(file.path, plugin);
+    const linkText = cache?.frontmatter?.linkText;
+    const item = items.find((item) => item.path == file.path);
+    const pinyinOfPath = item?.pinyin ?? new Pinyin(file.path);
     let aliasItem: AliasItem[] = [],
         linkItem: LinkItem[] = [];
     if (alias) {
@@ -588,27 +576,27 @@ function CachedMetadata2Item(
         aliasItem = alias.map((p: string) => ({
             type: "alias",
             name: p,
-            pinyin: new Pinyin(p, plugin),
+            pinyin: new Pinyin(p),
             path: file.path,
             pinyinOfPath: pinyinOfPath,
             file: file,
         }));
     }
     if (linkText) {
-        let link = Array.isArray(linkText)
+        const link = Array.isArray(linkText)
             ? linkText.map((p) => String(p))
             : String(linkText).split(/, ?/);
         linkItem = link.map((p: string) => {
             let [link, name] = p.split("|");
-            name = name || link;
+            name ??= link;
             // if (name[0] != "#") name = "#" + name;
             return {
-                type: "link",
+                type: FileItemType.link,
                 name,
-                pinyin: new Pinyin(name, plugin),
+                pinyin: new Pinyin(name),
                 path: file.path,
                 pinyinOfPath: pinyinOfPath,
-                file: file,
+                file,
                 link,
             };
         });
@@ -628,7 +616,7 @@ class TagInput extends TextComponent {
 
         this.inputEl.style.width = "30%";
         this.inputEl.style.borderLeft = "2px solid var(--background-primary)";
-        let tagSuggest = new PinyinSuggest(this.inputEl, plugin);
+        const tagSuggest = new PinyinSuggest(this.inputEl, plugin);
         tagSuggest.getItemFunction = (query) =>
             plugin.tagEditorSuggest.getSuggestionsByString(query);
     }
@@ -641,13 +629,13 @@ class TagInput extends TextComponent {
 }
 
 function openItem(leaf: WorkspaceLeaf, item: Item) {
-    if (item.type == "link") {
+    if (item.type == FileItemType.link) {
         leaf.openLinkText(item.file.path + "#" + item.link, "");
     } else leaf.openFile(item.file);
 }
 
 function getFileTagArray(file: TFile): string[] | undefined {
-    let tags: string | string[] | Object =
+    const tags: string | string[] | Object =
         app.metadataCache.getFileCache(file)?.frontmatter?.tags ||
         app.metadataCache.getFileCache(file)?.frontmatter?.tag;
     if (!tags) return undefined;

@@ -34,7 +34,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
             else this.chooser.setSelectedItem(0, e);
         });
         this.scope.register(["Mod"], "P", async (e) => {
-            if (this.chooser.selectedItem != 0) {
+            if (this.chooser.selectedItem !== 0) {
                 this.chooser.setSelectedItem(this.chooser.selectedItem - 1, e);
             } else this.chooser.setSelectedItem(this.chooser.values.length - 1, e);
         });
@@ -62,11 +62,10 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         return matchData;
     }
     getNormalInputSuggestions(query: string, items: T[]): MatchData<T>[] {
-        const smathCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
         const matchData: MatchData<T>[] = [];
         for (const p of items) {
-            const d = p.pinyin.match(query, p, smathCase);
-            if (d) matchData.push(d as MatchData<T>);
+            const d = p.pinyin.match(query, p);
+            if (d) matchData.push(d);
         }
         return matchData;
     }
@@ -85,7 +84,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
             matchData = this.getNormalInputSuggestions(query, toMatchItem);
             this.currentNode.itemIndex = matchData.map((p) => p.item);
         }
-        matchData = matchData.sort((a, b) => b.score - a.score);
+        matchData.sort((a, b) => b.score - a.score);
         return matchData;
     }
     removeDuplicates(
@@ -130,7 +129,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         }
         this.currentNode = this.historyMatchData.index(index - 1);
         const toMatchItem =
-            this.currentNode.itemIndex.length == 0 ? this.index.items : this.currentNode.itemIndex;
+            this.currentNode.itemIndex.length === 0 ? this.index.items : this.currentNode.itemIndex;
         return toMatchItem;
     }
 
@@ -160,7 +159,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         return this.chooser.values[this.chooser.selectedItem].item;
     }
     async openAndGetValue(): Promise<T> {
-        return await new Promise((resolve, reject) => {
+        return await new Promise((resolve) => {
             this.resolve = resolve;
             this.isPromiseCall = true;
             this.open();

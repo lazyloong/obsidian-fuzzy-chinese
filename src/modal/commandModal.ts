@@ -4,17 +4,14 @@ import {
     PinyinIndex as PI,
     Pinyin,
     MatchData,
+    Item as uItem,
     SuggestionRenderer,
     incrementalUpdate,
     copy,
 } from "@/utils";
 import FuzzyModal from "./modal";
 
-type Item = {
-    name: string;
-    pinyin: Pinyin;
-    command: Command;
-};
+type Item = uItem<{ command: Command }>;
 
 const BASIC_MODIFIER_ICONS = {
     Mod: "Ctrl +",
@@ -52,7 +49,7 @@ enum SpecialItemScore {
 }
 
 function generateHotKeyText(hotkey: Hotkey): string {
-    let modifierIcons = Platform.isMacOS ? MAC_MODIFIER_ICONS : BASIC_MODIFIER_ICONS;
+    const modifierIcons = Platform.isMacOS ? MAC_MODIFIER_ICONS : BASIC_MODIFIER_ICONS;
     const hotKeyStrings: string[] = [];
 
     hotkey.modifiers.forEach((mod: Modifier) => {
@@ -66,7 +63,7 @@ function generateHotKeyText(hotkey: Hotkey): string {
 }
 
 export default class CommandModal extends FuzzyModal<Item> {
-    historyCommands: Array<Item>;
+    historyCommands: Item[];
     constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);
         this.index = this.plugin.addChild(new PinyinIndex(this.app, this.plugin));
@@ -74,20 +71,20 @@ export default class CommandModal extends FuzzyModal<Item> {
         this.emptyStateText = "未发现命令。";
         this.setPlaceholder("输入命令……");
         this.scope.register(["Alt"], "N", async (e) => {
-            let command = this.getChoosenItem().command;
+            const command = this.getChoosenItem().command;
             copy(command.name);
         });
         this.scope.register(["Alt"], "I", async (e) => {
-            let command = this.getChoosenItem().command;
+            const command = this.getChoosenItem().command;
             copy(command.id);
         });
         this.scope.register(["Mod"], "O", async (e) => {
             app.setting.open();
-            let settingTab = app.setting.openTabById("hotkeys");
-            let command = this.getChoosenItem().command;
+            const settingTab = app.setting.openTabById("hotkeys");
+            const command = this.getChoosenItem().command;
             settingTab.setQuery(command.name);
         });
-        let prompt = [
+        const prompt = [
             {
                 command: "alt n",
                 purpose: "复制名字",
@@ -108,7 +105,7 @@ export default class CommandModal extends FuzzyModal<Item> {
         this.index.update();
     }
     getEmptyInputSuggestions(): MatchData<Item>[] {
-        let pinnedCommands: MatchData<Item>[] = this.plugin.settings.command.pinnedCommands.map(
+        const pinnedCommands: MatchData<Item>[] = this.plugin.settings.command.pinnedCommands.map(
                 (p) => ({
                     item: this.index.items.find((q) => q.name == p),
                     score: SpecialItemScore.pinned,
@@ -147,10 +144,9 @@ export default class CommandModal extends FuzzyModal<Item> {
         this.app.commands.executeCommand(matchData.item.command);
     }
     renderSuggestion(matchData: MatchData<Item>, el: HTMLElement): void {
-        let renderer = new SuggestionRenderer(el);
-        renderer.render(matchData);
+        const renderer = new SuggestionRenderer(el).render(matchData);
 
-        let auxEl = el.createEl("span", { cls: "fz-suggestion-aux" });
+        const auxEl = el.createEl("span", { cls: "fz-suggestion-aux" });
         const customHotkeys = this.app.hotkeyManager.getHotkeys(matchData.item.command.id);
         const defaultHotkeys = this.app.hotkeyManager.getDefaultHotkeys(matchData.item.command.id);
         const hotkeys = customHotkeys || defaultHotkeys || [];
@@ -174,21 +170,21 @@ class PinyinIndex extends PI<Item> {
     }
     initEvent() {}
     initIndex() {
-        let commands: Command[] = this.app.commands.listCommands();
+        const commands: Command[] = this.app.commands.listCommands();
         this.items = commands.map((command) => ({
             name: command.name,
-            pinyin: new Pinyin(command.name, this.plugin),
-            command: command,
+            pinyin: new Pinyin(command.name),
+            command,
         }));
     }
     update() {
-        let commands: Command[] = this.app.commands.listCommands();
+        const commands: Command[] = this.app.commands.listCommands();
         this.items = incrementalUpdate(
             this.items,
             () => commands.map((command) => command.name),
             (name) => ({
                 name,
-                pinyin: new Pinyin(name, this.plugin),
+                pinyin: new Pinyin(name),
                 command: commands.find((p) => p.name == name),
             })
         );

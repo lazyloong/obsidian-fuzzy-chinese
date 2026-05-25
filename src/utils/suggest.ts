@@ -94,7 +94,7 @@ class Suggest<T> {
     }
 }
 
-export abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
+export default abstract class TextInputSuggest<T> implements ISuggestOwner<T> {
     protected inputEl: HTMLInputElement | HTMLTextAreaElement;
 
     private popper: PopperInstance;

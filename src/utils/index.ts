@@ -1,8 +1,18 @@
 export type { Item, MatchData } from "./type";
-export { Pinyin } from "./pinyin";
-export { PinyinIndex } from "./pinyinIndex";
-export { PinyinSuggest } from "./pinyinSuggest";
-export { SuggestionRenderer } from "./suggestionRenderer";
-export { HistoryMatchDataNode } from "./historyMatchDataNode";
+import Pinyin from "./pinyin";
+import PinyinIndex from "./pinyinIndex";
+import PinyinSuggest from "./pinyinSuggest";
+import pinyinSearch from "./pinyinSearch";
+import SuggestionRenderer from "./suggestionRenderer";
+import HistoryMatchDataNode from "./historyMatchDataNode";
 export * from "./pinyinUtils";
 export * from "./helpers";
+
+export {
+    Pinyin,
+    PinyinIndex,
+    PinyinSuggest,
+    SuggestionRenderer,
+    HistoryMatchDataNode,
+    pinyinSearch,
+};

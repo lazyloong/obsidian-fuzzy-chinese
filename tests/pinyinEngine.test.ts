@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { PinyinEngine } from "@/engine/pinyinEngine";
+import Palladius from "@/dict/palladius.json";
 
 function createEngine() {
     const engine = new PinyinEngine();
@@ -17,6 +18,7 @@ function createEngine() {
     });
     engine.loadLegacySchemes();
     engine.loadDefaultFuzzyRules();
+    engine.loadPalladius(Palladius);
     return engine;
 }
 
@@ -109,6 +111,36 @@ describe("PinyinEngine", () => {
         it("禁用时不扩展", () => {
             engine.toggleFuzzy(false);
             expect(engine.toFuzzy("yin")).toEqual(["yin"]);
+        });
+    });
+
+    describe("Palladius", () => {
+        it("拼音转俄语", () => {
+            const r = engine.getCharPinyin("中", { palladius: true });
+            expect(r).toContain("zhong");
+            expect(r).toContain("чжун");
+        });
+        it("多音字", () => {
+            const r = engine.getCharPinyin("行", { palladius: true });
+            expect(r).toContain("xing");
+            expect(r).toContain("hang");
+            expect(r).toContain("хан");
+            expect(r).toContain("син");
+        });
+        it("fuzzy + palladius", () => {
+            engine.toggleFuzzy(true);
+            const r = engine.getCharPinyin("音", { fuzzy: true, palladius: true });
+            expect(r).toContain("yin");
+            expect(r).toContain("ying");
+            expect(r).toContain("инь");
+            expect(r).toContain("ин");
+        });
+        it("togglePalladius 全局", () => {
+            engine.togglePalladius(true);
+            expect(engine.getCharPinyin("拼")).toContain("pin");
+            expect(engine.getCharPinyin("拼")).toContain("пинь");
+            engine.togglePalladius(false);
+            expect(engine.getCharPinyin("拼")).toEqual(["pin"]);
         });
     });
 

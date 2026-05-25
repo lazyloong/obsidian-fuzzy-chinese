@@ -40,10 +40,13 @@ export class PinyinEngine {
     /** 模糊音规则：from → to 集合 */
     private fuzzyRuleMap = new Map<string, Set<string>>();
     private _fuzzyEnabled = false;
+    private _palladiusEnabled = false;
 
     /** 汉字级缓存 */
     private fuzzyCache = new Map<string, readonly string[]>();
     private shuangpinCache = new Map<string, readonly string[]>();
+    private palladiusCache = new Map<string, readonly string[]>();
+    private palladiusMap: Record<string, string> = {};
 
     // ============================================================
     // 加载
@@ -63,7 +66,7 @@ export class PinyinEngine {
         this.schemes[scheme.name] = scheme;
     }
 
-    /** 从 legacy 双拼字典加载所有内置方案（double_pinyin.json 格式） */
+    /** 从 legacy 双拼字典加载所有内置方案 */
     loadLegacySchemes(): void {
         for (const [name, mapping] of Object.entries(DoubleDict)) {
             const sheng: Record<string, string> = {};
@@ -128,6 +131,13 @@ export class PinyinEngine {
         this._fuzzyEnabled = enabled;
     }
 
+    loadPalladius(data: Record<string, string>): void {
+        this.palladiusMap = data;
+        this.palladiusCache.clear();
+    }
+    togglePalladius(enabled: boolean): void {
+        this._palladiusEnabled = enabled;
+    }
     /** 列出所有已加载的双拼方案名 */
     listSchemes(): string[] {
         return Object.keys(this.schemes);
@@ -144,17 +154,22 @@ export class PinyinEngine {
 
         const useFuzzy = opts?.fuzzy ?? this._fuzzyEnabled;
         const useShuangpin = opts?.shuangpin ?? this._activeScheme;
+        const usePalladius = opts?.palladius ?? this._palladiusEnabled;
 
+        let result: readonly string[];
         if (useShuangpin && useFuzzy) {
             const sp = this.getShuangpinCached(char);
-            return this.getFuzzyCached(char, sp);
+            result = this.getFuzzyCached(char, sp);
         } else if (useShuangpin) {
-            return this.getShuangpinCached(char);
+            result = this.getShuangpinCached(char);
         } else if (useFuzzy) {
-            return this.getFuzzyCached(char, base);
+            result = this.getFuzzyCached(char, base);
+        } else {
+            result = base;
         }
 
-        return base;
+        if (usePalladius) result = result.concat(this.getPalladiusCached(char, result));
+        return result;
     }
 
     /** 字符串 → 拼音列表 */
@@ -220,6 +235,24 @@ export class PinyinEngine {
     // ============================================================
     // 缓存辅助
     // ============================================================
+
+    private getPalladiusCached(char: string, base: readonly string[]): readonly string[] {
+        let cached = this.palladiusCache.get(char);
+        if (!cached) {
+            const out: string[] = [];
+            for (const p of base) {
+                const cyr = this.palladiusMap[p];
+                if (cyr) {
+                    out.push(...cyr.split(",").map((s) => s.trim()));
+                } else {
+                    out.push(p);
+                }
+            }
+            cached = Object.freeze(out);
+            this.palladiusCache.set(char, cached);
+        }
+        return cached;
+    }
 
     private getShuangpinCached(char: string): readonly string[] {
         let cached = this.shuangpinCache.get(char);

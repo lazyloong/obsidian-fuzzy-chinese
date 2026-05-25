@@ -10,7 +10,7 @@ import {
     Notice,
 } from "obsidian";
 import { merge } from "lodash-es";
-import { Item, PinyinIndex, runOnLayoutReady, FuzzyPinyinRules } from "@/utils";
+import { PinyinIndex, runOnLayoutReady, FuzzyPinyinRules } from "@/utils";
 import { pinyinEngine } from "@/engine/pinyinEngine";
 import FuzzyModal from "@/modal/modal";
 import FileModal from "@/modal/fileModal";
@@ -21,17 +21,14 @@ import HeadingModal from "@/modal/headingModal";
 import TemplatesModal from "@/modal/templatesModal";
 import FileEditorSuggest from "@/editorSuggest/fileEditorSuggest";
 import TagEditorSuggest from "@/editorSuggest/tagEditorSuggest";
+import Palladius from "@/dict/palladius.json";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
 import SimplifiedDict from "@/dict/simplified_dict.json";
 import TraditionalDict from "@/dict/traditional_dict.json";
 
 import pinyinSearch from "@/utils/pinyinSearch";
 import SettingTab, { DEFAULT_SETTINGS, TheSettings } from "@/settingTab";
-import {
-    hijackingCanvasView,
-    hijackingEmptyView,
-    hijackingTagForMarkdownView,
-} from "./viewEventHijacking";
+import { hijackingCanvasView, hijackingEmptyView } from "./viewEventHijacking";
 
 export default class ThePlugin extends Plugin {
     static instance: ThePlugin;
@@ -182,6 +179,7 @@ export default class ThePlugin extends Plugin {
             : SimplifiedDict;
 
         pinyinEngine.loadBase(base);
+        pinyinEngine.loadPalladius(Palladius);
         const dpName = this.settings.global.doublePinyin;
         pinyinEngine.setActiveShuangpin(dpName !== "全拼" ? dpName : "");
 
@@ -195,7 +193,9 @@ export default class ThePlugin extends Plugin {
                 }
             }
         }
+
         pinyinEngine.toggleFuzzy(this.settings.global.fuzzyPinyin);
+        pinyinEngine.togglePalladius(this.settings.global.palladius);
     }
     async suggester(data: any[], getKey: (p: any) => string = (p) => p.key): Promise<string> {
         const modal = new FuzzySuggestModal(this.app, this, data, getKey);

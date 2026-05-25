@@ -59,6 +59,11 @@ export default class SettingTab extends PluginSettingTab {
                         cb.setValue("全拼");
                         return;
                     }
+                    if (global.palladius && value !== "全拼") {
+                        new Notice("俄文转拼音已开启，无法切换双拼方案");
+                        cb.setValue("全拼");
+                        return;
+                    }
                     global.doublePinyin = value;
                     this.plugin.loadPinyinDict();
                     this.plugin.indexManager.refresh();
@@ -70,7 +75,7 @@ export default class SettingTab extends PluginSettingTab {
             cb.setValue(global.fuzzyPinyin).onChange(async (value) => {
                 if (global.fuzzyPinyin == value) return;
                 if (global.doublePinyin != "全拼" && value) {
-                    new Notice("双拼方案不支持模糊音，无法开启模糊音搜索");
+                    new Notice("请将双拼模式设置为全拼模式，否则将无法使用模糊音。");
                     cb.setValue(false);
                     return;
                 }
@@ -86,6 +91,17 @@ export default class SettingTab extends PluginSettingTab {
                     new FuzzyPinyinSettingModal(this.plugin).open();
                 })
             );
+        new Setting(this.containerEl).setName("俄语拼音").addToggle((cb) =>
+            cb.setValue(global.palladius).onChange(async (value) => {
+                if (global.doublePinyin !== "全拼" && value) {
+                    new Notice("请将双拼模式设置为全拼，否则无法使用俄语拼音。");
+                }
+                global.palladius = value;
+                await this.plugin.saveSettings();
+                this.plugin.loadPinyinDict();
+                this.plugin.indexManager.refresh();
+            })
+        );
         new Setting(this.containerEl).setName("自动大小写敏感").addToggle((cb) =>
             cb.setValue(global.autoCaseSensitivity).onChange(async (value) => {
                 global.autoCaseSensitivity = value;
@@ -353,6 +369,7 @@ export interface TheSettings {
         fuzzyPinyin: boolean;
         fuzzyPinyinSetting: string[];
         closeWithBackspace: boolean;
+        palladius: boolean;
         autoCaseSensitivity: boolean;
     };
     file: {
@@ -390,6 +407,7 @@ export const DEFAULT_SETTINGS: TheSettings = {
         doublePinyin: "全拼",
         fuzzyPinyin: false,
         fuzzyPinyinSetting: [],
+        palladius: false,
         closeWithBackspace: false,
         autoCaseSensitivity: true,
     },
@@ -473,7 +491,7 @@ class FuzzyPinyinSettingModal extends Modal {
             uang: "uan",
         };
         Object.entries(fuzzyDisplay).forEach(([key, value]) => {
-            new Setting(contentEl).setName(`${value} => ${key}`).addToggle((cb) =>
+            new Setting(contentEl).setName(`${value} = ${key}`).addToggle((cb) =>
                 cb.setValue(fuzzyPinyinSetting.includes(key)).onChange(async (value) => {
                     if (value) {
                         if (!fuzzyPinyinSetting.includes(key)) fuzzyPinyinSetting.push(key);

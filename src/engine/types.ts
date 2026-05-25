@@ -17,4 +17,6 @@ export interface QueryOptions {
     fuzzy?: boolean;
     /** 双拼方案名 */
     shuangpin?: string;
+    /** 是否转换为俄语西里尔字母（巴拉第体系） */
+    palladius?: boolean;
 }

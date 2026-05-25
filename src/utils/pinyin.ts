@@ -6,11 +6,9 @@ export default class Pinyin extends Array<PinyinChild> {
     text: string;
     constructor(query: string) {
         super();
-        const plugin = usePlugin();
         this.text = query;
-        const useFuzzy = plugin?.settings.global.fuzzyPinyin ?? false;
         this.text.split("").forEach((p) => {
-            const pinyin = pinyinEngine.getCharPinyin(p, { fuzzy: useFuzzy });
+            const pinyin = pinyinEngine.getCharPinyin(p);
             this.push({
                 character: p,
                 pinyin: Array.from(pinyin) as string[],

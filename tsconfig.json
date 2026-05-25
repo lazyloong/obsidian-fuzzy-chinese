@@ -1,12 +1,11 @@
 {
     "compilerOptions": {
         "target": "es2022",
-        "module": "commonjs",
+        "module": "ESNext",
         "strict": false,
-        "composite": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "forceConsistentCasingInFileNames": true,
         "baseUrl": "./src/",
         "paths": {

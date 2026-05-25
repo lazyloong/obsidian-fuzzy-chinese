@@ -6,3 +6,4 @@ pnpm-lock.yaml
 yarn.lock
 .npmrc
 dist
+.codewhale

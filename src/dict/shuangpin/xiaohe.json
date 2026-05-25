@@ -1,0 +1,22 @@
+{
+    "name": "小鹤双拼",
+    "sheng": {
+        "b": "b", "p": "p", "m": "m", "f": "f",
+        "d": "d", "t": "t", "n": "n", "l": "l",
+        "g": "g", "k": "k", "h": "h",
+        "j": "j", "q": "q", "x": "x",
+        "zh": "v", "ch": "i", "sh": "u",
+        "r": "r", "z": "z", "c": "c", "s": "s",
+        "y": "y", "w": "w"
+    },
+    "yun": {
+        "a": "a", "ai": "d", "an": "j", "ang": "h", "ao": "c",
+        "e": "e", "ei": "w", "en": "f", "eng": "g", "er": "er",
+        "i": "i", "ia": "x", "ian": "m", "iang": "l", "iao": "n",
+        "ie": "p", "in": "b", "ing": "k", "iong": "s", "iu": "q",
+        "o": "o", "ong": "s", "ou": "z",
+        "u": "u", "ua": "x", "uai": "k", "uan": "r", "uang": "l",
+        "ue": "t", "ui": "v", "un": "y", "uo": "o",
+        "v": "v"
+    }
+}

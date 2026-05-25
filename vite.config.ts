@@ -65,16 +65,20 @@ export default defineConfig(({ mode }) => {
             lib: {
                 entry: resolve(root, "src/main.ts"),
                 formats: ["cjs"],
+                name: "main",
                 fileName: () => "main.js",
             },
             outDir: "dist",
             emptyOutDir: true,
             rollupOptions: {
-                external: ["obsidian"],
-                output: {
-                    exports: "named",
-                    codeSplitting: false,
+                input: {
+                    main: resolve(__dirname, "src/main.ts"),
                 },
+                output: {
+                    entryFileNames: "main.js",
+                    assetFileNames: "styles.css",
+                },
+                external: ["obsidian"],
             },
             commonjsOptions: {
                 transformMixedEsModules: true,

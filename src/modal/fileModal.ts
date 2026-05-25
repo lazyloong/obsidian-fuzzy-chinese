@@ -1,5 +1,5 @@
 import { TFile, App, WorkspaceLeaf, TAbstractFile, CachedMetadata, TextComponent } from "obsidian";
-import { max, min } from "lodash";
+import { max, min } from "lodash-es";
 import {
     Pinyin,
     PinyinIndex as PI,

@@ -1,7 +1,46 @@
 import ThePlugin from "@/main";
 import { usePlugin } from "./helpers";
+import FuzzyDefaults from "@/dict/fuzzy-defaults.json";
 
 type DoublePinyinDict = Record<string, string[]>;
+
+// ============================================================
+// 切分声母韵母
+// ============================================================
+
+/** 声母列表（长度优先：zh/ch/sh 优先于 z/c/s） */
+export const SHENG_LIST = [
+    "zh", "ch", "sh",
+    "b", "p", "m", "f",
+    "d", "t", "n", "l",
+    "g", "k", "h",
+    "j", "q", "x",
+    "r", "z", "c", "s",
+    "y", "w",
+];
+
+/**
+ * 按长度优先匹配切分拼音为声母+韵母
+ * 如 "zhong" → { sheng: "zh", yun: "ong" }
+ */
+export function matchSheng(pinyin: string): { sheng: string; yun: string } {
+    for (const s of SHENG_LIST) {
+        if (pinyin.startsWith(s)) {
+            return { sheng: s, yun: pinyin.slice(s.length) };
+        }
+    }
+    return { sheng: "", yun: pinyin };
+}
+
+/** @deprecated 使用 matchSheng 替代 */
+export function splitPinyin(pinyin: string): [string, string] {
+    const { sheng, yun } = matchSheng(pinyin);
+    return [sheng, yun];
+}
+
+// ============================================================
+// 双拼转换
+// ============================================================
 
 export function fullPinyin2doublePinyin(
     fullPinyin: string,
@@ -22,42 +61,12 @@ export function fullPinyin2doublePinyin(
     return doublePinyin;
 }
 
-const SHENG_MU: string[] = [
-    "b",
-    "p",
-    "m",
-    "f",
-    "d",
-    "t",
-    "n",
-    "l",
-    "g",
-    "k",
-    "h",
-    "j",
-    "q",
-    "x",
-    "zh",
-    "ch",
-    "sh",
-    "r",
-    "z",
-    "c",
-    "s",
-    "y",
-    "w",
-];
+// ============================================================
+// 模糊音
+// ============================================================
 
-export function splitPinyin(pinyin: string): [string, string] {
-    const matchedShengmu = SHENG_MU.find((sm) => pinyin.startsWith(sm));
-
-    // 如果没有找到匹配的声母，可能意味着是零声母的韵母，或者输入不正确
-    if (matchedShengmu) return [matchedShengmu, pinyin.slice(matchedShengmu.length)];
-    else return ["", pinyin];
-}
-
-//模糊音
-export const FuzzyPinyinDict = {
+/** 旧版模糊音字典（保留兼容） */
+export const FuzzyPinyinDict: Record<string, string> = {
     zh: "z",
     ch: "c",
     sh: "s",
@@ -71,12 +80,17 @@ export const FuzzyPinyinDict = {
     uang: "uan",
 };
 
+/** 新版模糊音规则（双向对称，来自 fuzzy-defaults.json） */
+export const FuzzyPinyinRules: Record<string, string[]> = FuzzyDefaults;
+
 export function fullPinyin2fuzzyPinyin(pinyin: string): string[] {
     const { fuzzyPinyinSetting } = usePlugin().settings.global;
-    const dict = fuzzyPinyinSetting.reduce((acc, key) => {
-        acc[key] = FuzzyPinyinDict[key];
-        return acc;
-    }, {});
+    const dict: Record<string, string> = {};
+    for (const key of fuzzyPinyinSetting) {
+        if (FuzzyPinyinDict[key]) {
+            dict[key] = FuzzyPinyinDict[key];
+        }
+    }
     const [shengmu, yunmu] = splitPinyin(pinyin);
     const fuzzyShengmu = dict[shengmu];
     const fuzzyYunmu = dict[yunmu];
@@ -84,4 +98,5 @@ export function fullPinyin2fuzzyPinyin(pinyin: string): string[] {
         return [shengmu + fuzzyYunmu, fuzzyShengmu + yunmu, fuzzyShengmu + fuzzyYunmu];
     else if (fuzzyShengmu) return [fuzzyShengmu + yunmu];
     else if (fuzzyYunmu) return [shengmu + fuzzyYunmu];
+    return [];
 }

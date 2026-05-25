@@ -1,29 +1,19 @@
-import ThePlugin from "@/main";
-import { fullPinyin2fuzzyPinyin } from "./pinyinUtils";
 import { Item, MatchData } from "./type";
 import { usePlugin } from "./helpers";
+import { pinyinEngine } from "@/engine/pinyinEngine";
 
 export default class Pinyin extends Array<PinyinChild> {
     text: string;
     constructor(query: string) {
         super();
-        const plugin = ThePlugin.getInstance();
-        let pinyinDict = plugin?.pinyinDict;
+        const plugin = usePlugin();
         this.text = query;
+        const useFuzzy = plugin?.settings.global.fuzzyPinyin ?? false;
         this.text.split("").forEach((p) => {
-            let pinyin = pinyinDict[p];
-            if (pinyin && plugin.settings.global.fuzzyPinyin) {
-                const fuzzyPinyins = [];
-                for (const i of pinyin) {
-                    const fuzzyPinyin = fullPinyin2fuzzyPinyin(i);
-                    fuzzyPinyins.push(...fuzzyPinyin);
-                }
-                pinyin = pinyin.concat(fuzzyPinyins);
-            }
-            pinyin = pinyin || [p];
+            const pinyin = pinyinEngine.getCharPinyin(p, { fuzzy: useFuzzy });
             this.push({
                 character: p,
-                pinyin,
+                pinyin: Array.from(pinyin) as string[],
             });
         });
     }

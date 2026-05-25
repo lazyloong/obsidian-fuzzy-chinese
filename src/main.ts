@@ -9,8 +9,9 @@ import {
     View,
     Notice,
 } from "obsidian";
-import { merge } from "lodash";
-import { fullPinyin2doublePinyin, Item, PinyinIndex, runOnLayoutReady } from "@/utils";
+import { merge } from "lodash-es";
+import { Item, PinyinIndex, runOnLayoutReady, FuzzyPinyinDict } from "@/utils";
+import { pinyinEngine } from "@/engine/pinyinEngine";
 import FuzzyModal from "@/modal/modal";
 import FileModal from "@/modal/fileModal";
 import FolderModal from "@/modal/folderModal";
@@ -21,10 +22,9 @@ import TemplatesModal from "@/modal/templatesModal";
 import FileEditorSuggest from "@/editorSuggest/fileEditorSuggest";
 import TagEditorSuggest from "@/editorSuggest/tagEditorSuggest";
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
-import SimplifiedDict from "@/dict/simplified_dict";
-import TraditionalDict from "@/dict/traditional_dict";
+import SimplifiedDict from "@/dict/simplified_dict.json";
+import TraditionalDict from "@/dict/traditional_dict.json";
 
-import DoubleDict from "@/dict/double_pinyin";
 import pinyinSearch from "@/utils/pinyinSearch";
 import SettingTab, { DEFAULT_SETTINGS, TheSettings } from "@/settingTab";
 import {
@@ -36,7 +36,6 @@ import {
 export default class ThePlugin extends Plugin {
     static instance: ThePlugin;
     settings: TheSettings;
-    pinyinDict: Record<string, string[]>;
     api: any;
     fileModal: FileModal;
     folderModal: FolderModal;
@@ -55,6 +54,9 @@ export default class ThePlugin extends Plugin {
         ThePlugin.instance = this;
         await this.loadSettings();
 
+        // 初始化拼音引擎
+        pinyinEngine.loadLegacySchemes();
+        pinyinEngine.loadDefaultFuzzyRules();
         this.loadPinyinDict();
         this.fileModal = new FileModal(this.app, this);
         this.folderModal = new FolderModal(this.app, this);
@@ -175,19 +177,24 @@ export default class ThePlugin extends Plugin {
         await this.saveData(this.settings);
     }
     loadPinyinDict() {
-        const pinyinDict = this.settings.global.traditionalChineseSupport
+        const base = this.settings.global.traditionalChineseSupport
             ? TraditionalDict
             : SimplifiedDict;
 
-        if (this.settings.global.doublePinyin !== "全拼") {
-            for (const i in pinyinDict) {
-                pinyinDict[i] = pinyinDict[i].map((p) =>
-                    fullPinyin2doublePinyin(p, DoubleDict[this.settings.global.doublePinyin])
-                );
+        pinyinEngine.loadBase(base);
+        const dpName = this.settings.global.doublePinyin;
+        pinyinEngine.setActiveShuangpin(dpName !== "全拼" ? dpName : "");
+
+        // 根据用户设置同步模糊音规则
+        pinyinEngine.clearFuzzyRules();
+        for (const key of this.settings.global.fuzzyPinyinSetting) {
+            const target = FuzzyPinyinDict[key];
+            if (target) {
+                pinyinEngine.addFuzzyRule(target, key);
+                pinyinEngine.addFuzzyRule(key, target);
             }
         }
-
-        this.pinyinDict = pinyinDict;
+        pinyinEngine.toggleFuzzy(this.settings.global.fuzzyPinyin);
     }
     async suggester(data: any[], getKey: (p: any) => string = (p) => p.key): Promise<string> {
         const modal = new FuzzySuggestModal(this.app, this, data, getKey);

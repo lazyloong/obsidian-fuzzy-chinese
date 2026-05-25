@@ -1,8 +1,8 @@
 import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
-import { xor } from "lodash";
-import DoubleDict from "@/dict/double_pinyin";
+import { xor } from "lodash-es";
+import { pinyinEngine } from "@/engine/pinyinEngine";
 import ThePlugin from "@/main";
-import { FuzzyPinyinDict, PinyinSuggest, arraySwap, fullPinyin2doublePinyin } from "@/utils";
+import { FuzzyPinyinDict, PinyinSuggest, arraySwap } from "@/utils";
 import { openFileKeyMap } from "./modal/fileModal";
 
 export default class SettingTab extends PluginSettingTab {
@@ -39,7 +39,7 @@ export default class SettingTab extends PluginSettingTab {
                 this.plugin.loadPinyinDict();
             });
         });
-        const doublePinyinOptions = Object.keys(DoubleDict).reduce(
+        const doublePinyinOptions = pinyinEngine.listSchemes().reduce(
             (acc, cur) => {
                 acc[cur] = cur;
                 return acc;
@@ -52,7 +52,7 @@ export default class SettingTab extends PluginSettingTab {
             cb
                 .addOptions(doublePinyinOptions)
                 .setValue(global.doublePinyin)
-                .onChange(async (value: keyof typeof DoubleDict | "全拼") => {
+                .onChange(async (value: string) => {
                     if (global.doublePinyin == value) return;
                     if (global.fuzzyPinyin && value != "全拼") {
                         new Notice("模糊音搜索已开启，无法切换双拼方案");
@@ -349,7 +349,7 @@ export default class SettingTab extends PluginSettingTab {
 export interface TheSettings {
     global: {
         traditionalChineseSupport: boolean;
-        doublePinyin: keyof typeof DoubleDict | "全拼";
+        doublePinyin: string;
         fuzzyPinyin: boolean;
         fuzzyPinyinSetting: string[];
         closeWithBackspace: boolean;

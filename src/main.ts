@@ -10,7 +10,7 @@ import {
     Notice,
 } from "obsidian";
 import { merge } from "lodash-es";
-import { Item, PinyinIndex, runOnLayoutReady, FuzzyPinyinDict } from "@/utils";
+import { Item, PinyinIndex, runOnLayoutReady, FuzzyPinyinRules } from "@/utils";
 import { pinyinEngine } from "@/engine/pinyinEngine";
 import FuzzyModal from "@/modal/modal";
 import FileModal from "@/modal/fileModal";
@@ -188,10 +188,11 @@ export default class ThePlugin extends Plugin {
         // 根据用户设置同步模糊音规则
         pinyinEngine.clearFuzzyRules();
         for (const key of this.settings.global.fuzzyPinyinSetting) {
-            const target = FuzzyPinyinDict[key];
-            if (target) {
-                pinyinEngine.addFuzzyRule(target, key);
-                pinyinEngine.addFuzzyRule(key, target);
+            const targets = FuzzyPinyinRules[key];
+            if (targets) {
+                for (const target of targets) {
+                    pinyinEngine.addFuzzyRule(key, target);
+                }
             }
         }
         pinyinEngine.toggleFuzzy(this.settings.global.fuzzyPinyin);

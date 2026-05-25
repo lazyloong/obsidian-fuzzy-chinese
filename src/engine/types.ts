@@ -18,6 +18,3 @@ export interface QueryOptions {
     /** 双拼方案名 */
     shuangpin?: string;
 }
-
-/** 单字符拼音结果 */
-// export type CharPinyinResult = readonly string[];

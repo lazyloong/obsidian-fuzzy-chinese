@@ -2,7 +2,7 @@ import { App, Modal, Notice, PluginSettingTab, Setting } from "obsidian";
 import { xor } from "lodash-es";
 import { pinyinEngine } from "@/engine/pinyinEngine";
 import ThePlugin from "@/main";
-import { FuzzyPinyinDict, PinyinSuggest, arraySwap } from "@/utils";
+import { PinyinSuggest, arraySwap } from "@/utils";
 import { openFileKeyMap } from "./modal/fileModal";
 
 export default class SettingTab extends PluginSettingTab {
@@ -458,7 +458,14 @@ class FuzzyPinyinSettingModal extends Modal {
         let { fuzzyPinyinSetting } = this.plugin.settings.global;
         contentEl.empty();
         contentEl.createEl("h1", { text: "模糊音设置" });
-        Object.entries(FuzzyPinyinDict).forEach(([key, value]) => {
+        // 模糊音展示规则（精→模）单向映射
+        const fuzzyDisplay: Record<string, string> = {
+            zh: "z", ch: "c", sh: "s",
+            n: "l", h: "f", l: "r",
+            ang: "an", eng: "en", ing: "in",
+            iang: "ian", uang: "uan",
+        };
+        Object.entries(fuzzyDisplay).forEach(([key, value]) => {
             new Setting(contentEl).setName(`${value} => ${key}`).addToggle((cb) =>
                 cb.setValue(fuzzyPinyinSetting.includes(key)).onChange(async (value) => {
                     if (value) {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchSheng, FuzzyPinyinRules } from "@/utils/pinyinCore";
+import { matchSheng, FuzzyPinyinRules } from "@/utils/pinyinUtils";
 
 describe("pinyinUtils", () => {
     describe("matchSheng", () => {

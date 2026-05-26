@@ -1,32 +1,7 @@
 import { ShuangpinScheme, QueryOptions } from "./types";
 import DoubleDict from "@/dict/double_pinyin.json";
 import FuzzyDefaults from "@/dict/fuzzy-defaults.json";
-
-const SHENG_LIST = [
-    "zh",
-    "ch",
-    "sh",
-    "b",
-    "p",
-    "m",
-    "f",
-    "d",
-    "t",
-    "n",
-    "l",
-    "g",
-    "k",
-    "h",
-    "j",
-    "q",
-    "x",
-    "r",
-    "z",
-    "c",
-    "s",
-    "y",
-    "w",
-];
+import { matchSheng } from "@/utils/pinyinUtils";
 
 export class PinyinEngine {
     /** 汉字 → 拼音数组 */
@@ -181,22 +156,12 @@ export class PinyinEngine {
     // 内部转换
     // ============================================================
 
-    /** 切分拼音的声母和韵母。按长度优先匹配 */
-    matchSheng(pinyin: string): { sheng: string; yun: string } {
-        for (const s of SHENG_LIST) {
-            if (pinyin.startsWith(s)) {
-                return { sheng: s, yun: pinyin.slice(s.length) };
-            }
-        }
-        return { sheng: "", yun: pinyin };
-    }
-
     /** 单拼音 → 双拼 */
     toShuangpin(pinyin: string): string {
         const scheme = this.schemes[this._activeScheme];
         if (!scheme) return pinyin;
 
-        const { sheng, yun } = this.matchSheng(pinyin);
+        const { sheng, yun } = matchSheng(pinyin);
         const spSheng = sheng ? (scheme.sheng[sheng] ?? sheng) : "";
         const spYun = yun ? (scheme.yun[yun] ?? yun) : "";
 
@@ -216,7 +181,7 @@ export class PinyinEngine {
         while (queue.length > 0) {
             const cur = queue.shift()!;
             for (const [from, toSet] of this.fuzzyRuleMap) {
-                const { sheng, yun } = this.matchSheng(cur);
+                const { sheng, yun } = matchSheng(cur);
                 if (sheng === from || yun === from) {
                     for (const to of toSet) {
                         const expanded = sheng === from ? to + yun : sheng + to;

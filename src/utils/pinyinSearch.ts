@@ -1,5 +1,5 @@
 import { Item as uItem, MatchData, Pinyin } from "@/utils";
-import { SpecialItemScore } from "../modal/modal";
+import { SpecialItemScore } from "@/utils";
 
 type Item = uItem<{ data: any }>;
 

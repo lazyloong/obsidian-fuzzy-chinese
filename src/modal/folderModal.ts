@@ -4,10 +4,11 @@ import {
     Item as uItem,
     MatchData as uMatchData,
     Pinyin,
+    SpecialItemScore,
     SuggestionRenderer,
 } from "@/utils";
 import ThePlugin from "@/main";
-import FuzzyModal, { SpecialItemScore } from "./modal";
+import FuzzyModal from "./modal";
 
 type Item = uItem<{
     path: string;

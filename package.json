@@ -1,12 +1,12 @@
 {
-    "name": "fuzyy_chinese",
+    "name": "fuzzy_chinese",
     "version": "0.0.1",
     "description": "",
     "main": "dist/main.js",
     "license": "MIT",
     "scripts": {
         "build": "vite build",
-        "dev": "vite build --watch",
+        "dev": "vite build --watch --mode development",
         "deploy": "vite build",
         "test": "vitest run",
         "test:watch": "vitest",

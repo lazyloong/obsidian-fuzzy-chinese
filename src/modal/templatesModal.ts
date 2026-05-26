@@ -6,7 +6,6 @@ import ThePlugin from "@/main";
 type Item = uItem<{ file: TFile }>;
 
 export default class TemplatesModal extends FuzzyModal<Item> {
-    // @ts-ignore
     index: { items: Item[] } = { items: [] };
     constructor(app: App, plugin: ThePlugin) {
         super(app, plugin);

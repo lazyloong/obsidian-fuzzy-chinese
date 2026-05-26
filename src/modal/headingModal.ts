@@ -6,7 +6,6 @@ import FuzzyModal, { SpecialItemScore } from "./modal";
 type Item = uItem<{ level: number }>;
 
 export default class HeadingModal extends FuzzyModal<Item> {
-    // @ts-ignore
     index: { items: Item[] } = { items: [] };
     file: TFile;
     constructor(app: App, plugin: ThePlugin) {

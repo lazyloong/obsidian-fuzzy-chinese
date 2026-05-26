@@ -1,4 +1,5 @@
 export type { Item, MatchData } from "./type";
+export { SpecialItemScore } from "./type";
 import Pinyin from "./pinyin";
 import PinyinIndex from "./pinyinIndex";
 import PinyinSuggest from "./pinyinSuggest";

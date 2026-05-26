@@ -141,24 +141,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
     }
 
     getItemFromHistoryTree(query: string) {
-        let node = this.historyMatchData,
-            lastNode: HistoryMatchDataNode<Item>,
-            index = 0,
-            _f = true;
-        for (let i of query) {
-            if (node) {
-                if (i != node.query) {
-                    node.init(i);
-                    _f = false;
-                }
-            } else {
-                node = lastNode.push(i);
-            }
-            lastNode = node;
-            node = node.next;
-            if (_f) index++;
-        }
-        const currentNode = this.historyMatchData.index(index - 1);
+        const { currentNode } = this.historyMatchData.walk(query);
         const toMatchItem =
             currentNode.itemIndex.length == 0 ? this.index.items : currentNode.itemIndex;
         return { toMatchItem, currentNode };

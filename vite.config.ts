@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => {
                 name: "main",
                 fileName: () => "main.js",
             },
+            minify: mode === "production" ? "oxc" : false,
             outDir: "dist",
             emptyOutDir: true,
             rollupOptions: {

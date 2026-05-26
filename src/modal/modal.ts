@@ -1,16 +1,25 @@
 import { SuggestModal, App } from "obsidian";
 import ThePlugin from "@/main";
-import { HistoryMatchDataNode, PinyinIndex, MatchData, Item, SuggestionRenderer } from "@/utils";
+import {
+    HistoryMatchDataNode,
+    PinyinIndex,
+    MatchData,
+    Item,
+    SuggestionRenderer,
+    SpecialItemScore,
+} from "@/utils";
 
-export enum SpecialItemScore {
-    emptyInput = 0,
-    noFoundToCreate = -1,
+export { SpecialItemScore } from "@/utils";
+
+/** 轻量索引接口，用于不需要 Obsidian 事件监听的简单场景 */
+export interface ISimpleIndex<T> {
+    items: T[];
 }
 
 export default abstract class FuzzyModal<T extends Item> extends SuggestModal<MatchData<T>> {
     historyMatchData: HistoryMatchDataNode<T>;
     protected currentNode: HistoryMatchDataNode<T>;
-    index: PinyinIndex<T>;
+    index: PinyinIndex<T> | ISimpleIndex<T>;
     plugin: ThePlugin;
     useInput: boolean;
     resolve: (value?: Item) => void;
@@ -109,24 +118,7 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
         return result;
     }
     getHistoryData(query: string): T[] {
-        let node = this.historyMatchData,
-            lastNode: HistoryMatchDataNode<T>,
-            index = 0,
-            _f = true;
-        for (let i of query) {
-            if (node) {
-                if (i != node.query) {
-                    node.init(i);
-                    _f = false;
-                }
-            } else {
-                node = lastNode.push(i);
-            }
-            lastNode = node;
-            node = node.next;
-            if (_f) index++;
-        }
-        this.currentNode = this.historyMatchData.index(index - 1);
+        this.currentNode = this.historyMatchData.walk(query).currentNode;
         const toMatchItem =
             this.currentNode.itemIndex.length === 0 ? this.index.items : this.currentNode.itemIndex;
         return toMatchItem;

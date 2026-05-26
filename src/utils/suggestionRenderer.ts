@@ -55,7 +55,7 @@ export default class SuggestionRenderer {
         return this;
     }
     setTitle(text: string) {
-        this.title = text;
+        this.title = text ?? "";
         return this;
     }
     setNote(text: string) {

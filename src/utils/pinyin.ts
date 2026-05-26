@@ -154,7 +154,7 @@ type PinyinChild = {
  * toRanges([1, 2, 3, 5, 7, 8])
  * // 输出: [[1,3],[5,5],[7,8]]
  */
-function toRanges(arr: Array<number>): Array<[number, number]> {
+export function toRanges(arr: Array<number>): Array<[number, number]> {
     const result = [];
     let start = arr[0];
     let end = arr[0];

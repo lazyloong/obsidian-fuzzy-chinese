@@ -29,21 +29,6 @@ describe("PinyinEngine", () => {
         engine = createEngine();
     });
 
-    describe("matchSheng", () => {
-        it("切分普通拼音", () => {
-            expect(engine.matchSheng("pin")).toEqual({ sheng: "p", yun: "in" });
-            expect(engine.matchSheng("guo")).toEqual({ sheng: "g", yun: "uo" });
-        });
-        it("切分双字母声母 (zh/ch/sh)", () => {
-            expect(engine.matchSheng("zhong")).toEqual({ sheng: "zh", yun: "ong" });
-            expect(engine.matchSheng("chang")).toEqual({ sheng: "ch", yun: "ang" });
-        });
-        it("零声母", () => {
-            expect(engine.matchSheng("er")).toEqual({ sheng: "", yun: "er" });
-            expect(engine.matchSheng("an")).toEqual({ sheng: "", yun: "an" });
-        });
-    });
-
     describe("getCharPinyin (全拼)", () => {
         it("单音字", () => {
             expect(engine.getCharPinyin("国")).toEqual(["guo"]);

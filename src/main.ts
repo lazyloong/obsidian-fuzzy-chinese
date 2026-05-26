@@ -229,11 +229,17 @@ export default class ThePlugin extends Plugin {
     }
 }
 
+interface FileExplorerView extends View {
+    tree: {
+        selectedDoms: Set<{ file: TFile }>;
+    };
+}
+
 class FileExplorerHotkey {
     plugin: ThePlugin;
     app: App;
     leaf: WorkspaceLeaf;
-    view: View;
+    view: FileExplorerView;
     constructor(app: App, plugin: ThePlugin) {
         this.plugin = plugin;
         this.app = app;
@@ -244,19 +250,17 @@ class FileExplorerHotkey {
             this.getView();
             if (!this.viewIsWorkable()) return [];
         }
-        // @ts-ignore
         return Array.from(this.view.tree.selectedDoms).map((p: { file: TFile }) => p.file);
     }
-    getView(): View | undefined {
+    getView(): FileExplorerView | undefined {
         const leaf = this.app.workspace.getLeavesOfType("file-explorer");
         if (leaf.length != 0) {
             this.leaf = leaf[0];
-            this.view = this.leaf.view;
+            this.view = this.leaf.view as FileExplorerView;
         }
         return this.view;
     }
     viewIsWorkable(): boolean {
-        // @ts-ignore
         return Boolean(this.view?.tree?.selectedDoms);
     }
 }

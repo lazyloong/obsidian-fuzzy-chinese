@@ -7,13 +7,14 @@ import {
     Item as uItem,
     SuggestionRenderer,
     createFile,
+    SpecialItemScore,
     incrementalUpdate,
     PinyinSuggest,
     getMostRecentView,
     usePlugin,
 } from "@/utils";
 import ThePlugin from "@/main";
-import FuzzyModal, { SpecialItemScore } from "./modal";
+import FuzzyModal from "./modal";
 
 const DOCUMENT_EXTENSIONS = ["md", "canvas"];
 export enum FileItemType {

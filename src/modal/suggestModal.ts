@@ -6,7 +6,6 @@ import FuzzyModal, { SpecialItemScore } from "./modal";
 type Item = uItem<{ data: any }>;
 
 export default class SuggestModal extends FuzzyModal<Item> {
-    // @ts-ignore
     index: { items: Item[] } = { items: [] };
     constructor(
         app: App,

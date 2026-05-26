@@ -8,6 +8,7 @@ import {
     SuggestionRenderer,
     incrementalUpdate,
     copy,
+    SpecialItemScore,
 } from "@/utils";
 import FuzzyModal from "./modal";
 
@@ -41,12 +42,6 @@ const SPECIAL_KEYS: Record<string, string> = {
     BACKSPACE: "⌫",
     ESC: "Esc",
 };
-
-enum SpecialItemScore {
-    pinned = 0,
-    history = -1,
-    common = -2,
-}
 
 function generateHotKeyText(hotkey: Hotkey): string {
     const modifierIcons = Platform.isMacOS ? MAC_MODIFIER_ICONS : BASIC_MODIFIER_ICONS;

@@ -1,13 +1,48 @@
-import { usePlugin } from "./helpers";
-import { matchSheng, FuzzyPinyinRules } from "./pinyinCore";
+import FuzzyDefaults from "@/dict/fuzzy-defaults.json";
 
-// 纯函数从 pinyinCore 重新导出
-export { SHENG_LIST, matchSheng, FuzzyPinyinRules } from "./pinyinCore";
+/** 声母列表（长度优先：zh/ch/sh 优先于 z/c/s） */
+export const SHENG_LIST = [
+    "zh",
+    "ch",
+    "sh",
+    "b",
+    "p",
+    "m",
+    "f",
+    "d",
+    "t",
+    "n",
+    "l",
+    "g",
+    "k",
+    "h",
+    "j",
+    "q",
+    "x",
+    "r",
+    "z",
+    "c",
+    "s",
+    "y",
+    "w",
+];
+
+/** 按长度优先匹配切分拼音为声母+韵母 */
+export function matchSheng(pinyin: string): { sheng: string; yun: string } {
+    for (const s of SHENG_LIST) {
+        if (pinyin.startsWith(s)) {
+            return { sheng: s, yun: pinyin.slice(s.length) };
+        }
+    }
+    return { sheng: "", yun: pinyin };
+}
+
+/** 新版模糊音规则（双向对称，来自 fuzzy-defaults.json） */
+export const FuzzyPinyinRules: Record<string, string[]> = FuzzyDefaults;
 
 type DoublePinyinDict = Record<string, string[]>;
 
 // 双拼转换
-
 export function fullPinyin2doublePinyin(
     fullPinyin: string,
     doublePinyinDict: DoublePinyinDict
@@ -26,25 +61,4 @@ export function fullPinyin2doublePinyin(
     if (!yunmu && fullPinyin == "er") doublePinyin = "er";
 
     return doublePinyin;
-}
-
-// 模糊音
-
-export function fullPinyin2fuzzyPinyin(pinyin: string): string[] {
-    const { fuzzyPinyinSetting } = usePlugin().settings.global;
-    const dict: Record<string, string> = {};
-    for (const key of fuzzyPinyinSetting) {
-        const targets = FuzzyPinyinRules[key];
-        if (targets) {
-            for (const t of targets) dict[t] = key;
-        }
-    }
-    const { sheng, yun } = matchSheng(pinyin);
-    const fuzzyShengmu = dict[sheng];
-    const fuzzyYunmu = dict[yun];
-    if (fuzzyShengmu && fuzzyYunmu)
-        return [sheng + fuzzyYunmu, fuzzyShengmu + yun, fuzzyShengmu + fuzzyYunmu];
-    else if (fuzzyShengmu) return [fuzzyShengmu + yun];
-    else if (fuzzyYunmu) return [sheng + fuzzyYunmu];
-    return [];
 }

@@ -8,9 +8,8 @@ import {
     TFile,
 } from "obsidian";
 import { MatchData as fMatchData, Item as fItem, LinkItem, FileItemType } from "@/modal/fileModal";
-import { PinyinIndex, Pinyin } from "@/utils";
+import { PinyinIndex, Pinyin, SpecialItemScore } from "@/utils";
 import ThePlugin from "@/main";
-import { SpecialItemScore } from "@/modal/modal";
 
 type ResultType = "alias" | "file" | "linktext" | "heading";
 type Result<T extends ResultType> = {

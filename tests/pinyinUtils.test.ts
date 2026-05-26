@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { matchSheng, FuzzyPinyinRules } from "@/utils/pinyinUtils";
+import { matchSheng, FuzzyPinyinRules, fullPinyin2doublePinyin } from "@/utils/pinyinUtils";
 
 describe("pinyinUtils", () => {
     describe("matchSheng", () => {
@@ -40,6 +40,56 @@ describe("pinyinUtils", () => {
             expect(FuzzyPinyinRules["n"]).toContain("l");
             expect(FuzzyPinyinRules["an"]).toContain("ang");
             expect(FuzzyPinyinRules["en"]).toContain("eng");
+        });
+    });
+
+    describe("fullPinyin2doublePinyin", () => {
+        // 小鹤双拼方案：双拼键 → 对应的全拼形式数组
+        const xiaoheDict: Record<string, string[]> = {
+            b: ["b", "in"],
+            p: ["p", "ie"],
+            m: ["m", "ian"],
+            f: ["f", "en"],
+            d: ["d", "ai"],
+            t: ["t", "ue", "ve"],
+            n: ["n"],
+            l: ["l", "uang"],
+            g: ["g", "eng"],
+            k: ["k", "ing", "uai"],
+            h: ["h", "ang"],
+            j: ["j", "an"],
+            q: ["q", "iu"],
+            x: ["x", "ia", "ua"],
+            r: ["r", "uan"],
+            z: ["z", "ou"],
+            c: ["c", "ao"],
+            s: ["s", "ong", "iong"],
+            y: ["y", "un"],
+            w: ["w", "ei"],
+            v: ["zh", "ui"],
+            i: ["ch"],
+            u: ["sh"],
+            o: ["uo", "o"],
+            a: ["a"],
+            e: ["e"],
+        };
+
+        const dict = xiaoheDict;
+
+        it("普通拼音转双拼", () => {
+            expect(fullPinyin2doublePinyin("pin", dict)).toBe("pb");
+            expect(fullPinyin2doublePinyin("guo", dict)).toBe("go");
+            expect(fullPinyin2doublePinyin("zhong", dict)).toBe("vs");
+        });
+
+        it("零声母拼音", () => {
+            expect(fullPinyin2doublePinyin("an", dict)).toBe("j");
+            expect(fullPinyin2doublePinyin("er", dict)).toBe("er");
+        });
+
+        it("双拼声母+韵母组合", () => {
+            // 小鹤: "zh" → v, "ong" → s → vs
+            expect(fullPinyin2doublePinyin("guo", dict)).toBe("go");
         });
     });
 });

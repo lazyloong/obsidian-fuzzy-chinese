@@ -7,9 +7,8 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": "./src/",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src/**/*.ts", "types.d.ts", "obsidian.d.ts", "tests/**/*.ts"]

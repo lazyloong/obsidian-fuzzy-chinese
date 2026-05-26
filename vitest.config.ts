@@ -1,14 +1,14 @@
-import { defineConfig } from "vitest/config";
-import { resolve } from "path";
+import { defineConfig } from 'vitest/config';
+import { resolve } from 'path';
 
 export default defineConfig({
-    resolve: {
-        alias: {
-            "@": resolve(__dirname, "src"),
-            obsidian: resolve(__dirname, "tests/__mocks__/obsidian.ts"),
-        },
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+      obsidian: resolve(__dirname, 'tests/__mocks__/obsidian.ts'),
     },
-    test: {
-        include: ["tests/**/*.test.ts"],
-    },
+  },
+  test: {
+    include: ['tests/**/*.test.ts'],
+  },
 });

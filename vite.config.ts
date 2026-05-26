@@ -1,6 +1,6 @@
-import { defineConfig, loadEnv, Plugin } from "vite";
-import { resolve } from "path";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "fs";
+import { defineConfig, loadEnv, Plugin } from 'vite';
+import { resolve } from 'path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'fs';
 
 const root = process.cwd();
 
@@ -8,20 +8,20 @@ const root = process.cwd();
 // 插件1：构建完成后将 styles.css / manifest.json 复制到 dist/
 // ============================================================
 function copyStaticFiles(): Plugin {
-    const files = ["styles.css", "manifest.json"];
-    return {
-        name: "obsidian:copy-static",
-        writeBundle() {
-            for (const file of files) {
-                const src = resolve(root, file);
-                const dest = resolve(root, "dist", file);
-                if (existsSync(src)) {
-                    copyFileSync(src, dest);
-                    console.log(`  ✓ ${file} → dist/${file}`);
-                }
-            }
-        },
-    };
+  const files = ['styles.css', 'manifest.json'];
+  return {
+    name: 'obsidian:copy-static',
+    writeBundle() {
+      for (const file of files) {
+        const src = resolve(root, file);
+        const dest = resolve(root, 'dist', file);
+        if (existsSync(src)) {
+          copyFileSync(src, dest);
+          console.log(`  ✓ ${file} → dist/${file}`);
+        }
+      }
+    },
+  };
 }
 
 // ============================================================
@@ -29,66 +29,66 @@ function copyStaticFiles(): Plugin {
 // 通过环境变量 OBSIDIAN_VAULT 传入库路径
 // ============================================================
 function deployToVault(vaultPath: string | undefined): Plugin {
-    return {
-        name: "obsidian:deploy-to-vault",
-        writeBundle() {
-            if (!vaultPath) return;
-            vaultPath = vaultPath.trim();
-            if (!vaultPath) return;
+  return {
+    name: 'obsidian:deploy-to-vault',
+    writeBundle() {
+      if (!vaultPath) return;
+      vaultPath = vaultPath.trim();
+      if (!vaultPath) return;
 
-            const manifest = JSON.parse(readFileSync(resolve(root, "manifest.json"), "utf-8"));
-            const pluginId: string = manifest.id; // fuzzy-chinese-pinyin
-            const pluginDir = resolve(vaultPath, ".obsidian", "plugins", pluginId);
+      const manifest = JSON.parse(readFileSync(resolve(root, 'manifest.json'), 'utf-8'));
+      const pluginId: string = manifest.id; // fuzzy-chinese-pinyin
+      const pluginDir = resolve(vaultPath, '.obsidian', 'plugins', pluginId);
 
-            mkdirSync(pluginDir, { recursive: true });
+      mkdirSync(pluginDir, { recursive: true });
 
-            const distDir = resolve(root, "dist");
-            for (const file of readdirSync(distDir)) {
-                const src = resolve(distDir, file);
-                if (statSync(src).isFile()) {
-                    copyFileSync(src, resolve(pluginDir, file));
-                }
-            }
-            console.log(`  ✓ deployed to ${pluginDir}`);
-        },
-    };
+      const distDir = resolve(root, 'dist');
+      for (const file of readdirSync(distDir)) {
+        const src = resolve(distDir, file);
+        if (statSync(src).isFile()) {
+          copyFileSync(src, resolve(pluginDir, file));
+        }
+      }
+      console.log(`  ✓ deployed to ${pluginDir}`);
+    },
+  };
 }
 
 // ============================================================
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, process.cwd(), ["OBSIDIAN_", "VITE_"]);
+  const env = loadEnv(mode, process.cwd(), ['OBSIDIAN_', 'VITE_']);
 
-    return {
-        envPrefix: ["OBSIDIAN_", "VITE_"],
-        plugins: [copyStaticFiles(), deployToVault(env.OBSIDIAN_VAULT)],
-        build: {
-            lib: {
-                entry: resolve(root, "src/main.ts"),
-                formats: ["cjs"],
-                name: "main",
-                fileName: () => "main.js",
-            },
-            minify: mode === "production" ? "oxc" : false,
-            outDir: "dist",
-            emptyOutDir: true,
-            rollupOptions: {
-                input: {
-                    main: resolve(__dirname, "src/main.ts"),
-                },
-                output: {
-                    entryFileNames: "main.js",
-                    assetFileNames: "styles.css",
-                },
-                external: ["obsidian"],
-            },
-            commonjsOptions: {
-                transformMixedEsModules: true,
-            },
+  return {
+    envPrefix: ['OBSIDIAN_', 'VITE_'],
+    plugins: [copyStaticFiles(), deployToVault(env.OBSIDIAN_VAULT)],
+    build: {
+      lib: {
+        entry: resolve(root, 'src/main.ts'),
+        formats: ['cjs'],
+        name: 'main',
+        fileName: () => 'main.js',
+      },
+      minify: mode === 'production' ? 'oxc' : false,
+      outDir: 'dist',
+      emptyOutDir: true,
+      rollupOptions: {
+        input: {
+          main: resolve(__dirname, 'src/main.ts'),
         },
-        resolve: {
-            alias: {
-                "@": resolve(root, "src"),
-            },
+        output: {
+          entryFileNames: 'main.js',
+          assetFileNames: 'styles.css',
         },
-    };
+        external: ['obsidian'],
+      },
+      commonjsOptions: {
+        transformMixedEsModules: true,
+      },
+    },
+    resolve: {
+      alias: {
+        '@': resolve(root, 'src'),
+      },
+    },
+  };
 });

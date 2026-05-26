@@ -1,16 +1,16 @@
 {
-    "compilerOptions": {
-        "target": "es2022",
-        "module": "ESNext",
-        "strict": false,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "moduleResolution": "bundler",
-        "forceConsistentCasingInFileNames": true,
-        "baseUrl": "./src/",
-        "paths": {
-            "@/*": ["./*"]
-        }
-    },
-    "include": ["src/**/*.ts", "types.d.ts", "obsidian.d.ts", "tests/**/*.ts"]
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "ESNext",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": "./src/",
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["src/**/*.ts", "types.d.ts", "obsidian.d.ts", "tests/**/*.ts"]
 }

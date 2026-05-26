@@ -4,19 +4,19 @@
 
 /** 双拼方案结构：全拼声母/韵母 → 双拼字母 */
 export interface ShuangpinScheme {
-    name: string;
-    /** 声母映射：全拼声母 → 双拼字母 */
-    sheng: Record<string, string>;
-    /** 韵母映射：全拼韵母 → 双拼字母 */
-    yun: Record<string, string>;
+  name: string;
+  /** 声母映射：全拼声母 → 双拼字母 */
+  sheng: Record<string, string>;
+  /** 韵母映射：全拼韵母 → 双拼字母 */
+  yun: Record<string, string>;
 }
 
 /** 查询选项 */
 export interface QueryOptions {
-    /** 是否启用模糊音 */
-    fuzzy?: boolean;
-    /** 双拼方案名 */
-    shuangpin?: string;
-    /** 是否转换为俄语西里尔字母（巴拉第体系） */
-    palladius?: boolean;
+  /** 是否启用模糊音 */
+  fuzzy?: boolean;
+  /** 双拼方案名 */
+  shuangpin?: string;
+  /** 是否转换为俄语西里尔字母（巴拉第体系） */
+  palladius?: boolean;
 }

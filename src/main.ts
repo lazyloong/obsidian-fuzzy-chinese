@@ -1,331 +1,329 @@
 import {
-    Plugin,
-    EditorSuggest,
-    WorkspaceLeaf,
-    Menu,
-    TFile,
-    TAbstractFile,
-    App,
-    View,
-    Notice,
-} from "obsidian";
-import { merge } from "lodash-es";
-import { PinyinIndex, runOnLayoutReady, FuzzyPinyinRules } from "@/utils";
-import { pinyinEngine } from "@/engine/pinyinEngine";
-import FuzzyModal from "@/modal/modal";
-import FileModal from "@/modal/fileModal";
-import FolderModal from "@/modal/folderModal";
-import CommandModal from "@/modal/commandModal";
-import FuzzySuggestModal from "@/modal/suggestModal";
-import HeadingModal from "@/modal/headingModal";
-import TemplatesModal from "@/modal/templatesModal";
-import FileEditorSuggest from "@/editorSuggest/fileEditorSuggest";
-import TagEditorSuggest from "@/editorSuggest/tagEditorSuggest";
-import Palladius from "@/dict/palladius.json";
+  Plugin,
+  EditorSuggest,
+  WorkspaceLeaf,
+  Menu,
+  TFile,
+  TAbstractFile,
+  App,
+  View,
+  Notice,
+} from 'obsidian';
+import { merge } from 'lodash-es';
+import { PinyinIndex, runOnLayoutReady, FuzzyPinyinRules } from '@/utils';
+import { pinyinEngine } from '@/engine/pinyinEngine';
+import FuzzyModal from '@/modal/modal';
+import FileModal from '@/modal/fileModal';
+import FolderModal from '@/modal/folderModal';
+import CommandModal from '@/modal/commandModal';
+import FuzzySuggestModal from '@/modal/suggestModal';
+import HeadingModal from '@/modal/headingModal';
+import TemplatesModal from '@/modal/templatesModal';
+import FileEditorSuggest from '@/editorSuggest/fileEditorSuggest';
+import TagEditorSuggest from '@/editorSuggest/tagEditorSuggest';
+import Palladius from '@/dict/palladius.json';
 // 以下两个字典来源于：https://github.com/xmflswood/pinyin-match
-import SimplifiedDict from "@/dict/simplified_dict.json";
-import TraditionalDict from "@/dict/traditional_dict.json";
+import SimplifiedDict from '@/dict/simplified_dict.json';
+import TraditionalDict from '@/dict/traditional_dict.json';
 
-import pinyinSearch from "@/utils/pinyinSearch";
-import SettingTab, { DEFAULT_SETTINGS, TheSettings } from "@/settingTab";
-import { hijackingCanvasView, hijackingEmptyView } from "./viewEventHijacking";
+import pinyinSearch from '@/utils/pinyinSearch';
+import SettingTab, { DEFAULT_SETTINGS, TheSettings } from '@/settingTab';
+import { hijackingCanvasView, hijackingEmptyView } from './viewEventHijacking';
 
 export default class ThePlugin extends Plugin {
-    static instance: ThePlugin;
-    settings: TheSettings;
-    api: any;
-    fileModal: FileModal;
-    folderModal: FolderModal;
-    commandModal: CommandModal;
-    headingModal: HeadingModal;
-    templatesModal: TemplatesModal;
-    fileEditorSuggest: FileEditorSuggest;
-    tagEditorSuggest: TagEditorSuggest;
-    indexManager: IndexManager;
-    editorSuggests: EditorSuggest<any>[];
-    fileExplorerHotkey: FileExplorerHotkey;
-    static getInstance(): ThePlugin {
-        return this.instance;
-    }
-    async onload() {
-        ThePlugin.instance = this;
-        await this.loadSettings();
+  static instance: ThePlugin;
+  settings: TheSettings;
+  api: any;
+  fileModal: FileModal;
+  folderModal: FolderModal;
+  commandModal: CommandModal;
+  headingModal: HeadingModal;
+  templatesModal: TemplatesModal;
+  fileEditorSuggest: FileEditorSuggest;
+  tagEditorSuggest: TagEditorSuggest;
+  indexManager: IndexManager;
+  editorSuggests: EditorSuggest<any>[];
+  fileExplorerHotkey: FileExplorerHotkey;
+  static getInstance(): ThePlugin {
+    return this.instance;
+  }
+  async onload() {
+    ThePlugin.instance = this;
+    await this.loadSettings();
 
-        // 初始化拼音引擎
-        pinyinEngine.loadLegacySchemes();
-        pinyinEngine.loadDefaultFuzzyRules();
-        this.loadPinyinDict();
-        this.fileModal = new FileModal(this.app, this);
-        this.folderModal = new FolderModal(this.app, this);
-        this.commandModal = new CommandModal(this.app, this);
-        this.headingModal = new HeadingModal(this.app, this);
-        this.templatesModal = new TemplatesModal(this.app, this);
+    // 初始化拼音引擎
+    pinyinEngine.loadLegacySchemes();
+    pinyinEngine.loadDefaultFuzzyRules();
+    this.loadPinyinDict();
+    this.fileModal = new FileModal(this.app, this);
+    this.folderModal = new FolderModal(this.app, this);
+    this.commandModal = new CommandModal(this.app, this);
+    this.headingModal = new HeadingModal(this.app, this);
+    this.templatesModal = new TemplatesModal(this.app, this);
 
-        this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
-        this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
+    this.fileEditorSuggest = new FileEditorSuggest(this.app, this);
+    this.tagEditorSuggest = new TagEditorSuggest(this.app, this);
 
-        this.indexManager = new IndexManager(this, [
-            this.folderModal,
-            this.fileModal,
-            this.commandModal,
-            this.tagEditorSuggest,
-        ]);
-        this.editorSuggests = [this.fileEditorSuggest, this.tagEditorSuggest];
+    this.indexManager = new IndexManager(this, [
+      this.folderModal,
+      this.fileModal,
+      this.commandModal,
+      this.tagEditorSuggest,
+    ]);
+    this.editorSuggests = [this.fileEditorSuggest, this.tagEditorSuggest];
 
-        if (this.settings.file.useFileEditorSuggest)
-            this.registerEditorSuggest(this.fileEditorSuggest);
+    if (this.settings.file.useFileEditorSuggest) this.registerEditorSuggest(this.fileEditorSuggest);
 
-        if (this.settings.other.useTagEditorSuggest)
-            this.registerEditorSuggest(this.tagEditorSuggest);
+    if (this.settings.other.useTagEditorSuggest) this.registerEditorSuggest(this.tagEditorSuggest);
 
-        this.registerFileMenu();
-        this.registerHijackingEvents();
-        runOnLayoutReady(() => {
-            this.indexManager.load();
-            this.fileExplorerHotkey = new FileExplorerHotkey(this.app, this);
-            this.addCommands();
+    this.registerFileMenu();
+    this.registerHijackingEvents();
+    runOnLayoutReady(() => {
+      this.indexManager.load();
+      this.fileExplorerHotkey = new FileExplorerHotkey(this.app, this);
+      this.addCommands();
 
-            const leaf = this.app.workspace.getMostRecentLeaf();
-            if (leaf.view.getViewType() === "empty") leaf.detach();
-        });
-        this.addRibbonIcon("search", "FuzzySearch", () => {
-            const leaf = this.app.workspace.getMostRecentLeaf();
-            if (leaf) {
-                this.fileModal.open();
-                return true;
-            }
-            return false;
-        });
-        this.addSettingTab(new SettingTab(this.app, this));
-        this.api = {
-            suggester: this.suggester.bind(this),
-            pinyinSearch,
-        };
-    }
-    registerHijackingEvents() {
-        hijackingCanvasView(this);
-        hijackingEmptyView(this);
-        // hijackingTagForMarkdownView(this); // 有问题，暂时不用
-    }
-    registerEditorSuggest(editorSuggest: EditorSuggest<any>): void {
-        this.app.workspace.editorSuggest.suggests.unshift(editorSuggest);
-        this.register(() => {
-            return this.app.workspace.editorSuggest.removeSuggest(editorSuggest);
-        });
-    }
-    addCommands() {
-        this.addCommand({
-            id: "open-search",
-            name: "搜索文件",
-            callback: () => {
-                this.fileModal.open();
-            },
-        });
-        this.addCommand({
-            id: "move-file",
-            name: "移动文件",
-            checkCallback: (checking: boolean) => {
-                const files = this.fileExplorerHotkey.getFiles();
-                const file = this.app.workspace.getActiveFile();
-                if (checking) return Boolean(file) || files.length > 0;
-                if (files.length > 0) this.folderModal.openWithFiles(files);
-                else if (file) this.folderModal.open();
-            },
-        });
-        this.addCommand({
-            id: "execute-command",
-            name: "执行命令",
-            callback: () => {
-                this.commandModal.open();
-            },
-        });
-        this.addCommand({
-            id: "search-heading",
-            name: "搜索标题",
-            checkCallback: (checking: boolean) => {
-                const file = this.app.workspace.getActiveFile();
-                if (checking) return Boolean(file);
-                this.headingModal.setFile(file);
-                this.headingModal.open();
-            },
-        });
-        this.addCommand({
-            id: "insert-templates",
-            name: "插入模板",
-            callback: () => {
-                this.templatesModal.open();
-            },
-        });
-        this.addCommand({
-            id: "rebuild-index",
-            name: "重建索引",
-            callback: () => {
-                this.indexManager.refresh();
-            },
-        });
-    }
-    onunload() {
-        this.indexManager.unload();
-    }
-    async loadSettings() {
-        this.settings = merge({}, DEFAULT_SETTINGS, await this.loadData());
-    }
-    async saveSettings() {
-        await this.saveData(this.settings);
-    }
-    loadPinyinDict() {
-        const base = this.settings.global.traditionalChineseSupport
-            ? TraditionalDict
-            : SimplifiedDict;
+      const leaf = this.app.workspace.getMostRecentLeaf();
+      if (leaf.view.getViewType() === 'empty') leaf.detach();
+    });
+    this.addRibbonIcon('search', 'FuzzySearch', () => {
+      const leaf = this.app.workspace.getMostRecentLeaf();
+      if (leaf) {
+        this.fileModal.open();
+        return true;
+      }
+      return false;
+    });
+    this.addSettingTab(new SettingTab(this.app, this));
+    this.api = {
+      suggester: this.suggester.bind(this),
+      pinyinSearch,
+    };
+  }
+  registerHijackingEvents() {
+    hijackingCanvasView(this);
+    hijackingEmptyView(this);
+    // hijackingTagForMarkdownView(this); // 有问题，暂时不用
+  }
+  registerEditorSuggest(editorSuggest: EditorSuggest<any>): void {
+    this.app.workspace.editorSuggest.suggests.unshift(editorSuggest);
+    this.register(() => {
+      return this.app.workspace.editorSuggest.removeSuggest(editorSuggest);
+    });
+  }
+  addCommands() {
+    this.addCommand({
+      id: 'open-search',
+      name: '搜索文件',
+      callback: () => {
+        this.fileModal.open();
+      },
+    });
+    this.addCommand({
+      id: 'move-file',
+      name: '移动文件',
+      checkCallback: (checking: boolean) => {
+        const files = this.fileExplorerHotkey.getFiles();
+        const file = this.app.workspace.getActiveFile();
+        if (checking) return Boolean(file) || files.length > 0;
+        if (files.length > 0) this.folderModal.openWithFiles(files);
+        else if (file) this.folderModal.open();
+      },
+    });
+    this.addCommand({
+      id: 'execute-command',
+      name: '执行命令',
+      callback: () => {
+        this.commandModal.open();
+      },
+    });
+    this.addCommand({
+      id: 'search-heading',
+      name: '搜索标题',
+      checkCallback: (checking: boolean) => {
+        const file = this.app.workspace.getActiveFile();
+        if (checking) return Boolean(file);
+        this.headingModal.setFile(file);
+        this.headingModal.open();
+      },
+    });
+    this.addCommand({
+      id: 'insert-templates',
+      name: '插入模板',
+      callback: () => {
+        this.templatesModal.open();
+      },
+    });
+    this.addCommand({
+      id: 'rebuild-index',
+      name: '重建索引',
+      callback: () => {
+        this.indexManager.refresh();
+      },
+    });
+  }
+  onunload() {
+    this.indexManager.unload();
+  }
+  async loadSettings() {
+    this.settings = merge({}, DEFAULT_SETTINGS, await this.loadData());
+  }
+  async saveSettings() {
+    await this.saveData(this.settings);
+  }
+  loadPinyinDict() {
+    const base = this.settings.global.traditionalChineseSupport ? TraditionalDict : SimplifiedDict;
 
-        pinyinEngine.loadBase(base);
-        pinyinEngine.loadPalladius(Palladius);
-        const dpName = this.settings.global.doublePinyin;
-        pinyinEngine.setActiveShuangpin(dpName !== "全拼" ? dpName : "");
+    pinyinEngine.loadBase(base);
+    pinyinEngine.loadPalladius(Palladius);
+    const dpName = this.settings.global.doublePinyin;
+    pinyinEngine.setActiveShuangpin(dpName !== '全拼' ? dpName : '');
 
-        // 根据用户设置同步模糊音规则
-        pinyinEngine.clearFuzzyRules();
-        for (const key of this.settings.global.fuzzyPinyinSetting) {
-            const targets = FuzzyPinyinRules[key];
-            if (targets) {
-                for (const target of targets) {
-                    pinyinEngine.addFuzzyRule(key, target);
-                }
-            }
+    // 根据用户设置同步模糊音规则
+    pinyinEngine.clearFuzzyRules();
+    for (const key of this.settings.global.fuzzyPinyinSetting) {
+      const targets = FuzzyPinyinRules[key];
+      if (targets) {
+        for (const target of targets) {
+          pinyinEngine.addFuzzyRule(key, target);
         }
+      }
+    }
 
-        pinyinEngine.toggleFuzzy(this.settings.global.fuzzyPinyin);
-        pinyinEngine.togglePalladius(this.settings.global.palladius);
-    }
-    async suggester(data: any[], getKey: (p: any) => string = (p) => p.key): Promise<string> {
-        const modal = new FuzzySuggestModal(this.app, this, data, getKey);
-        const item = await modal.openAndGetValue();
-        return item.name;
-    }
-    registerFileMenu() {
-        this.registerEvent(
-            this.app.workspace.on("file-menu", (menu: Menu, file: TAbstractFile) => {
-                const title = file instanceof TFile ? "文件" : "文件夹";
-                menu.addItem((item) => {
-                    item.setIcon("folder-tree")
-                        .setTitle("FuzzyPinyin: 移动" + title)
-                        .onClick(() => {
-                            this.folderModal.openWithFiles(file);
-                        });
-                });
-            })
-        );
-        this.registerEvent(
-            this.app.workspace.on("files-menu", (menu: Menu, files: TFile[]) => {
-                menu.addItem((item) => {
-                    item.setIcon("folder-tree")
-                        .setTitle(`FuzzyPinyin: 移动 ${files.length} 个文件`)
-                        .onClick(() => {
-                            this.folderModal.openWithFiles(files);
-                        });
-                });
-            })
-        );
-    }
+    pinyinEngine.toggleFuzzy(this.settings.global.fuzzyPinyin);
+    pinyinEngine.togglePalladius(this.settings.global.palladius);
+  }
+  async suggester(data: any[], getKey: (p: any) => string = (p) => p.key): Promise<string> {
+    const modal = new FuzzySuggestModal(this.app, this, data, getKey);
+    const item = await modal.openAndGetValue();
+    return item.name;
+  }
+  registerFileMenu() {
+    this.registerEvent(
+      this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile) => {
+        const title = file instanceof TFile ? '文件' : '文件夹';
+        menu.addItem((item) => {
+          item
+            .setIcon('folder-tree')
+            .setTitle('FuzzyPinyin: 移动' + title)
+            .onClick(() => {
+              this.folderModal.openWithFiles(file);
+            });
+        });
+      })
+    );
+    this.registerEvent(
+      this.app.workspace.on('files-menu', (menu: Menu, files: TFile[]) => {
+        menu.addItem((item) => {
+          item
+            .setIcon('folder-tree')
+            .setTitle(`FuzzyPinyin: 移动 ${files.length} 个文件`)
+            .onClick(() => {
+              this.folderModal.openWithFiles(files);
+            });
+        });
+      })
+    );
+  }
 }
 
 interface FileExplorerView extends View {
-    tree: {
-        selectedDoms: Set<{ file: TFile }>;
-    };
+  tree: {
+    selectedDoms: Set<{ file: TFile }>;
+  };
 }
 
 class FileExplorerHotkey {
-    plugin: ThePlugin;
-    app: App;
-    leaf: WorkspaceLeaf;
-    view: FileExplorerView;
-    constructor(app: App, plugin: ThePlugin) {
-        this.plugin = plugin;
-        this.app = app;
-        this.getView();
+  plugin: ThePlugin;
+  app: App;
+  leaf: WorkspaceLeaf;
+  view: FileExplorerView;
+  constructor(app: App, plugin: ThePlugin) {
+    this.plugin = plugin;
+    this.app = app;
+    this.getView();
+  }
+  getFiles(): TFile[] {
+    if (!this.viewIsWorkable()) {
+      this.getView();
+      if (!this.viewIsWorkable()) return [];
     }
-    getFiles(): TFile[] {
-        if (!this.viewIsWorkable()) {
-            this.getView();
-            if (!this.viewIsWorkable()) return [];
-        }
-        return Array.from(this.view.tree.selectedDoms).map((p: { file: TFile }) => p.file);
+    return Array.from(this.view.tree.selectedDoms).map((p: { file: TFile }) => p.file);
+  }
+  getView(): FileExplorerView | undefined {
+    const leaf = this.app.workspace.getLeavesOfType('file-explorer');
+    if (leaf.length != 0) {
+      this.leaf = leaf[0];
+      this.view = this.leaf.view as FileExplorerView;
     }
-    getView(): FileExplorerView | undefined {
-        const leaf = this.app.workspace.getLeavesOfType("file-explorer");
-        if (leaf.length != 0) {
-            this.leaf = leaf[0];
-            this.view = this.leaf.view as FileExplorerView;
-        }
-        return this.view;
-    }
-    viewIsWorkable(): boolean {
-        return Boolean(this.view?.tree?.selectedDoms);
-    }
+    return this.view;
+  }
+  viewIsWorkable(): boolean {
+    return Boolean(this.view?.tree?.selectedDoms);
+  }
 }
 
 class IndexManager extends Array<PinyinIndex<any>> {
-    plugin: ThePlugin;
-    constructor(plugin: ThePlugin, component: Array<FuzzyModal<any> | EditorSuggest<any>>) {
-        super();
-        component.forEach((p: any) => this.push(p.index));
-        this.plugin = plugin;
+  plugin: ThePlugin;
+  constructor(plugin: ThePlugin, component: Array<FuzzyModal<any> | EditorSuggest<any>>) {
+    super();
+    component.forEach((p: any) => this.push(p.index));
+    this.plugin = plugin;
+  }
+  load() {
+    if (this.plugin.settings.other.devMode) {
+      this.devLoad();
+    } else {
+      this.normalLoad();
     }
-    load() {
-        if (this.plugin.settings.other.devMode) {
-            this.devLoad();
-        } else {
-            this.normalLoad();
-        }
-        globalThis.refreshFuzzyChineseIndex = () => {
-            console.time("refreshFuzzyChineseIndex");
-            this.normalLoad();
-            this.devUnload();
-            console.timeEnd("refreshFuzzyChineseIndex");
-        };
-    }
+    globalThis.refreshFuzzyChineseIndex = () => {
+      console.time('refreshFuzzyChineseIndex');
+      this.normalLoad();
+      this.devUnload();
+      console.timeEnd('refreshFuzzyChineseIndex');
+    };
+  }
 
-    unload() {
-        if (this.plugin.settings.other.devMode) {
-            this.devUnload();
-        }
+  unload() {
+    if (this.plugin.settings.other.devMode) {
+      this.devUnload();
     }
+  }
 
-    normalLoad() {
-        this.forEach((index) => this.load_(index));
-    }
-    load_(index: PinyinIndex<any>) {
-        const startTime = Date.now();
-        index.initIndex();
-        console.log(
-            `Fuzzy Chinese Pinyin: ${index.id} indexing completed, totaling ${
-                index.items.length
-            } items, taking ${(Date.now() - startTime) / 1000.0}s`
-        );
-    }
-    devLoad() {
-        this.forEach((index) => {
-            if (globalThis.FuzzyChineseIndex?.[index.id]) {
-                index.items = globalThis.FuzzyChineseIndex[index.id];
-                console.log(`Fuzzy Chinese Pinyin: Use old ${index.id} index`);
-            } else {
-                this.load_(index);
-            }
-        });
-    }
-    devUnload() {
-        globalThis.FuzzyChineseIndex = {};
-        this.forEach((index) => {
-            globalThis.FuzzyChineseIndex[index.id] = index.items;
-        });
-    }
-    refresh() {
-        const notice = new Notice("正在刷新索引中");
-        setTimeout(() => {
-            this.forEach((index) => this.load_(index));
-            notice.hide();
-            new Notice("索引刷新完成", 4000);
-        }, 100);
-    }
+  normalLoad() {
+    this.forEach((index) => this.load_(index));
+  }
+  load_(index: PinyinIndex<any>) {
+    const startTime = Date.now();
+    index.initIndex();
+    console.log(
+      `Fuzzy Chinese Pinyin: ${index.id} indexing completed, totaling ${
+        index.items.length
+      } items, taking ${(Date.now() - startTime) / 1000.0}s`
+    );
+  }
+  devLoad() {
+    this.forEach((index) => {
+      if (globalThis.FuzzyChineseIndex?.[index.id]) {
+        index.items = globalThis.FuzzyChineseIndex[index.id];
+        console.log(`Fuzzy Chinese Pinyin: Use old ${index.id} index`);
+      } else {
+        this.load_(index);
+      }
+    });
+  }
+  devUnload() {
+    globalThis.FuzzyChineseIndex = {};
+    this.forEach((index) => {
+      globalThis.FuzzyChineseIndex[index.id] = index.items;
+    });
+  }
+  refresh() {
+    const notice = new Notice('正在刷新索引中');
+    setTimeout(() => {
+      this.forEach((index) => this.load_(index));
+      notice.hide();
+      new Notice('索引刷新完成', 4000);
+    }, 100);
+  }
 }

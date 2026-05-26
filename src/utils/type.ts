@@ -1,14 +1,14 @@
-import Pinyin from "./pinyin";
+import Pinyin from './pinyin';
 
 export type MatchData<T extends Item<object> = Item> = {
-    item: T;
-    score: number;
-    range: Array<[number, number]>;
+  item: T;
+  score: number;
+  range: Array<[number, number]>;
 };
 
 export type Item<D extends object = {}> = {
-    name: string;
-    pinyin: Pinyin;
+  name: string;
+  pinyin: Pinyin;
 } & D;
 
 /**
@@ -18,9 +18,9 @@ export type Item<D extends object = {}> = {
  * - common: 普通命令
  */
 export enum SpecialItemScore {
-    emptyInput = 0,
-    pinned = 0,
-    noFoundToCreate = -1,
-    history = -1,
-    common = -2,
+  emptyInput = 0,
+  pinned = 0,
+  noFoundToCreate = -1,
+  history = -1,
+  common = -2,
 }

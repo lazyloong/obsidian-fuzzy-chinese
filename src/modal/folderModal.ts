@@ -62,13 +62,13 @@ export default class FolderModal extends FuzzyModal<Item> {
     this.toMoveFiles = null;
   }
   getFirstInputSuggestions(query: string[1]): MatchData[] {
-    const matchData1: MatchData[] = [], // 使用文件夹名搜索的数据
-      matchData2: MatchData[] = []; // 使用长路径搜索的数据
+    const matchData1: MatchData[] = []; // 使用文件夹名搜索的数据
+    const matchData2: MatchData[] = []; // 使用长路径搜索的数据
     for (const item of this.index.items) {
       const index = item.pinyin.findIndex(
         (p) => p.pinyin.some((q) => q.toLowerCase().startsWith(query)) || p.character == query
       );
-      if (index != -1)
+      if (index !== -1)
         matchData1.push({
           item,
           score: item.pinyin.getScore([[index, index]]),
@@ -79,8 +79,8 @@ export default class FolderModal extends FuzzyModal<Item> {
       const index = item.pinyinOfPath.findIndex(
         (p) => p.pinyin.some((q) => q.toLowerCase().startsWith(query)) || p.character == query
       );
-      if (index != -1)
-        matchData1.push({
+      if (index !== -1)
+        matchData2.push({
           item,
           score: item.pinyin.getScore([[index, index]]),
           range: [[index, index]],
@@ -159,18 +159,20 @@ export default class FolderModal extends FuzzyModal<Item> {
       for (const child of folder.children) {
         if (child instanceof TFolder) {
           const item = this.index.items.find((item) => item.path == child.path);
-          result.push({
-            item: item,
-            score: SpecialItemScore.emptyInput,
-            range: null,
-          });
+          if (item) {
+            result.push({
+              item: item,
+              score: SpecialItemScore.emptyInput,
+              range: null,
+            });
+          }
           quene.push(child);
         }
       }
     }
     return result.slice(0, 20);
   }
-  async onChooseSuggestion(matchData: MatchData, evt: MouseEvent | KeyboardEvent): Promise<void> {
+  async onChooseSuggestion(matchData: MatchData): Promise<void> {
     if (matchData.score == -1) await app.vault.createFolder(matchData.item.path);
     if (!this.toMoveFiles) this.toMoveFiles = app.workspace.getActiveFile();
     if (Array.isArray(this.toMoveFiles))
@@ -265,5 +267,5 @@ class PinyinIndex extends PI<Item> {
 }
 
 function isIgnore(path: string): boolean {
-  return app.metadataCache.userIgnoreFilters.some((filter) => filter.test(path));
+  return app.metadataCache.userIgnoreFilters?.some((filter) => filter.test(path));
 }

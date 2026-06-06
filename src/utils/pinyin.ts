@@ -162,6 +162,19 @@ export default class Pinyin extends Array<PinyinChild> {
           }
         }
 
+        // 策略3b：双字符声母匹配（zh/ch/sh）
+        // 当查询剩余 ≥2 个字符且前缀为 zh/ch/sh 时，允许整体匹配汉字声母
+        if (query.length - j >= 1) {
+          const initial2 = query.slice(j - 1, j + 1);
+          if (SHUANG_SHENG.includes(initial2) && pinyins.some((p) => p.startsWith(initial2))) {
+            const cell: DPCell = { len: prev.len + 1, index: i - 1, prevI: i - 1, prevJ: j - 1 };
+            const targetCol = j + 1; // 消耗 2 个查询字符
+            if (dp[i][targetCol] === null || cell.len > dp[i][targetCol]!.len) {
+              dp[i][targetCol] = cell;
+            }
+          }
+        }
+
         // 策略4：完整拼音匹配
         const completePinyin = pinyins.find(
           (p: string) => p === query.slice(j - 1, j - 1 + p.length)

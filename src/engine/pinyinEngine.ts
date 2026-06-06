@@ -41,8 +41,8 @@ export class PinyinEngine {
     this.schemes[scheme.name] = scheme;
   }
 
-  /** 从 legacy 双拼字典加载所有内置方案 */
-  loadLegacySchemes(): void {
+  /** 从内置双拼字典加载所有方案 */
+  loadBuiltinSchemes(): void {
     for (const [name, mapping] of Object.entries(DoubleDict)) {
       const sheng: Record<string, string> = {};
       const yun: Record<string, string> = {};

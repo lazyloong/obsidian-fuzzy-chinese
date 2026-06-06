@@ -52,7 +52,7 @@ export default class ThePlugin extends Plugin {
     await this.loadSettings();
 
     // 初始化拼音引擎
-    pinyinEngine.loadLegacySchemes();
+    pinyinEngine.loadBuiltinSchemes();
     pinyinEngine.loadDefaultFuzzyRules();
     this.loadPinyinDict();
     this.fileModal = new FileModal(this.app, this);

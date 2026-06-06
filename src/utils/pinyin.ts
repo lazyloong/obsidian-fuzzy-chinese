@@ -98,20 +98,28 @@ export default class Pinyin extends Array<PinyinChild> {
   }
   // The following two functions are based on the work of zh-lx (https://github.com/zh-lx).
   // Original code: https://github.com/zh-lx/pinyin-pro/blob/main/lib/core/match/index.ts.
+
+  /** 对文本和查询做大小写归一化，处理特殊字符（如土耳其语 İ） */
+  private normalizeForMatch(text: string, query: string, smartCase: boolean) {
+    // 去除空格并做 NFKD 归一化（仅 query 侧，避免 text 归一下标越界）
+    const normalizedQuery = query.replace(/\s/g, '').normalize('NFKD');
+
+    // 特殊字符处理：土耳其语 İ 转小写后会变 2 字符，使用 tr locale 避免
+    const textLocale: string | undefined = text.includes('İ') ? 'tr' : undefined;
+
+    const normalizeCase = (str: string) =>
+      smartCase ? str : str.toLocaleLowerCase(textLocale);
+
+    return {
+      text: normalizeCase(text),
+      query: normalizeCase(normalizedQuery),
+    };
+  }
+
   match_(query: string): number[] | null {
     const smartCase = /[A-Z]/.test(query) && usePlugin().settings.global.autoCaseSensitivity;
-    query = query.replace(/\s/g, '');
-
-    // NFKD 归一化防止土耳其语 İ 等特殊字符转小写后长度变化
-    const normalizedText = this.text.normalize('NFKD');
-    const normalizedQuery = query.normalize('NFKD');
-
-    const normalizeCase = (str: string) => (smartCase ? str : str.toLocaleLowerCase());
-    const result = this.matchAboveStart(
-      normalizeCase(normalizedText),
-      normalizeCase(normalizedQuery)
-    );
-    return result;
+    const normalized = this.normalizeForMatch(this.text, query, smartCase);
+    return this.matchAboveStart(normalized.text, normalized.query);
   }
 
   matchAboveStart(text: string, query: string): number[] | null {

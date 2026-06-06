@@ -16,7 +16,7 @@ function createEngine() {
     二: ['er'],
     儿: ['er'],
   });
-  engine.loadLegacySchemes();
+  engine.loadBuiltinSchemes();
   engine.loadDefaultFuzzyRules();
   engine.loadPalladius(Palladius);
   return engine;

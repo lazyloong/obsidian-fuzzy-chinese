@@ -56,11 +56,28 @@ export default class Pinyin extends Array<PinyinChild> {
     });
   }
   getScore(range: Array<[number, number]>) {
-    const coverage = range.reduce((p, c) => p + c[1] - c[0] + 1, 0) / this.text.length;
+    const textLen = this.text.length;
+    const coverage = range.reduce((p, c) => p + c[1] - c[0] + 1, 0) / textLen;
+
     let score = 0;
-    score += coverage < 0.5 ? 150 * coverage : 50 * coverage + 50; // 使用线性函数计算覆盖度
-    score += 20 / (range[0][0] + 1); // 靠前加分
-    score += 30 / range.length; // 分割越少分越高
+
+    // 覆盖率：平方函数使高覆盖率获得超线性奖励（全匹配远比部分匹配值钱）
+    score += 100 * coverage * coverage;
+
+    // 靠前加分：反平方根衰减，比 1/(x+1) 更平滑地奖励靠前匹配
+    score += 15 / Math.sqrt(range[0][0] + 1);
+
+    // 连续段数越少越好
+    score += 25 / range.length;
+
+    // 长连续段加分：每段长度 > 1 时额外奖励
+    for (const [start, end] of range) {
+      const segLen = end - start + 1;
+      if (segLen > 1) {
+        score += 5 * (segLen - 1);
+      }
+    }
+
     return score;
   }
   match<T extends Item>(query: string, item: T): MatchData<T> {

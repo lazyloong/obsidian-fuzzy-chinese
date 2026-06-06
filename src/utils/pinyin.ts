@@ -8,6 +8,40 @@ const MAX_PINYIN_LENGTH = 6;
 /** 双字符声母集合 */
 const SHUANG_SHENG = ['zh', 'ch', 'sh'];
 
+/** DP 单元格：存储匹配状态及 O(1) 回溯指针，替代数组拷贝 */
+interface DPCell {
+    /** 已匹配的文本字符数 */
+    len: number;
+    /** 当前匹配的文本字符索引（即 words[i-1] 的 i-1） */
+    index: number;
+    /** 回溯：前一个匹配所在的 dp 行 */
+    prevI: number;
+    /** 回溯：前一个匹配所在的 dp 列 */
+    prevJ: number;
+}
+
+/** 哨兵：表示「尚未匹配任何字符」但可作为起点的合法状态 */
+const SENTINEL: DPCell = Object.freeze({ len: 0, index: -1, prevI: -1, prevJ: -1 });
+
+/**
+ * 沿 dp 回溯链重建匹配索引数组（倒序收集后反转）
+ * @param cell  终端 DPCell
+ * @param dp    dp 矩阵（用于沿 prevI/prevJ 向上查找）
+ * @returns 有序匹配索引数组，如 [0, 2, 5]
+ */
+function reconstructPath(cell: DPCell, dp: (DPCell | null)[][]): number[] {
+    const indices: number[] = [];
+    let cur: DPCell | null = cell;
+    while (cur !== null && cur.len > 0) {
+        indices.push(cur.index);
+        cur = (cur.prevI >= 0 && cur.prevJ >= 0)
+            ? dp[cur.prevI][cur.prevJ]
+            : null;
+    }
+    indices.reverse();
+    return indices;
+}
+
 export default class Pinyin extends Array<PinyinChild> {
   text: string;
   constructor(query: string) {
@@ -63,80 +97,80 @@ export default class Pinyin extends Array<PinyinChild> {
     return result;
   }
 
-  matchAboveStart(text: string, pinyin: string): number[] | null {
+  matchAboveStart(text: string, query: string): number[] | null {
     const words = text.split('');
 
-    // 二维数组 dp[i][j]，i 表示遍历到的 text 索引+1, j 表示遍历到的 pinyin 的索引+1
-    const dp = Array(words.length + 1);
-    // 使用哨兵初始化 dp
+    // dp[i][j]：null = 死路/未计算，DPCell = 可继续匹配的合法状态
+    // i = 文本字符索引(1-based)，j = 查询字符串索引(1-based)
+    const dp: (DPCell | null)[][] = Array(words.length + 1);
     for (let i = 0; i < dp.length; i++) {
-      dp[i] = Array(pinyin.length + 1);
-      dp[i][0] = [];
+      dp[i] = Array(query.length + 1).fill(null);
+      dp[i][0] = SENTINEL;
     }
-    for (let i = 0; i < dp[0].length; i++) {
-      dp[0][i] = [];
+    for (let j = 0; j <= query.length; j++) {
+      dp[0][j] = SENTINEL;
     }
 
     // 动态规划匹配
     for (let i = 1; i < dp.length; i++) {
       // 允许跳过第 i 个字（不参与匹配），将上一行状态水平传递
-      for (let j = 1; j <= pinyin.length; j++) {
+      for (let j = 1; j <= query.length; j++) {
         dp[i][j - 1] = dp[i - 1][j - 1];
       }
+
       // 第 i 个字参与匹配
-      for (let j = 1; j <= pinyin.length; j++) {
-        if (!dp[i - 1][j - 1]) {
+      for (let j = 1; j <= query.length; j++) {
+        const prev = dp[i - 1][j - 1];
+        if (prev === null) {
           // 第 i - 1 已经匹配失败，停止向后匹配
           continue;
-        } else if (j !== 1 && !dp[i - 1][j - 1].length) {
+        }
+        if (j !== 1 && prev.len === 0) {
           // 非开头且前面的字符未匹配完成，停止向后匹配
           continue;
-        } else {
-          const pinyins = this[i - 1].pinyin;
+        }
 
-          // 策略1：精确字符匹配（非中文、数字等直接按字符匹配）
-          if (text[i - 1] === pinyin[j - 1]) {
-            const matches = [...dp[i - 1][j - 1], i - 1];
-            // 记录最长的可匹配下标数组
-            if (!dp[i][j] || matches.length > dp[i][j].length) {
-              dp[i][j] = matches;
-            }
-            // pinyin 参数完全匹配完成，记录结果
-            if (j === pinyin.length) {
-              return dp[i][j];
-            }
+        const pinyins = this[i - 1].pinyin;
+
+        // 策略1：精确字符匹配（非中文、数字等直接按字符匹配）
+        if (text[i - 1] === query[j - 1]) {
+          const cell: DPCell = { len: prev.len + 1, index: i - 1, prevI: i - 1, prevJ: j - 1 };
+          if (dp[i][j] === null || cell.len > dp[i][j]!.len) {
+            dp[i][j] = cell;
           }
-
-          // 策略2：末音节前缀匹配（查询剩余 ≤6 字符时，有可能是最后一个拼音的前缀）
-          if (pinyin.length - j <= MAX_PINYIN_LENGTH) {
-            const last = pinyins.some((p) => {
-              return p.startsWith(pinyin.slice(j - 1, pinyin.length));
-            });
-            if (last) {
-              return [...dp[i - 1][j - 1], i - 1];
-            }
+          if (j === query.length) {
+            return reconstructPath(dp[i][j]!, dp);
           }
+        }
 
-          // 策略3：首字母匹配
-          if (pinyins.some((p) => p[0] === pinyin[j - 1])) {
-            const matches = [...dp[i - 1][j - 1], i - 1];
-            // 记录最长的可匹配下标数组
-            if (!dp[i][j] || matches.length > dp[i][j].length) {
-              dp[i][j] = matches;
-            }
-          }
-
-          // 策略4：完整拼音匹配
-          const completePinyin = pinyins.find(
-            (p: string) => p === pinyin.slice(j - 1, j - 1 + p.length)
+        // 策略2：末音节前缀匹配（查询剩余 ≤6 字符时，有可能是最后一个拼音的前缀）
+        if (query.length - j <= MAX_PINYIN_LENGTH) {
+          const last = pinyins.some((p) =>
+            p.startsWith(query.slice(j - 1, query.length))
           );
-          if (completePinyin) {
-            const matches = [...dp[i - 1][j - 1], i - 1];
-            const endIndex = j - 1 + completePinyin.length;
-            // 记录最长的可匹配下标数组
-            if (!dp[i][endIndex] || matches.length > dp[i][endIndex].length) {
-              dp[i][endIndex] = matches;
-            }
+          if (last) {
+            const cell: DPCell = { len: prev.len + 1, index: i - 1, prevI: i - 1, prevJ: j - 1 };
+            return reconstructPath(cell, dp);
+          }
+        }
+
+        // 策略3：首字母匹配
+        if (pinyins.some((p) => p[0] === query[j - 1])) {
+          const cell: DPCell = { len: prev.len + 1, index: i - 1, prevI: i - 1, prevJ: j - 1 };
+          if (dp[i][j] === null || cell.len > dp[i][j]!.len) {
+            dp[i][j] = cell;
+          }
+        }
+
+        // 策略4：完整拼音匹配
+        const completePinyin = pinyins.find(
+          (p: string) => p === query.slice(j - 1, j - 1 + p.length)
+        );
+        if (completePinyin) {
+          const cell: DPCell = { len: prev.len + 1, index: i - 1, prevI: i - 1, prevJ: j - 1 };
+          const endIndex = j - 1 + completePinyin.length;
+          if (dp[i][endIndex] === null || cell.len > dp[i][endIndex]!.len) {
+            dp[i][endIndex] = cell;
           }
         }
       }

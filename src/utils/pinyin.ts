@@ -50,21 +50,16 @@ export default class Pinyin extends Array<PinyinChild> {
   match_(query: string): number[] | null {
     const smartCase = /[A-Z]/.test(query) && usePlugin().settings.global.autoCaseSensitivity;
     query = query.replace(/\s/g, '');
+
+    // NFKD 归一化防止土耳其语 İ 等特殊字符转小写后长度变化
+    const normalizedText = this.text.normalize('NFKD');
+    const normalizedQuery = query.normalize('NFKD');
+
     const normalizeCase = (str: string) => (smartCase ? str : str.toLocaleLowerCase());
-    let result: number[];
-    try {
-      result = this.matchAboveStart(normalizeCase(this.text), normalizeCase(query));
-    } catch (e) {
-      // 土耳其字符 "İ" 转小写后变成两个字符（"i"和附加的点下加符号 "̇"）导致长度对不上
-      if (this.text.includes('İ')) {
-        const normalizeCase = (str: string) => (smartCase ? str : str.toLocaleLowerCase('tr'));
-        result = this.matchAboveStart(normalizeCase(this.text), normalizeCase(query));
-      } else {
-        console.log(this.text, this);
-        console.error(e);
-        result = this.matchAboveStart(this.text, query);
-      }
-    }
+    const result = this.matchAboveStart(
+      normalizeCase(normalizedText),
+      normalizeCase(normalizedQuery)
+    );
     return result;
   }
 

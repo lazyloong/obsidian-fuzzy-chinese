@@ -2,6 +2,12 @@ import { Item, MatchData } from './type';
 import { usePlugin } from './helpers';
 import { pinyinEngine } from '@/engine/pinyinEngine';
 
+/** 拼音最长音节长度（用于末音节前缀匹配判断） */
+const MAX_PINYIN_LENGTH = 6;
+
+/** 双字符声母集合 */
+const SHUANG_SHENG = ['zh', 'ch', 'sh'];
+
 export default class Pinyin extends Array<PinyinChild> {
   text: string;
   constructor(query: string) {
@@ -42,17 +48,17 @@ export default class Pinyin extends Array<PinyinChild> {
   // The following two functions are based on the work of zh-lx (https://github.com/zh-lx).
   // Original code: https://github.com/zh-lx/pinyin-pro/blob/main/lib/core/match/index.ts.
   match_(query: string): number[] | null {
-    const smathCase = /[A-Z]/.test(query) && usePlugin().settings.global.autoCaseSensitivity;
+    const smartCase = /[A-Z]/.test(query) && usePlugin().settings.global.autoCaseSensitivity;
     query = query.replace(/\s/g, '');
-    const f = (str: string) => (smathCase ? str : str.toLocaleLowerCase());
+    const normalizeCase = (str: string) => (smartCase ? str : str.toLocaleLowerCase());
     let result: number[];
     try {
-      result = this.matchAboveStart(f(this.text), f(query));
+      result = this.matchAboveStart(normalizeCase(this.text), normalizeCase(query));
     } catch (e) {
       // 土耳其字符 "İ" 转小写后变成两个字符（"i"和附加的点下加符号 "̇"）导致长度对不上
       if (this.text.includes('İ')) {
-        const f = (str: string) => (smathCase ? str : str.toLocaleLowerCase('tr'));
-        result = this.matchAboveStart(f(this.text), f(query));
+        const normalizeCase = (str: string) => (smartCase ? str : str.toLocaleLowerCase('tr'));
+        result = this.matchAboveStart(normalizeCase(this.text), normalizeCase(query));
       } else {
         console.log(this.text, this);
         console.error(e);
@@ -78,7 +84,7 @@ export default class Pinyin extends Array<PinyinChild> {
 
     // 动态规划匹配
     for (let i = 1; i < dp.length; i++) {
-      // options.continuous 为 false 或 options.space 为 ignore 且当前为空格时，第 i 个字可以不参与匹配
+      // 允许跳过第 i 个字（不参与匹配），将上一行状态水平传递
       for (let j = 1; j <= pinyin.length; j++) {
         dp[i][j - 1] = dp[i - 1][j - 1];
       }
@@ -91,8 +97,9 @@ export default class Pinyin extends Array<PinyinChild> {
           // 非开头且前面的字符未匹配完成，停止向后匹配
           continue;
         } else {
-          const muls = this[i - 1].pinyin;
-          // 非中文匹配
+          const pinyins = this[i - 1].pinyin;
+
+          // 策略1：精确字符匹配（非中文、数字等直接按字符匹配）
           if (text[i - 1] === pinyin[j - 1]) {
             const matches = [...dp[i - 1][j - 1], i - 1];
             // 记录最长的可匹配下标数组
@@ -105,18 +112,18 @@ export default class Pinyin extends Array<PinyinChild> {
             }
           }
 
-          // 剩余长度小于等于 MAX_PINYIN_LENGTH(6) 时，有可能是最后一个拼音了
-          if (pinyin.length - j <= 6) {
-            // lastPrecision 参数处理
-            const last = muls.some((py) => {
-              return py.startsWith(pinyin.slice(j - 1, pinyin.length));
+          // 策略2：末音节前缀匹配（查询剩余 ≤6 字符时，有可能是最后一个拼音的前缀）
+          if (pinyin.length - j <= MAX_PINYIN_LENGTH) {
+            const last = pinyins.some((p) => {
+              return p.startsWith(pinyin.slice(j - 1, pinyin.length));
             });
             if (last) {
               return [...dp[i - 1][j - 1], i - 1];
             }
           }
 
-          if (muls.some((py) => py[0] === pinyin[j - 1])) {
+          // 策略3：首字母匹配
+          if (pinyins.some((p) => p[0] === pinyin[j - 1])) {
             const matches = [...dp[i - 1][j - 1], i - 1];
             // 记录最长的可匹配下标数组
             if (!dp[i][j] || matches.length > dp[i][j].length) {
@@ -124,13 +131,13 @@ export default class Pinyin extends Array<PinyinChild> {
             }
           }
 
-          // 匹配当前汉字的完整拼音
-          const completeMatch = muls.find(
-            (py: string) => py === pinyin.slice(j - 1, j - 1 + py.length)
+          // 策略4：完整拼音匹配
+          const completePinyin = pinyins.find(
+            (p: string) => p === pinyin.slice(j - 1, j - 1 + p.length)
           );
-          if (completeMatch) {
+          if (completePinyin) {
             const matches = [...dp[i - 1][j - 1], i - 1];
-            const endIndex = j - 1 + completeMatch.length;
+            const endIndex = j - 1 + completePinyin.length;
             // 记录最长的可匹配下标数组
             if (!dp[i][endIndex] || matches.length > dp[i][endIndex].length) {
               dp[i][endIndex] = matches;

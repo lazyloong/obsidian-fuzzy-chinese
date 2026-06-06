@@ -28,9 +28,16 @@ beforeAll(() => {
     行: ['hang', 'xing'],
     大: ['da'],
     学: ['xue'],
+    上: ['shang'],
+    海: ['hai'],
+    新: ['xin'],
+    山: ['shan'],
+    水: ['shui'],
     A: ['A'],
     B: ['B'],
     C: ['C'],
+    1: ['1'],
+    2: ['2'],
   });
 });
 
@@ -50,6 +57,13 @@ const sampleDataNoKey = [
   { name: '中国', value: 2 },
   { name: '人民', value: 3 },
   { name: '大学', value: 4 },
+];
+
+const sampleDataSh = [
+  { key: '上海' },
+  { key: '山水' },
+  { key: '上山' },
+  { key: '中心' },
 ];
 
 // ============================================================
@@ -193,6 +207,78 @@ describe('pinyinSearch', () => {
       const result = pinyinSearch('shezhi', sampleData);
       expect(result.length).toBeGreaterThanOrEqual(1);
       expect(result[0].item.data).toEqual({ key: '设置', label: '设置面板' });
+    });
+  });
+
+  describe('双字符声母 zh/ch/sh 集成', () => {
+    it('sh 匹配「上海」', () => {
+      const result = pinyinSearch('shh', sampleDataSh);
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      expect(result[0].item.name).toBe('上海');
+    });
+
+    it('sh 匹配「山水」', () => {
+      const result = pinyinSearch('shsh', sampleDataSh);
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      expect(result[0].item.name).toBe('山水');
+    });
+
+    it('单字符 s 仍可匹配 sh 声母字', () => {
+      const result = pinyinSearch('sh', sampleDataSh);
+      const names = result.map(r => r.item.name);
+      expect(names).toContain('上海');
+      expect(names).toContain('山水');
+    });
+  });
+
+  describe('查询中的空格', () => {
+    it('空格不影响搜索', () => {
+      const result = pinyinSearch('shang hai', sampleDataSh);
+      expect(result.length).toBeGreaterThanOrEqual(1);
+      expect(result[0].item.name).toBe('上海');
+    });
+  });
+
+  describe('跳过不匹配字符', () => {
+    it('搜索末尾字，跳过开头不匹配字', () => {
+      const data = [
+        { key: '中国人民' },
+        { key: '美国人民' },
+      ];
+      const result = pinyinSearch('renmin', data);
+      expect(result.length).toBeGreaterThanOrEqual(2);
+      expect(result.map(r => r.item.name)).toContain('中国人民');
+      expect(result.map(r => r.item.name)).toContain('美国人民');
+    });
+  });
+
+  describe('连续段奖励排序', () => {
+    it('全连续匹配得分高于分散匹配', () => {
+      // 构造两个条目：同样的查询匹配到不同的 range
+      // Entry A: 「中国」→ range [[0,1]] 连续 1 段
+      // Entry B: 「中人国」→ range [[0,0],[2,2]] 分散 2 段，相同 coverage(2/3)
+      // A 得分应更高，因为连续段 bonus
+      const data = [
+        { key: '中国' },
+        { key: '中人国' },
+      ];
+      // '中国' 中=zhong 国=guo → 匹配 zhongguo → [[0,1]]
+      // '中人国' 中=zhong 人=ren 国=guo → zhong 匹配 中(0), guo 匹配 国(2) → [[0,0],[2,2]]
+      const result = pinyinSearch('zhongguo', data);
+      expect(result.length).toBeGreaterThanOrEqual(2);
+      expect(result[0].item.name).toBe('中国');
+    });
+  });
+
+  describe('数字匹配', () => {
+    it('文本中的数字可被精确匹配', () => {
+      const data = [
+        { key: '文件1' },
+        { key: '文件2' },
+      ];
+      const result = pinyinSearch('1', data);
+      expect(result.length).toBe(1);
+      expect(result[0].item.name).toBe('文件1');
     });
   });
 });

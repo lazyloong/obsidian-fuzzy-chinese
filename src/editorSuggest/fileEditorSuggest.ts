@@ -8,7 +8,7 @@ import {
   TFile,
 } from 'obsidian';
 import { MatchData as fMatchData, Item as fItem, LinkItem, FileItemType } from '@/modal/fileModal';
-import { PinyinIndex, Pinyin, SpecialItemScore } from '@/utils';
+import { PinyinIndex, Pinyin, SpecialItemScore, normalizeQuery, normalizeText, toRanges } from '@/utils';
 import ThePlugin from '@/main';
 
 type ResultType = 'alias' | 'file' | 'linktext' | 'heading';
@@ -159,11 +159,16 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         range: null,
         usePath: false,
       }));
-    query = query.toLocaleLowerCase();
+    const smartCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
     const matchData: MatchData[] = [];
     for (const p of items) {
-      const d = p.pinyin.match(query, p);
-      if (d) matchData.push(d as MatchData);
+      const finalText = normalizeText(p.name, smartCase);
+      const range = p.pinyin.matchAboveStart(finalText, finalQuery);
+      if (range) {
+        const r = toRanges(range);
+        matchData.push({ item: p, score: p.pinyin.getScore(r), range: r } as MatchData);
+      }
     }
     matchData.sort((a, b) => b.score - a.score);
     return matchData;

@@ -11,5 +11,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "types.d.ts", "obsidian.d.ts", "tests/**/*.ts"]
+  "include": ["src/**/*.ts", "types.d.ts", "obsidian.d.ts", "tests/**/*.ts", "bench/**/*.ts"]
 }

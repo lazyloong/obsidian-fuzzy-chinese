@@ -7,6 +7,9 @@ import {
   Item,
   SuggestionRenderer,
   SpecialItemScore,
+  normalizeText,
+  normalizeQuery,
+  toRanges,
 } from '@/utils';
 
 export { SpecialItemScore } from '@/utils';
@@ -53,11 +56,21 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     this.onInput(); // 无输入时触发历史记录
   }
   abstract getEmptyInputSuggestions(): MatchData<T>[];
-  getFirstInputSuggestions(query: string[1], items = this.index.items): MatchData<T>[] {
+  getFirstInputSuggestions(query: string[1], items?: T[]): MatchData<T>[] {
+    const lowerQuery = query.toLowerCase();
+    // 优先使用首字符倒排索引缩小候选集
+    if (items === undefined) {
+      const idx = this.index as PinyinIndex<T>;
+      if (idx.firstCharIndex) {
+        items = idx.firstCharIndex.get(lowerQuery) ?? idx.items;
+      } else {
+        items = idx.items;
+      }
+    }
     const matchData: MatchData<T>[] = [];
-    for (const item of items) {
+    for (const item of items!) {
       const index = item.pinyin.findIndex(
-        (p) => p.pinyin.some((q) => q.toLowerCase().startsWith(query)) || p.character == query
+        (p) => p.pinyin.some((q) => q.startsWith(lowerQuery)) || p.character === lowerQuery
       );
       if (index != -1)
         matchData.push({
@@ -70,9 +83,16 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
   }
   getNormalInputSuggestions(query: string, items: T[]): MatchData<T>[] {
     const matchData: MatchData<T>[] = [];
+    // 预归一化查询（循环外只做一次）
+    const smartCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
     for (const p of items) {
-      const d = p.pinyin.match(query, p);
-      if (d) matchData.push(d);
+      const finalText = normalizeText(p.name, smartCase);
+      const range = p.pinyin.matchAboveStart(finalText, finalQuery);
+      if (range) {
+        const r = toRanges(range);
+        matchData.push({ item: p, score: p.pinyin.getScore(r), range: r });
+      }
     }
     return matchData;
   }

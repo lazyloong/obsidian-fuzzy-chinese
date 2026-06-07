@@ -392,6 +392,7 @@ class PinyinIndex extends PI<Item> {
     for (const item of value) {
       map[item.type].push(item);
     }
+    this.markFirstCharDirty();
   }
   initIndex() {
     const files = this.app.vault.getFiles().filter((f) => this.isEffectiveFile(f));
@@ -410,6 +411,7 @@ class PinyinIndex extends PI<Item> {
     }
 
     this.updateUnresolvedLinkItems();
+    this.markFirstCharDirty();
   }
   initEvent() {
     this.registerEvent(
@@ -464,6 +466,7 @@ class PinyinIndex extends PI<Item> {
         break;
       }
     }
+    this.markFirstCharDirty();
   }
   updateUnresolvedLinkItems() {
     this.unresolvedLinkItems = incrementalUpdate(

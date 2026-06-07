@@ -87,12 +87,12 @@ describe('Pinyin', () => {
       expect(py[2].pinyin).toContain('ren');
     });
 
-    it('英文原样保留', () => {
+    it('英文原样保留（构造时统一转小写）', () => {
       const py = new Pinyin('AB');
       expect(py[0].character).toBe('A');
-      expect(py[0].pinyin).toEqual(['A']);
+      expect(py[0].pinyin).toEqual(['a']);
       expect(py[1].character).toBe('B');
-      expect(py[1].pinyin).toEqual(['B']);
+      expect(py[1].pinyin).toEqual(['b']);
     });
   });
 

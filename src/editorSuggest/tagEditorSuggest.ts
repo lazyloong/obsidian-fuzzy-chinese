@@ -15,6 +15,9 @@ import {
   Item,
   SuggestionRenderer,
   incrementalUpdate,
+  normalizeText,
+  normalizeQuery,
+  toRanges,
 } from '@/utils';
 import ThePlugin from '@/main';
 import { SpecialItemScore } from '@/modal/modal';
@@ -115,9 +118,15 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
   getNormalInputSuggestions(query: string): MatchData[] {
     const { toMatchItem, currentNode } = this.getItemFromHistoryTree(query);
     const matchData: MatchData[] = [];
+    const smartCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
     for (let p of toMatchItem) {
-      let d = p.pinyin.match(query, p);
-      if (d) matchData.push(d);
+      const finalText = normalizeText(p.name, smartCase);
+      const range = p.pinyin.matchAboveStart(finalText, finalQuery);
+      if (range) {
+        const r = toRanges(range);
+        matchData.push({ item: p, score: p.pinyin.getScore(r), range: r });
+      }
     }
     currentNode.itemIndex = matchData.map((p) => p.item);
     return matchData;

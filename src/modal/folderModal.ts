@@ -105,13 +105,18 @@ export default class FolderModal extends FuzzyModal<Item> {
     const matchData1: MatchData[] = [], // 使用标题、别名搜索的数据
       matchData2: MatchData[] = []; // 使用路径搜索的数据
 
+    const smartCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
+
     let toMatchItem = this.getHistoryData(query);
     for (const p of toMatchItem) {
-      const d = p.pinyin.match(query, p);
-      if (!d) continue;
-      const l = d.item.path.lastIndexOf('/') + 1;
-      d.range = d.range.map((p) => p.map((q) => q + l)) as [number, number][];
-      matchData1.push(d);
+      const finalText = normalizeText(p.name, smartCase);
+      const range = p.pinyin.matchAboveStart(finalText, finalQuery);
+      if (!range) continue;
+      const r = toRanges(range);
+      const l = p.path.lastIndexOf('/') + 1;
+      const adjustedRange = r.map(([a, b]) => [a + l, b + l]) as [number, number][];
+      matchData1.push({ item: p, score: p.pinyin.getScore(r), range: adjustedRange });
     }
 
     toMatchItem =
@@ -227,6 +232,7 @@ class PinyinIndex extends PI<Item> {
       pinyinOfPath: new Pinyin(root.path),
     });
     iterate(root, new Pinyin(''));
+    this.markFirstCharDirty();
   }
   initEvent() {
     this.registerEvent(
@@ -263,6 +269,7 @@ class PinyinIndex extends PI<Item> {
         });
         break;
     }
+    this.markFirstCharDirty();
   }
 }
 

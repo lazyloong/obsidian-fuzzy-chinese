@@ -10,6 +10,7 @@
     "deploy": "vite build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "bench": "vitest bench",
     "help": "vite --help"
   },
   "devDependencies": {

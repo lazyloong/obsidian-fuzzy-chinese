@@ -27,7 +27,8 @@ import SimplifiedDict from '@/dict/simplified_dict.json';
 import TraditionalDict from '@/dict/traditional_dict.json';
 
 import pinyinSearch from '@/utils/pinyinSearch';
-import SettingTab, { DEFAULT_SETTINGS, TheSettings } from '@/settingTab';
+import SettingTab from '@/settingTab';
+import { DEFAULT_SETTINGS, TheSettings } from '@/settings';
 import { hijackingCanvasView, hijackingEmptyView } from './viewEventHijacking';
 
 export default class ThePlugin extends Plugin {

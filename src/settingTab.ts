@@ -5,6 +5,7 @@ import { TheSettings } from '@/settings';
 import { PinyinSuggest, arraySwap } from '@/utils';
 import { createToggle } from '@/settingFactory';
 import { OPEN_FILE_KEY_NAMES } from '@/constants';
+import { canSwitchDoublePinyin } from '@/settingValidation';
 import FuzzyPinyinSettingModal from '@/modal/fuzzyPinyinSettingModal';
 
 export default class SettingTab extends PluginSettingTab {
@@ -57,13 +58,9 @@ export default class SettingTab extends PluginSettingTab {
         .setValue(global.doublePinyin)
         .onChange(async (value: string) => {
           if (global.doublePinyin == value) return;
-          if (global.fuzzyPinyin && value != '全拼') {
-            new Notice('模糊音搜索已开启，无法切换双拼方案');
-            cb.setValue('全拼');
-            return;
-          }
-          if (global.palladius && value !== '全拼') {
-            new Notice('俄文转拼音已开启，无法切换双拼方案');
+          const result = canSwitchDoublePinyin(global.fuzzyPinyin, global.palladius, value);
+          if (!result.ok) {
+            new Notice(result.reason!);
             cb.setValue('全拼');
             return;
           }

@@ -4,7 +4,7 @@ import ThePlugin from '@/main';
 import { TheSettings } from '@/settings';
 import { PinyinSuggest, arraySwap } from '@/utils';
 import { createToggle } from '@/settingFactory';
-import { openFileKeyMap } from './modal/fileModal';
+import { OPEN_FILE_KEY_NAMES } from '@/constants';
 import FuzzyPinyinSettingModal from '@/modal/fuzzyPinyinSettingModal';
 
 export default class SettingTab extends PluginSettingTab {
@@ -223,7 +223,7 @@ export default class SettingTab extends PluginSettingTab {
 
     this.containerEl.createEl('h3', { text: '快捷键功能' });
     const keys = ['keyEnter', 'keyCtrlEnter', 'keyAltEnter', 'keyCtrlAltEnter'];
-    const g = Object.keys(openFileKeyMap);
+    const g = OPEN_FILE_KEY_NAMES;
     keys.forEach((key) => {
       new Setting(this.containerEl)
         .setName(

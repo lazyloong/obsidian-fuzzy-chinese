@@ -3,6 +3,7 @@ import { pinyinEngine } from '@/engine/pinyinEngine';
 import ThePlugin from '@/main';
 import { TheSettings } from '@/settings';
 import { PinyinSuggest, arraySwap } from '@/utils';
+import { createToggle } from '@/settingFactory';
 import { openFileKeyMap } from './modal/fileModal';
 import FuzzyPinyinSettingModal from '@/modal/fuzzyPinyinSettingModal';
 
@@ -24,22 +25,23 @@ export default class SettingTab extends PluginSettingTab {
   addGlobalSetting() {
     this.containerEl.createEl('h2', { text: '全局' });
     const { global } = this.plugin.settings;
-    new Setting(this.containerEl)
-      .setName('Backspace 关闭搜索')
-      .setDesc('当输入框为空时按下 Backspace 关闭搜索')
-      .addToggle((cb) =>
-        cb.setValue(global.closeWithBackspace).onChange(async (value) => {
-          global.closeWithBackspace = value;
-          await this.plugin.saveSettings();
-        })
-      );
-    new Setting(this.containerEl).setName('繁体支持').addToggle((cb) => {
-      cb.setValue(global.traditionalChineseSupport).onChange(async (value) => {
-        global.traditionalChineseSupport = value;
-        await this.plugin.saveSettings();
-        this.plugin.loadPinyinDict();
-      });
-    });
+    createToggle(
+      this.containerEl,
+      'Backspace 关闭搜索',
+      '当输入框为空时按下 Backspace 关闭搜索',
+      () => global.closeWithBackspace,
+      (v) => { global.closeWithBackspace = v; },
+      this.plugin,
+    );
+    createToggle(
+      this.containerEl,
+      '繁体支持',
+      undefined,
+      () => global.traditionalChineseSupport,
+      (v) => { global.traditionalChineseSupport = v; },
+      this.plugin,
+      () => this.plugin.loadPinyinDict(),
+    );
     const doublePinyinOptions = pinyinEngine.listSchemes().reduce(
       (acc, cur) => {
         acc[cur] = cur;
@@ -92,62 +94,74 @@ export default class SettingTab extends PluginSettingTab {
           new FuzzyPinyinSettingModal(this.plugin).open();
         })
       );
-    new Setting(this.containerEl).setName('俄语拼音').addToggle((cb) =>
-      cb.setValue(global.palladius).onChange(async (value) => {
-        if (global.doublePinyin !== '全拼' && value) {
+    createToggle(
+      this.containerEl,
+      '俄语拼音',
+      undefined,
+      () => global.palladius,
+      (v) => {
+        if (global.doublePinyin !== '全拼' && v) {
           new Notice('请将双拼模式设置为全拼，否则无法使用俄语拼音。');
         }
-        global.palladius = value;
-        await this.plugin.saveSettings();
+        global.palladius = v;
+      },
+      this.plugin,
+      () => {
         this.plugin.loadPinyinDict();
         this.plugin.indexManager.refresh();
-      })
+      },
     );
-    new Setting(this.containerEl).setName('自动大小写敏感').addToggle((cb) =>
-      cb.setValue(global.autoCaseSensitivity).onChange(async (value) => {
-        global.autoCaseSensitivity = value;
-        await this.plugin.saveSettings();
-      })
+    createToggle(
+      this.containerEl,
+      '自动大小写敏感',
+      undefined,
+      () => global.autoCaseSensitivity,
+      (v) => { global.autoCaseSensitivity = v; },
+      this.plugin,
     );
   }
   addFileSetting() {
     this.containerEl.createEl('h2', { text: '文件搜索' });
     const { file } = this.plugin.settings;
-    new Setting(this.containerEl)
-      .setName('显示附件')
-      .setDesc('显示如图片、视频、PDF等附件文件。')
-      .addToggle((cb) =>
-        cb.setValue(file.showAttachments).onChange(async (value) => {
-          file.showAttachments = value;
-          await this.plugin.saveSettings();
-        })
-      );
-    new Setting(this.containerEl).setName('显示所有类型文件').addToggle((cb) =>
-      cb.setValue(file.showAllFileTypes).onChange(async (value) => {
-        file.showAllFileTypes = value;
-        await this.plugin.saveSettings();
-      })
+    createToggle(
+      this.containerEl,
+      '显示附件',
+      '显示如图片、视频、PDF等附件文件。',
+      () => file.showAttachments,
+      (v) => { file.showAttachments = v; },
+      this.plugin,
     );
-    new Setting(this.containerEl).setName('显示未完成链接').addToggle((cb) =>
-      cb.setValue(file.showUnresolvedLink).onChange(async (value) => {
-        file.showUnresolvedLink = value;
-        await this.plugin.saveSettings();
-      })
+    createToggle(
+      this.containerEl,
+      '显示所有类型文件',
+      undefined,
+      () => file.showAllFileTypes,
+      (v) => { file.showAllFileTypes = v; },
+      this.plugin,
     );
-    new Setting(this.containerEl)
-      .setName('使用路径搜索')
-      .setDesc('当搜索结果少于10个时搜索路径')
-      .addToggle((cb) =>
-        cb.setValue(file.usePathToSearch).onChange(async (value) => {
-          file.usePathToSearch = value;
-          await this.plugin.saveSettings();
-        })
-      );
-    new Setting(this.containerEl).setName('显示 Tag').addToggle((cb) =>
-      cb.setValue(file.showTags).onChange(async (value) => {
-        file.showTags = value;
-        await this.plugin.saveSettings();
-      })
+    createToggle(
+      this.containerEl,
+      '显示未完成链接',
+      undefined,
+      () => file.showUnresolvedLink,
+      (v) => { file.showUnresolvedLink = v; },
+      this.plugin,
+    );
+    createToggle(
+      this.containerEl,
+      '使用路径搜索',
+      '当搜索结果少于10个时搜索路径',
+      () => file.usePathToSearch,
+      (v) => { file.usePathToSearch = v; },
+      this.plugin,
+    );
+    createToggle(
+      this.containerEl,
+      '显示 Tag',
+      undefined,
+      () => file.showTags,
+      (v) => { file.showTags = v; },
+      this.plugin,
     );
     new Setting(this.containerEl)
       .setName('使用双链建议')
@@ -246,17 +260,21 @@ export default class SettingTab extends PluginSettingTab {
   addHeadingSetting() {
     this.containerEl.createEl('h2', { text: '标题搜索' });
     const { heading } = this.plugin.settings;
-    new Setting(this.containerEl).setName('显示第一级标题').addToggle((cb) =>
-      cb.setValue(heading.showFirstLevelHeading).onChange(async (value) => {
-        heading.showFirstLevelHeading = value;
-        await this.plugin.saveSettings();
-      })
+    createToggle(
+      this.containerEl,
+      '显示第一级标题',
+      undefined,
+      () => heading.showFirstLevelHeading,
+      (v) => { heading.showFirstLevelHeading = v; },
+      this.plugin,
     );
-    new Setting(this.containerEl).setName('搜索结果缩进').addToggle((cb) =>
-      cb.setValue(heading.headingIndent).onChange(async (value) => {
-        heading.headingIndent = value;
-        await this.plugin.saveSettings();
-      })
+    createToggle(
+      this.containerEl,
+      '搜索结果缩进',
+      undefined,
+      () => heading.headingIndent,
+      (v) => { heading.headingIndent = v; },
+      this.plugin,
     );
   }
   addCommandSettings() {
@@ -340,14 +358,13 @@ export default class SettingTab extends PluginSettingTab {
         this.plugin.indexManager.refresh();
       })
     );
-    new Setting(this.containerEl)
-      .setName('dev 模式')
-      .setDesc('将索引存储到 global 以便重启时不重建索引')
-      .addToggle((cb) =>
-        cb.setValue(other.devMode).onChange(async (value) => {
-          other.devMode = value;
-          await this.plugin.saveSettings();
-        })
-      );
+    createToggle(
+      this.containerEl,
+      'dev 模式',
+      '将索引存储到 global 以便重启时不重建索引',
+      () => other.devMode,
+      (v) => { other.devMode = v; },
+      this.plugin,
+    );
   }
 }

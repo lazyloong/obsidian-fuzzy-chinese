@@ -299,7 +299,7 @@ export default class FileModal extends FuzzyModal<Item> {
     });
   }
   getLeaf(e: MouseEvent | KeyboardEvent): WorkspaceLeaf | null {
-    if (e instanceof MouseEvent) return openFileKeyMap['打开']();
+    // 鼠标点击与回车保持一致：遵循 keyEnter 设置，并支持 Ctrl/Alt 等修饰键（#86）
     const modKey = e.ctrlKey || e.metaKey;
     const altKey = e.altKey;
     let leaf: WorkspaceLeaf | null;

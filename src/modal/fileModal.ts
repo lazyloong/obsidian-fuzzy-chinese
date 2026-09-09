@@ -15,7 +15,7 @@ import {
 import ThePlugin from '@/main';
 import FuzzyModal from './modal';
 
-const DOCUMENT_EXTENSIONS = ['md', 'canvas'];
+const DOCUMENT_EXTENSIONS = ['md', 'canvas', 'base'];
 export enum FileItemType {
   file = 'file',
   path = 'path',

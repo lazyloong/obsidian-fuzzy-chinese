@@ -6,6 +6,9 @@ import {
   Pinyin,
   SpecialItemScore,
   SuggestionRenderer,
+  normalizeQuery,
+  normalizeText,
+  toRanges,
 } from '@/utils';
 import ThePlugin from '@/main';
 import FuzzyModal from './modal';

@@ -20,6 +20,10 @@ export default class SettingTab extends PluginSettingTab {
   }
 
   display(): void {
+    // 保留当前滚动位置，避免整页重绘后跳回顶部（尤其设置较长或处于独立窗口时）
+    const scrollEl = this.getScrollContainer();
+    const scrollTop = scrollEl?.scrollTop ?? 0;
+
     this.containerEl.empty();
     this.containerEl.createEl('h1', { text: '设置' });
     this.addGlobalSetting();
@@ -27,6 +31,25 @@ export default class SettingTab extends PluginSettingTab {
     this.addHeadingSetting();
     this.addCommandSettings();
     this.addOtherSetting();
+
+    if (scrollEl) {
+      scrollEl.win.requestAnimationFrame(() => {
+        scrollEl.scrollTop = scrollTop;
+      });
+    }
+  }
+
+  /** 找到当前实际负责滚动的容器（兼容设置页处于独立窗口/不同 DOM 结构的情况） */
+  private getScrollContainer(): HTMLElement | null {
+    let el: HTMLElement | null = this.containerEl;
+    while (el) {
+      const overflowY = el.win.getComputedStyle(el).overflowY;
+      if (el.scrollHeight > el.clientHeight && (overflowY === 'auto' || overflowY === 'scroll')) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
   }
 
   addGlobalSetting() {

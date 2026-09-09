@@ -10,7 +10,6 @@ import {
   SpecialItemScore,
   incrementalUpdate,
   PinyinSuggest,
-  getMostRecentView,
   usePlugin,
 } from '@/utils';
 import ThePlugin from '@/main';
@@ -632,11 +631,7 @@ function getFileTagArray(file: TFile): string[] | undefined {
 }
 
 export const openFileKeyMap: Record<string, () => WorkspaceLeaf | null> = {
-  打开: () => {
-    const leaf = getMostRecentView().leaf;
-    if (leaf.pinned) return app.workspace.getLeaf('tab');
-    else return leaf;
-  },
+  打开: () => app.workspace.getLeaf(false),
   打开到新标签页: () => app.workspace.getLeaf('tab'),
   打开到其他面板: () => getNewOrAdjacentLeaf(),
   打开到新面板: () => app.workspace.getLeaf('split'),

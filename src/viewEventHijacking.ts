@@ -162,7 +162,7 @@ class MetadataEditorSuggest extends PinyinSuggest {
 
     if (suggestions.length > 0) {
       this.suggest.setSuggestions(suggestions);
-      this.open(app.dom.appContainerEl, this.inputEl);
+      this.open(this.inputEl.doc.body, this.inputEl);
     } else {
       this.close();
     }

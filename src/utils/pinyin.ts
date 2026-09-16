@@ -50,6 +50,15 @@ function reconstructPath(cell: DPCell): number[] {
 }
 
 export default class Pinyin extends Array<PinyinChild> {
+  /**
+   * 让 map/filter/slice 等派生操作返回普通数组。
+   * 默认行为下 Array 子类会用 `new Pinyin(length)` 派生实例，
+   * 构造函数收到 number 后在 `this.text.split('')` 抛 TypeError，
+   * 使任何 `pinyin.map(...)` 调用直接失败。
+   */
+  static get [Symbol.species](): ArrayConstructor {
+    return Array;
+  }
   text: string;
   constructor(query: string) {
     super();
@@ -125,12 +134,21 @@ export default class Pinyin extends Array<PinyinChild> {
       const currRow: (DPCell | null)[] = new Array(m + 1).fill(null);
       currRow[0] = SENTINEL;
       const ch = text[i - 1];
-      const pinyins = this[i - 1].pinyin;
 
       // 允许跳过第 i 个字（不参与匹配），将上一行状态水平传递
       for (let j = 1; j <= m; j++) {
         currRow[j - 1] = prevRow[j - 1];
       }
+
+      // 兜底：字符拼音表理论上与 text 等长。若调用方传入更长的 text
+      // （历史上 pathItem 的 name 含扩展名而 pinyin 不含），该字符只能被跳过；
+      // 直接取 this[i - 1].pinyin 会抛 TypeError，让整个查询直接失效。
+      const entry = this[i - 1];
+      if (!entry) {
+        prevRow = currRow;
+        continue;
+      }
+      const pinyins = entry.pinyin;
 
       // 第 i 个字参与匹配
       for (let j = 1; j <= m; j++) {
@@ -207,6 +225,18 @@ type PinyinChild = {
   character: string[1];
   pinyin: string[];
 };
+
+/**
+ * 计算 pathItem 的路径拼音。
+ *
+ * pathItem.name 是文件的完整路径（file.path），而 Pinyin 的字符表来自构造时的字符串；
+ * 二者一旦不一致（例如用不含扩展名的 basename 构造路径拼音），
+ * matchAboveStart 里取 `this[i - 1].pinyin` 就会越界，使整个查询抛异常。
+ * 这里保证路径拼音与传入路径逐字符对齐；两者相同时复用原实例，避免重复构造。
+ */
+export function pathPinyinFor(filePath: string, fileNamePinyin: Pinyin): Pinyin {
+  return fileNamePinyin.text === filePath ? fileNamePinyin : new Pinyin(filePath);
+}
 
 /**
  * 将一个有序的数字数组转换为由连续数字区间组成的数组

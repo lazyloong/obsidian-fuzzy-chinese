@@ -9,7 +9,7 @@ import HistoryMatchDataNode from './historyMatchDataNode';
 export * from './pinyinUtils';
 export * from './helpers';
 
-export { normalizeQuery, normalizeText, toRanges } from './pinyin';
+export { normalizeQuery, normalizeText, pathPinyinFor, toRanges } from './pinyin';
 
 export {
   Pinyin,

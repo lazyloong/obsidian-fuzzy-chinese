@@ -10,6 +10,7 @@ import {
   SpecialItemScore,
   incrementalUpdate,
   PinyinSuggest,
+  pathPinyinFor,
   usePlugin,
 } from '@/utils';
 import ThePlugin from '@/main';
@@ -505,18 +506,7 @@ class PinyinIndex extends PI<Item> {
 
 function TFile2Item(file: TFile): { fileItem: FileItem; pathItem: PathItem } {
   const name = file.extension != 'md' ? file.name : file.basename;
-  const folderIndex = usePlugin().folderModal.index.items;
   const fileNamePinyin = new Pinyin(name);
-  let folderPathPinyin: Pinyin;
-  let pathPinyin: Pinyin;
-  if (file.parent.path === '/') {
-    pathPinyin = fileNamePinyin;
-  } else {
-    folderPathPinyin = folderIndex.find((folder) => folder.name == file.parent.path)?.pinyin;
-    if (folderPathPinyin)
-      pathPinyin = folderPathPinyin.concat(new Pinyin('/')).concat(fileNamePinyin);
-    else pathPinyin = new Pinyin(file.path);
-  }
   const fileItem: FileItem = {
     type: FileItemType.file,
     file: file,
@@ -528,7 +518,8 @@ function TFile2Item(file: TFile): { fileItem: FileItem; pathItem: PathItem } {
     type: FileItemType.path,
     file: file,
     name: file.path,
-    pinyin: pathPinyin,
+    // pathItem.name 是完整路径，其拼音必须与之逐字符对齐，否则 matchAboveStart 会越界抛异常
+    pinyin: pathPinyinFor(file.path, fileNamePinyin),
     path: file.path,
   };
   return {

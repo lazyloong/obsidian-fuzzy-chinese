@@ -7,4 +7,5 @@ yarn.lock
 .npmrc
 dist
 .codewhale
+.reasonix/
 .vscode

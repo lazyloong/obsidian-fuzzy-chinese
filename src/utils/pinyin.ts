@@ -5,8 +5,17 @@ import { pinyinEngine } from '@/engine/pinyinEngine';
 /** 拼音最长音节长度（用于末音节前缀匹配判断） */
 const MAX_PINYIN_LENGTH = 6;
 
-/** 双字符声母集合 */
-const SHUANG_SHENG = ['zh', 'ch', 'sh'];
+/** 把字符串中的 ASCII 字母（大小写统一）累加进 26 位掩码 */
+function addLetterBits(mask: number, s: string): number {
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    let k = -1;
+    if (c >= 97 && c <= 122) k = c - 97;
+    else if (c >= 65 && c <= 90) k = c - 65;
+    if (k >= 0) mask |= 1 << k;
+  }
+  return mask;
+}
 
 /** DP 单元格：存储匹配状态及 O(1) 回溯指针 */
 interface DPCell {
@@ -29,8 +38,9 @@ export function normalizeQuery(query: string): string {
 /** 将文本做大小写归一化（含土耳其语 İ 特殊处理） */
 export function normalizeText(text: string, smartCase: boolean): string {
   if (smartCase) return text;
-  const locale: string | undefined = text.includes('İ') ? 'tr' : undefined;
-  return text.toLocaleLowerCase(locale);
+  // 仅土耳其语 İ 需要 locale 处理；其余用更快的 toLowerCase
+  if (text.includes('İ')) return text.toLocaleLowerCase('tr');
+  return text.toLowerCase();
 }
 
 /**
@@ -60,16 +70,48 @@ export default class Pinyin extends Array<PinyinChild> {
     return Array;
   }
   text: string;
+  /** 文本字符 + 所有候选拼音中出现过的 a-z 字母掩码 */
+  letterMask: number = 0;
+  /** 能作为匹配起点的 a-z 字母掩码（文本字符或任一字拼音首字母） */
+  startMask: number = 0;
   constructor(query: string) {
     super();
     this.text = query;
+    let letterMask = 0;
+    let startMask = 0;
     this.text.split('').forEach((p) => {
-      const pinyin = pinyinEngine.getCharPinyin(p);
-      this.push({
-        character: p,
-        pinyin: Array.from(pinyin, (s) => s.toLowerCase()) as string[],
-      });
+      const pinyin = Array.from(pinyinEngine.getCharPinyin(p), (s) => s.toLowerCase());
+      this.push({ character: p, pinyin });
+      letterMask = addLetterBits(letterMask, p);
+      startMask = addLetterBits(startMask, p);
+      for (const py of pinyin) {
+        letterMask = addLetterBits(letterMask, py);
+        startMask = addLetterBits(startMask, py[0] ?? '');
+      }
     });
+    this.letterMask = letterMask;
+    this.startMask = startMask;
+  }
+
+  /**
+   * 快速否定（必要非充分）：查询中的 a-z 字母是否都可能在本文本中匹配。
+   * 仅当传入 text 与 this.text 一致时使用，避免对任意 text 误判。
+   */
+  couldMatch(query: string): boolean {
+    let required = 0;
+    for (let i = 0; i < query.length; i++) {
+      const c = query.charCodeAt(i);
+      let k = -1;
+      if (c >= 97 && c <= 122) k = c - 97;
+      else if (c >= 65 && c <= 90) k = c - 65;
+      if (k >= 0) required |= 1 << k;
+    }
+    if ((required & ~this.letterMask) !== 0) return false;
+    // 首字符必须等于某个文本字符，或某个字符拼音的首字母
+    const c0 = query.charCodeAt(0);
+    if (c0 >= 97 && c0 <= 122) return (this.startMask & (1 << (c0 - 97))) !== 0;
+    if (c0 >= 65 && c0 <= 90) return (this.startMask & (1 << (c0 - 65))) !== 0;
+    return true;
   }
   getScore(range: Array<[number, number]>) {
     const textLen = this.text.length;
@@ -110,74 +152,94 @@ export default class Pinyin extends Array<PinyinChild> {
     const result = new Pinyin('');
     result.text = this.text + pinyin.text;
     result.push(...this, ...pinyin);
+    result.letterMask = this.letterMask | pinyin.letterMask;
+    result.startMask = this.startMask | pinyin.startMask;
     return result;
   }
 
   match_(query: string): number[] | null {
     const smartCase = /[A-Z]/.test(query) && usePlugin().settings.global.autoCaseSensitivity;
-    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLowerCase();
     const finalText = normalizeText(this.text, smartCase);
     return this.matchAboveStart(finalText, finalQuery);
   }
 
   // Original matchAboveStart based on the work of zh-lx (https://github.com/zh-lx).
-  // Original code: https://github.com/zh-lx/pinyin-pro/blob/main/lib/core/match/index.ts.
+  // 优化版：预计算查询尾部、复用两行 DP 数组、显式循环、字母掩码快速否定、活跃列裁剪。
   matchAboveStart(text: string, query: string): number[] | null {
     const n = text.length;
     const m = query.length;
+    if (m === 0) return null;
 
-    // 两行轮转：prevRow = dp[i-1]，currRow = dp[i]
+    // 快速否定：省掉整趟 DP（仅当 text 与自身文本一致时掩码才可靠）
+    if (text === this.text && !this.couldMatch(query)) return null;
+
+    // 策略2 需要 query.slice(j-1)；只在剩余长度 ≤ MAX_PINYIN_LENGTH 时使用，
+    // 预先算好这些尾部串，避免在 O(n*m) 内层循环里反复分配子串。
+    const tails: string[] = new Array(m);
+    for (let idx = Math.max(0, m - 1 - MAX_PINYIN_LENGTH); idx < m; idx++) {
+      tails[idx] = query.slice(idx, m);
+    }
+
+    // 两行轮转；复用两个数组，避免每个字符都 new Array(m+1)。
     let prevRow: (DPCell | null)[] = new Array(m + 1).fill(null);
+    let currRow: (DPCell | null)[] = new Array(m + 1).fill(null);
     prevRow[0] = SENTINEL;
+    // prevMax = prevRow 中最高非空列；更高列的 prevRow 必为 null，可整段跳过。
+    let prevMax = 0;
 
     for (let i = 1; i <= n; i++) {
-      const currRow: (DPCell | null)[] = new Array(m + 1).fill(null);
+      // 复用数组：本行 0..m-1 由上一行覆盖，末列单独清空。
       currRow[0] = SENTINEL;
-      const ch = text[i - 1];
+      for (let j = 1; j <= m; j++) currRow[j - 1] = prevRow[j - 1];
+      currRow[m] = null;
 
-      // 允许跳过第 i 个字（不参与匹配），将上一行状态水平传递
-      for (let j = 1; j <= m; j++) {
-        currRow[j - 1] = prevRow[j - 1];
-      }
+      // 跳过传播后，本行最高非空列不会超过 min(prevMax, m-1)
+      let nextMax = prevMax < m ? prevMax : m - 1;
 
-      // 兜底：字符拼音表理论上与 text 等长。若调用方传入更长的 text
-      // （历史上 pathItem 的 name 含扩展名而 pinyin 不含），该字符只能被跳过；
-      // 直接取 this[i - 1].pinyin 会抛 TypeError，让整个查询直接失效。
       const entry = this[i - 1];
       if (!entry) {
+        const tmp = prevRow;
         prevRow = currRow;
+        currRow = tmp;
+        prevMax = nextMax;
         continue;
       }
+
       const pinyins = entry.pinyin;
+      const pn = pinyins.length;
+      const ch = text[i - 1];
 
-      // 第 i 个字参与匹配
-      for (let j = 1; j <= m; j++) {
+      // 只有 j-1 <= prevMax 时 prevRow[j-1] 才可能非空
+      const jEnd = prevMax + 1 < m ? prevMax + 1 : m;
+      for (let j = 1; j <= jEnd; j++) {
         const prev = prevRow[j - 1];
-        if (prev === null) {
-          continue;
-        }
-        if (j !== 1 && prev.len === 0) {
-          continue;
-        }
+        if (prev === null) continue;
+        if (j !== 1 && prev.len === 0) continue;
 
-        const qj = query[j - 1]; // 缓存 query[j-1]
+        const qj = query[j - 1];
 
-        // 策略1：精确字符匹配（非中文、数字等直接按字符匹配）
+        // 策略1：精确字符匹配
         if (ch === qj) {
           const cell: DPCell = { len: prev.len + 1, index: i - 1, prev };
-          if (currRow[j] === null || cell.len > currRow[j]!.len) {
-            currRow[j] = cell;
-          }
-          if (j === m) {
-            return reconstructPath(currRow[j]!);
-          }
+          const cur = currRow[j];
+          if (cur === null || cell.len > cur.len) currRow[j] = cell;
+          if (j > nextMax) nextMax = j;
+          if (j === m) return reconstructPath(currRow[j]!);
         }
 
-        // 策略2：末音节前缀匹配（查询剩余 ≤6 字符时，有可能是最后一个拼音的前缀）
-        if (m - j <= MAX_PINYIN_LENGTH) {
-          const last = pinyins.some((p) =>
-            p.startsWith(query.slice(j - 1, m))
-          );
+        const rem = m - j;
+
+        // 策略2：末音节前缀匹配
+        if (rem <= MAX_PINYIN_LENGTH) {
+          const tail = tails[j - 1];
+          let last = false;
+          for (let k = 0; k < pn; k++) {
+            if (pinyins[k].startsWith(tail)) {
+              last = true;
+              break;
+            }
+          }
           if (last) {
             const cell: DPCell = { len: prev.len + 1, index: i - 1, prev };
             return reconstructPath(cell);
@@ -185,37 +247,60 @@ export default class Pinyin extends Array<PinyinChild> {
         }
 
         // 策略3：首字母匹配
-        if (pinyins.some((p) => p[0] === qj)) {
-          const cell: DPCell = { len: prev.len + 1, index: i - 1, prev };
-          if (currRow[j] === null || cell.len > currRow[j]!.len) {
-            currRow[j] = cell;
+        let initial = false;
+        for (let k = 0; k < pn; k++) {
+          if (pinyins[k][0] === qj) {
+            initial = true;
+            break;
           }
         }
+        if (initial) {
+          const cell: DPCell = { len: prev.len + 1, index: i - 1, prev };
+          const cur = currRow[j];
+          if (cur === null || cell.len > cur.len) currRow[j] = cell;
+          if (j > nextMax) nextMax = j;
+        }
 
-        // 策略3b：双字符声母匹配（zh/ch/sh）
-        if (m - j >= 1) {
-          const initial2 = query.slice(j - 1, j + 1);
-          if (SHUANG_SHENG.includes(initial2) && pinyins.some((p) => p.startsWith(initial2))) {
-            const cell: DPCell = { len: prev.len + 1, index: i - 1, prev };
-            const targetCol = j + 1;
-            if (currRow[targetCol] === null || cell.len > currRow[targetCol]!.len) {
-              currRow[targetCol] = cell;
+        // 策略3b：双字符声母 zh / ch / sh
+        if (rem >= 1) {
+          const qj1 = query[j];
+          if ((qj === 'z' || qj === 'c' || qj === 's') && qj1 === 'h') {
+            const c0 = qj.charCodeAt(0);
+            const c1 = qj1.charCodeAt(0);
+            let shuang = false;
+            for (let k = 0; k < pn; k++) {
+              const p = pinyins[k];
+              if (p.length >= 2 && p.charCodeAt(0) === c0 && p.charCodeAt(1) === c1) {
+                shuang = true;
+                break;
+              }
+            }
+            if (shuang) {
+              const cell: DPCell = { len: prev.len + 1, index: i - 1, prev };
+              const cur = currRow[j + 1];
+              if (cur === null || cell.len > cur.len) currRow[j + 1] = cell;
+              if (j + 1 > nextMax) nextMax = j + 1;
             }
           }
         }
 
         // 策略4：完整拼音匹配
-        for (const p of pinyins) {
+        for (let k = 0; k < pn; k++) {
+          const p = pinyins[k];
           if (query.startsWith(p, j - 1)) {
             const cell: DPCell = { len: prev.len + 1, index: i - 1, prev };
             const endIndex = j - 1 + p.length;
-            if (currRow[endIndex] === null || cell.len > currRow[endIndex]!.len) {
-              currRow[endIndex] = cell;
-            }
+            const cur = currRow[endIndex];
+            if (cur === null || cell.len > cur.len) currRow[endIndex] = cell;
+            if (endIndex > nextMax) nextMax = endIndex;
           }
         }
       }
+
+      const tmp = prevRow;
       prevRow = currRow;
+      currRow = tmp;
+      prevMax = nextMax;
     }
     return null;
   }
@@ -234,8 +319,30 @@ type PinyinChild = {
  * matchAboveStart 里取 `this[i - 1].pinyin` 就会越界，使整个查询抛异常。
  * 这里保证路径拼音与传入路径逐字符对齐；两者相同时复用原实例，避免重复构造。
  */
+const PINYIN_CACHE_LIMIT = 2000;
+const pinyinCache = new Map<string, Pinyin>();
+
+/** 带容量上限的 Pinyin 缓存：复用相同文本的拼音（文件夹路径、扩展名等） */
+export function getCachedPinyin(text: string): Pinyin {
+  const cached = pinyinCache.get(text);
+  if (cached) return cached;
+  const result = new Pinyin(text);
+  if (pinyinCache.size >= PINYIN_CACHE_LIMIT) pinyinCache.clear();
+  pinyinCache.set(text, result);
+  return result;
+}
+
 export function pathPinyinFor(filePath: string, fileNamePinyin: Pinyin): Pinyin {
-  return fileNamePinyin.text === filePath ? fileNamePinyin : new Pinyin(filePath);
+  if (fileNamePinyin.text === filePath) return fileNamePinyin;
+  const idx = filePath.indexOf(fileNamePinyin.text);
+  if (idx >= 0) {
+    const prefix = filePath.slice(0, idx);
+    const suffix = filePath.slice(idx + fileNamePinyin.text.length);
+    let result = prefix ? getCachedPinyin(prefix).concat(fileNamePinyin) : fileNamePinyin;
+    if (suffix) result = result.concat(getCachedPinyin(suffix));
+    return result;
+  }
+  return getCachedPinyin(filePath);
 }
 
 /**

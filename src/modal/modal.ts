@@ -85,7 +85,11 @@ export default abstract class FuzzyModal<T extends Item> extends SuggestModal<Ma
     const matchData: MatchData<T>[] = [];
     // 预归一化查询（循环外只做一次）
     const smartCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
-    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLowerCase();
+
+    // 首字符候选剪枝：匹配起点必须是某文本字符或某拼音首字母
+    const idx = this.index as PinyinIndex<T>;
+    if (items && idx.startCharIndex) items = idx.narrowByFirstChar(items, finalQuery);
     for (const p of items) {
       const finalText = normalizeText(p.name, smartCase);
       const range = p.pinyin.matchAboveStart(finalText, finalQuery);

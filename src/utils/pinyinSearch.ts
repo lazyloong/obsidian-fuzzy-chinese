@@ -1,6 +1,6 @@
 import type { Item as uItem, MatchData } from '@/utils/type';
 import { SpecialItemScore } from '@/utils/type';
-import Pinyin from '@/utils/pinyin';
+import { getCachedPinyin } from '@/utils/pinyin';
 
 type SearchItem<T> = uItem<{ data: T }>;
 
@@ -22,7 +22,7 @@ export default function pinyinSearch<T>(
   const matchData: MatchData<SearchItem<T>>[] = [];
   const items: SearchItem<T>[] = data.map((d) => ({
     name: _getKey(d),
-    pinyin: new Pinyin(_getKey(d)),
+    pinyin: getCachedPinyin(_getKey(d)),
     data: d,
   }));
   for (const item of items) {

@@ -109,7 +109,7 @@ export default class FolderModal extends FuzzyModal<Item> {
       matchData2: MatchData[] = []; // 使用路径搜索的数据
 
     const smartCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
-    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLowerCase();
 
     let toMatchItem = this.getHistoryData(query);
     for (const p of toMatchItem) {

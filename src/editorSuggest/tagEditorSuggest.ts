@@ -119,7 +119,7 @@ export default class TagEditorSuggest extends EditorSuggest<MatchData> {
     const { toMatchItem, currentNode } = this.getItemFromHistoryTree(query);
     const matchData: MatchData[] = [];
     const smartCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
-    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLowerCase();
     for (let p of toMatchItem) {
       const finalText = normalizeText(p.name, smartCase);
       const range = p.pinyin.matchAboveStart(finalText, finalQuery);

@@ -160,7 +160,7 @@ export default class FileEditorSuggest extends EditorSuggest<MatchData> {
         usePath: false,
       }));
     const smartCase = /[A-Z]/.test(query) && this.plugin.settings.global.autoCaseSensitivity;
-    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLocaleLowerCase();
+    const finalQuery = smartCase ? normalizeQuery(query) : normalizeQuery(query).toLowerCase();
     const matchData: MatchData[] = [];
     for (const p of items) {
       const finalText = normalizeText(p.name, smartCase);
